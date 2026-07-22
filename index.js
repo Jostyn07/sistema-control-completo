@@ -16,9 +16,9 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ---- Rutas de API (una por módulo; se van sumando en orden) ----
-app.use('/api/materiales', rutasMateriales);
-app.use('/api/productos', rutasProductos);
-app.use('/api/inventario', require('./sistema-control/server/rutas/inventario'));
+app.use('./sistema-control/server/', rutasMateriales);
+app.use('./api/productos', rutasProductos);
+app.use('./api/inventario', require('./sistema-control/server/rutas/inventario'));
 app.use('/api/ventas', require('./sistema-control/server/rutas/ventas'));
 app.use('/api/compras', require('./sistema-control/server/rutas/compras'));
 app.use('/api/finanzas', require('./sistema-control/server/rutas/finanzas'));
