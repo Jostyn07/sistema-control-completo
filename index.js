@@ -16,18 +16,13 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ---- Rutas de API (una por módulo; se van sumando en orden) ----
-app.use('/sistema-control/server/', rutasMateriales);
+app.use('/api/materiales', rutasMateriales);
 app.use('/api/productos', rutasProductos);
-app.use('/api/inventario', require('./sistema-control/server/rutas/inventario'));
-app.use('/api/ventas', require('./sistema-control/server/rutas/ventas'));
-app.use('/api/compras', require('./sistema-control/server/rutas/compras'));
-app.use('/api/finanzas', require('./sistema-control/server/rutas/finanzas'));
-app.use('/api/facturacion', require('./sistema-control/server/rutas/facturacion'));
-app.use('/api/inventario',  require('./rutas/inventario'));  // módulo 3
-app.use('/api/ventas',      require('./rutas/ventas'));      // módulo 4
-app.use('/api/compras',     require('./rutas/compras'));     // módulo 5
-app.use('/api/finanzas',    require('./rutas/finanzas'));    // módulo 6
-app.use('/api/facturacion', require('./rutas/facturacion')); // módulo 7
+app.use('/api/inventario', require('./rutas/inventario'));
+app.use('/api/ventas', require('./rutas/ventas'));
+app.use('/api/compras', require('./rutas/compras'));
+app.use('/api/finanzas', require('./rutas/finanzas'));
+app.use('/api/facturacion', require('./rutas/facturacion'));
 
 // Manejador de errores único: cualquier ruta que haga next(error) cae aquí
 app.use((err, req, res, next) => {
