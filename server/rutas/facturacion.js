@@ -1,13 +1,9 @@
 // ============================================================
 // MÓDULO 7 — FACTURACIÓN ELECTRÓNICA  (/api/facturacion)
-// - GET/POST /configuracion   datos del RUT y resolución (carga única)
-// - GET  /facturables         ventas confirmadas sin factura
-// - POST /generar             genera la factura: asigna el consecutivo
-//                             según la resolución, marca la venta como
-//                             facturada y delega la emisión DIAN al
-//                             adaptador de proveedor (decisión pendiente)
-// - GET  /historial           facturas emitidas
-// - GET  /:id/detalle         factura completa para la vista imprimible
+// Requiere sesión. Todo se filtra por req.usuarioId. La
+// configuración fiscal ahora es una fila por usuario (antes era
+// una fila única id=1), porque cada cuenta puede tener su propio
+// RUT y resolución de numeración.
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
@@ -18,13 +14,13 @@ const router = express.Router();
 router.get('/configuracion', async (req, res, next) => {
   try {
     const { data, error } = await supabase
-      .from('configuracion_fiscal').select('*').eq('id', 1).maybeSingle();
+      .from('configuracion_fiscal').select('*').eq('usuario_id', req.usuarioId).maybeSingle();
     if (error) throw new Error(error.message);
     res.json(data || null);
   } catch (err) { next(err); }
 });
 
-// POST /api/facturacion/configuracion — crea o actualiza la fila única
+// POST /api/facturacion/configuracion
 router.post('/configuracion', async (req, res, next) => {
   try {
     const c = req.body;
@@ -38,7 +34,7 @@ router.post('/configuracion', async (req, res, next) => {
       return res.status(400).json({ error: 'El "desde" de la numeración no puede ser mayor que el "hasta"' });
 
     const fila = {
-      id: 1,
+      usuario_id: req.usuarioId,
       razon_social: c.razon_social.trim(),
       nit: c.nit.trim(),
       regimen: (c.regimen || '').trim() || null,
@@ -55,12 +51,13 @@ router.post('/configuracion', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/facturacion/facturables — ventas sin factura generada
+// GET /api/facturacion/facturables
 router.get('/facturables', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('ventas')
       .select('id, cliente, total, estado, fecha, ventas_items(cantidad, productos(nombre))')
+      .eq('usuario_id', req.usuarioId)
       .eq('facturada', false)
       .order('fecha', { ascending: false })
       .limit(100);
@@ -75,23 +72,20 @@ router.post('/generar', async (req, res, next) => {
     const { venta_id } = req.body;
     if (!venta_id) return res.status(400).json({ error: 'Falta indicar la venta' });
 
-    // Configuración fiscal (obligatoria antes de facturar)
     const { data: config, error: eConf } = await supabase
-      .from('configuracion_fiscal').select('*').eq('id', 1).maybeSingle();
+      .from('configuracion_fiscal').select('*').eq('usuario_id', req.usuarioId).maybeSingle();
     if (eConf) throw new Error(eConf.message);
     if (!config) return res.status(400).json({
       error: 'Primero carga la configuración fiscal (datos del RUT y resolución de numeración).'
     });
 
-    // La venta, aún no facturada
     const { data: venta, error: eVenta } = await supabase
-      .from('ventas').select('*').eq('id', venta_id).single();
+      .from('ventas').select('*').eq('id', venta_id).eq('usuario_id', req.usuarioId).single();
     if (eVenta || !venta) return res.status(404).json({ error: 'Venta no encontrada' });
     if (venta.facturada) return res.status(409).json({ error: 'Esta venta ya tiene factura generada' });
 
-    // Consecutivo: cuenta las facturas ya emitidas y toma el siguiente del rango
     const { count, error: eCount } = await supabase
-      .from('facturas').select('id', { count: 'exact', head: true });
+      .from('facturas').select('id', { count: 'exact', head: true }).eq('usuario_id', req.usuarioId);
     if (eCount) throw new Error(eCount.message);
 
     const consecutivo = Number(config.resolucion_desde) + (count || 0);
@@ -102,13 +96,12 @@ router.post('/generar', async (req, res, next) => {
     }
     const numero = `${config.resolucion_prefijo || ''}${consecutivo}`;
 
-    // Emisión ante la DIAN: delegada al adaptador (decisión de proveedor pendiente)
     const emision = await proveedor.emitir({ venta, config, numero });
 
-    // Guardar la factura y marcar la venta
     const { data: factura, error: eFact } = await supabase
       .from('facturas')
       .insert({
+        usuario_id: req.usuarioId,
         venta_id,
         numero,
         cufe: emision.cufe,
@@ -119,7 +112,7 @@ router.post('/generar', async (req, res, next) => {
     if (eFact) throw new Error(eFact.message);
 
     const { error: eMarca } = await supabase
-      .from('ventas').update({ facturada: true }).eq('id', venta_id);
+      .from('ventas').update({ facturada: true }).eq('id', venta_id).eq('usuario_id', req.usuarioId);
     if (eMarca) throw new Error(eMarca.message);
 
     res.status(201).json({ ...factura, nota: emision.nota || null });
@@ -132,6 +125,7 @@ router.get('/historial', async (req, res, next) => {
     const { data, error } = await supabase
       .from('facturas')
       .select('*, ventas(cliente, total, fecha)')
+      .eq('usuario_id', req.usuarioId)
       .order('fecha', { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
@@ -139,18 +133,19 @@ router.get('/historial', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/facturacion/:id/detalle — todo lo necesario para la vista imprimible
+// GET /api/facturacion/:id/detalle
 router.get('/:id/detalle', async (req, res, next) => {
   try {
     const { data: factura, error: eFact } = await supabase
       .from('facturas')
       .select('*, ventas(id, cliente, total, costo_total, fecha, ventas_items(cantidad, precio_unitario, productos(nombre)))')
       .eq('id', req.params.id)
+      .eq('usuario_id', req.usuarioId)
       .single();
     if (eFact || !factura) return res.status(404).json({ error: 'Factura no encontrada' });
 
     const { data: config, error: eConf } = await supabase
-      .from('configuracion_fiscal').select('*').eq('id', 1).maybeSingle();
+      .from('configuracion_fiscal').select('*').eq('usuario_id', req.usuarioId).maybeSingle();
     if (eConf) throw new Error(eConf.message);
 
     res.json({ factura, config });

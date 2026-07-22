@@ -1,5 +1,6 @@
 // ============================================================
 // MÓDULO 2 — PRODUCTOS / FICHAS TÉCNICAS  (/api/productos)
+// Requiere sesión. Cada consulta se filtra por req.usuarioId.
 // - GET    /                    productos con costo, precio y margen
 // - POST   /                    crear producto + su lista de materiales
 // - PUT    /:id                 editar ficha técnica; recalcula costo y margen
@@ -33,13 +34,14 @@ function validarProducto(datos) {
   return errores;
 }
 
-// Calcula costo total (materiales al precio actual + mano de obra) a partir
-// de la lista de materiales de la ficha. Se usa al crear y al editar.
-async function calcularCostoDesdeLista(materiales, minutosFabricacion, costoMinutoManoObra) {
+// Calcula costo total a partir de la lista de materiales de la ficha,
+// verificando que cada material pertenezca al mismo usuario.
+async function calcularCostoDesdeLista(materiales, minutosFabricacion, costoMinutoManoObra, usuarioId) {
   const ids = materiales.map(m => m.material_id);
   const { data: filasMateriales, error } = await supabase
     .from('materiales')
     .select('id, costo_unitario')
+    .eq('usuario_id', usuarioId)
     .in('id', ids);
   if (error) throw new Error(error.message);
 
@@ -47,7 +49,7 @@ async function calcularCostoDesdeLista(materiales, minutosFabricacion, costoMinu
   let costoMateriales = 0;
   for (const m of materiales) {
     const costoUnitario = costoPorId.get(m.material_id);
-    if (costoUnitario == null) throw new Error('Uno de los materiales de la ficha ya no existe');
+    if (costoUnitario == null) throw new Error('Uno de los materiales de la ficha no existe o no te pertenece');
     costoMateriales += costoUnitario * Number(m.cantidad);
   }
   const costoManoObra = Number(minutosFabricacion || 0) * Number(costoMinutoManoObra || 0);
@@ -62,12 +64,13 @@ function conMargen(producto) {
   return { ...producto, margen_valor: margenValor, margen_porcentaje: margenPorcentaje };
 }
 
-// GET /api/productos — con costo, precio y margen ya calculados
+// GET /api/productos
 router.get('/', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('productos')
       .select('*')
+      .eq('usuario_id', req.usuarioId)
       .eq('activo', true)
       .order('nombre');
     if (error) throw new Error(error.message);
@@ -75,18 +78,19 @@ router.get('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// POST /api/productos — crea el producto y su ficha técnica (lista de materiales)
+// POST /api/productos
 router.post('/', async (req, res, next) => {
   try {
     const errores = validarProducto(req.body);
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
     const costoCalculado = await calcularCostoDesdeLista(
-      req.body.materiales, req.body.minutos_fabricacion, req.body.costo_minuto_mano_obra);
+      req.body.materiales, req.body.minutos_fabricacion, req.body.costo_minuto_mano_obra, req.usuarioId);
 
     const { data: producto, error: eProd } = await supabase
       .from('productos')
       .insert({
+        usuario_id: req.usuarioId,
         nombre: req.body.nombre.trim(),
         foto_url: req.body.foto_url || null,
         precio_venta: Number(req.body.precio_venta),
@@ -109,14 +113,14 @@ router.post('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// PUT /api/productos/:id — edita ficha técnica; recalcula costo y margen
+// PUT /api/productos/:id
 router.put('/:id', async (req, res, next) => {
   try {
     const errores = validarProducto(req.body);
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
     const costoCalculado = await calcularCostoDesdeLista(
-      req.body.materiales, req.body.minutos_fabricacion, req.body.costo_minuto_mano_obra);
+      req.body.materiales, req.body.minutos_fabricacion, req.body.costo_minuto_mano_obra, req.usuarioId);
 
     const { data: producto, error: eProd } = await supabase
       .from('productos')
@@ -130,12 +134,11 @@ router.put('/:id', async (req, res, next) => {
         actualizado_en: new Date().toISOString()
       })
       .eq('id', req.params.id)
+      .eq('usuario_id', req.usuarioId)
       .select().single();
     if (eProd) throw new Error(eProd.message);
     if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
 
-    // Reemplaza la lista completa de materiales de la ficha (más simple y
-    // menos propenso a errores que calcular un diff de filas)
     const { error: eDel } = await supabase.from('productos_materiales').delete().eq('producto_id', req.params.id);
     if (eDel) throw new Error(eDel.message);
 
@@ -151,9 +154,13 @@ router.put('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// DELETE /api/productos/:id — elimina si no tiene ventas; si tiene, desactiva
+// DELETE /api/productos/:id
 router.delete('/:id', async (req, res, next) => {
   try {
+    const { data: producto, error: eGet } = await supabase
+      .from('productos').select('id').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+    if (eGet || !producto) return res.status(404).json({ error: 'Producto no encontrado' });
+
     const { count, error: eVentas } = await supabase
       .from('ventas_items')
       .select('id', { count: 'exact', head: true })
@@ -164,7 +171,8 @@ router.delete('/:id', async (req, res, next) => {
       const { error } = await supabase
         .from('productos')
         .update({ activo: false, actualizado_en: new Date().toISOString() })
-        .eq('id', req.params.id);
+        .eq('id', req.params.id)
+        .eq('usuario_id', req.usuarioId);
       if (error) throw new Error(error.message);
       return res.json({
         eliminado: false,
@@ -175,17 +183,17 @@ router.delete('/:id', async (req, res, next) => {
 
     const { error: eDelRel } = await supabase.from('productos_materiales').delete().eq('producto_id', req.params.id);
     if (eDelRel) throw new Error(eDelRel.message);
-    const { error } = await supabase.from('productos').delete().eq('id', req.params.id);
+    const { error } = await supabase.from('productos').delete().eq('id', req.params.id).eq('usuario_id', req.usuarioId);
     if (error) throw new Error(error.message);
     res.json({ eliminado: true, desactivado: false });
   } catch (err) { next(err); }
 });
 
-// GET /api/productos/:id/costo — desglose de costo (materiales + mano de obra)
+// GET /api/productos/:id/costo
 router.get('/:id/costo', async (req, res, next) => {
   try {
     const { data: producto, error: eProd } = await supabase
-      .from('productos').select('*').eq('id', req.params.id).single();
+      .from('productos').select('*').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
     if (eProd || !producto) return res.status(404).json({ error: 'Producto no encontrado' });
 
     const { data: filas, error: eRel } = await supabase

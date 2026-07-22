@@ -1,11 +1,10 @@
 // ============================================================
 // MÓDULO 3 — INVENTARIO EN TIEMPO REAL  (/api/inventario)
+// Requiere sesión. Todo se filtra por req.usuarioId.
 // - GET  /materiales   stock, punto de reorden y estado (semáforo)
 // - GET  /capacidad    cuántas unidades de cada producto se pueden
 //                      fabricar ahora + cuál material es el limitante
 // - POST /ajuste       ajuste manual tras un conteo físico (motivo obligatorio)
-// El punto de reorden se calcula en el servicio compartido
-// server/servicios/inventario.js (también lo usa Compras).
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
@@ -15,19 +14,18 @@ const router = express.Router();
 // GET /api/inventario/materiales
 router.get('/materiales', async (req, res, next) => {
   try {
-    const inventario = await servicioInventario.obtenerInventarioMateriales();
+    const inventario = await servicioInventario.obtenerInventarioMateriales(req.usuarioId);
     res.json(inventario);
   } catch (err) { next(err); }
 });
 
 // GET /api/inventario/capacidad
-// Para cada producto activo: MÍNIMO(stock_material ÷ cantidad_requerida)
-// entre todos sus materiales, más el material limitante.
 router.get('/capacidad', async (req, res, next) => {
   try {
     const { data: productos, error: eProd } = await supabase
       .from('productos')
       .select('id, nombre, foto_url, precio_venta')
+      .eq('usuario_id', req.usuarioId)
       .eq('activo', true)
       .order('nombre');
     if (eProd) throw new Error(eProd.message);
@@ -75,10 +73,9 @@ router.get('/capacidad', async (req, res, next) => {
 });
 
 // POST /api/inventario/ajuste
-// Cuerpo: { material_id, cantidad_nueva, motivo, usuario? }
 router.post('/ajuste', async (req, res, next) => {
   try {
-    const { material_id, cantidad_nueva, motivo, usuario } = req.body;
+    const { material_id, cantidad_nueva, motivo } = req.body;
     if (!material_id) return res.status(400).json({ error: 'Falta indicar el material' });
     if (cantidad_nueva == null || isNaN(cantidad_nueva) || Number(cantidad_nueva) < 0)
       return res.status(400).json({ error: 'La cantidad nueva debe ser un número mayor o igual a 0' });
@@ -86,24 +83,24 @@ router.post('/ajuste', async (req, res, next) => {
       return res.status(400).json({ error: 'El motivo del ajuste es obligatorio (para trazabilidad)' });
 
     const { data: material, error: eGet } = await supabase
-      .from('materiales').select('id, stock_actual').eq('id', material_id).single();
+      .from('materiales').select('id, stock_actual').eq('id', material_id).eq('usuario_id', req.usuarioId).single();
     if (eGet || !material) return res.status(404).json({ error: 'Material no encontrado' });
 
-    // 1) Registrar el ajuste (trazabilidad: stock anterior, nuevo, motivo, quién, cuándo)
     const { error: eAjuste } = await supabase.from('inventario_ajustes').insert({
+      usuario_id: req.usuarioId,
       material_id,
       stock_anterior: material.stock_actual,
       stock_nuevo: Number(cantidad_nueva),
       motivo: motivo.trim(),
-      usuario: usuario || null
+      usuario: req.usuarioEmail || null
     });
     if (eAjuste) throw new Error(eAjuste.message);
 
-    // 2) Aplicar el nuevo stock
     const { data: actualizado, error: eUpd } = await supabase
       .from('materiales')
       .update({ stock_actual: Number(cantidad_nueva), actualizado_en: new Date().toISOString() })
       .eq('id', material_id)
+      .eq('usuario_id', req.usuarioId)
       .select().single();
     if (eUpd) throw new Error(eUpd.message);
 
@@ -111,12 +108,13 @@ router.post('/ajuste', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/inventario/ajustes — historial de ajustes manuales (trazabilidad)
+// GET /api/inventario/ajustes — historial de ajustes manuales
 router.get('/ajustes', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('inventario_ajustes')
       .select('*, materiales(nombre, unidad)')
+      .eq('usuario_id', req.usuarioId)
       .order('fecha', { ascending: false })
       .limit(100);
     if (error) throw new Error(error.message);

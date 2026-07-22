@@ -1,17 +1,10 @@
 // ============================================================
 // MÓDULO 4 — VENTAS  (/api/ventas)
+// Requiere sesión. Todo se filtra por req.usuarioId.
 // - GET  /productos-disponibles  productos con capacidad producible actual
 // - POST /                       registra la venta; descuenta materiales
-//                                según ficha técnica; si falta stock avisa
-//                                pero permite forzar (forzar: true)
 // - GET  /                       historial con filtros (desde, hasta, estado)
 // - PUT  /:id/estado             pendiente → en_produccion → listo → entregado
-//
-// Al confirmarse una venta:
-// - Finanzas se alimenta sola (lee de estas mismas tablas, con el costo
-//   congelado al momento de la venta).
-// - La venta queda marcada como facturable (facturada = false) para que
-//   el módulo 7 la ofrezca al generar factura electrónica.
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
@@ -20,13 +13,12 @@ const router = express.Router();
 const ESTADOS_VALIDOS = ['pendiente', 'en_produccion', 'listo', 'entregado'];
 
 // GET /api/ventas/productos-disponibles
-// Productos activos con precio, costo actual y unidades fabricables ahora
-// (para no vender algo que no se puede fabricar).
 router.get('/productos-disponibles', async (req, res, next) => {
   try {
     const { data: productos, error: eProd } = await supabase
       .from('productos')
       .select('id, nombre, precio_venta, costo_calculado')
+      .eq('usuario_id', req.usuarioId)
       .eq('activo', true)
       .order('nombre');
     if (eProd) throw new Error(eProd.message);
@@ -57,7 +49,6 @@ router.get('/productos-disponibles', async (req, res, next) => {
 });
 
 // POST /api/ventas
-// Cuerpo: { cliente?, items: [{ producto_id, cantidad }], forzar?: boolean }
 router.post('/', async (req, res, next) => {
   try {
     const { cliente, items, forzar } = req.body;
@@ -68,28 +59,27 @@ router.post('/', async (req, res, next) => {
         return res.status(400).json({ error: 'Cada producto de la venta necesita una cantidad mayor a 0' });
     }
 
-    // Productos con precio y costo actuales (se congelan en la venta)
     const productoIds = items.map(i => i.producto_id);
     const { data: productos, error: eProd } = await supabase
       .from('productos')
       .select('id, nombre, precio_venta, costo_calculado, activo')
+      .eq('usuario_id', req.usuarioId)
       .in('id', productoIds);
     if (eProd) throw new Error(eProd.message);
     const productoPorId = new Map((productos || []).map(p => [p.id, p]));
     for (const item of items) {
       const p = productoPorId.get(item.producto_id);
-      if (!p) return res.status(404).json({ error: 'Uno de los productos ya no existe' });
+      if (!p) return res.status(404).json({ error: 'Uno de los productos ya no existe o no te pertenece' });
       if (!p.activo) return res.status(400).json({ error: `"${p.nombre}" está desactivado y no se puede vender` });
     }
 
-    // Materiales requeridos en total (sumando todas las fichas técnicas)
     const { data: fichas, error: eFichas } = await supabase
       .from('productos_materiales')
       .select('producto_id, material_id, cantidad, materiales(id, nombre, unidad, stock_actual)')
       .in('producto_id', productoIds);
     if (eFichas) throw new Error(eFichas.message);
 
-    const requeridoPorMaterial = new Map(); // material_id -> { fila material, requerido }
+    const requeridoPorMaterial = new Map();
     for (const item of items) {
       const filasDelProducto = (fichas || []).filter(f => f.producto_id === item.producto_id);
       for (const f of filasDelProducto) {
@@ -99,7 +89,6 @@ router.post('/', async (req, res, next) => {
       }
     }
 
-    // Verificación de stock: si falta, avisa; solo procede con forzar: true
     const faltantes = [];
     for (const { material, requerido } of requeridoPorMaterial.values()) {
       if (Number(material.stock_actual) < requerido) {
@@ -120,7 +109,6 @@ router.post('/', async (req, res, next) => {
       });
     }
 
-    // Totales congelados al momento de la venta
     let total = 0, costoTotal = 0;
     const filasItems = items.map(item => {
       const p = productoPorId.get(item.producto_id);
@@ -137,26 +125,28 @@ router.post('/', async (req, res, next) => {
     total = Math.round(total * 100) / 100;
     costoTotal = Math.round(costoTotal * 100) / 100;
 
-    // 1) Crear la venta
     const { data: venta, error: eVenta } = await supabase
       .from('ventas')
-      .insert({ cliente: (cliente || '').trim() || null, total, costo_total: costoTotal, estado: 'pendiente' })
+      .insert({
+        usuario_id: req.usuarioId,
+        cliente: (cliente || '').trim() || null,
+        total, costo_total: costoTotal, estado: 'pendiente'
+      })
       .select().single();
     if (eVenta) throw new Error(eVenta.message);
 
-    // 2) Items
     const { error: eItems } = await supabase
       .from('ventas_items')
       .insert(filasItems.map(f => ({ ...f, venta_id: venta.id })));
     if (eItems) throw new Error(eItems.message);
 
-    // 3) Descontar inventario (si se forzó con faltantes, el stock queda en 0, nunca negativo)
     for (const [materialId, { material, requerido }] of requeridoPorMaterial) {
       const nuevoStock = Math.max(0, Math.round((Number(material.stock_actual) - requerido) * 100) / 100);
       const { error: eStock } = await supabase
         .from('materiales')
         .update({ stock_actual: nuevoStock, actualizado_en: new Date().toISOString() })
-        .eq('id', materialId);
+        .eq('id', materialId)
+        .eq('usuario_id', req.usuarioId);
       if (eStock) throw new Error(eStock.message);
     }
 
@@ -175,6 +165,7 @@ router.get('/', async (req, res, next) => {
     let consulta = supabase
       .from('ventas')
       .select('*, ventas_items(cantidad, precio_unitario, costo_unitario, productos(nombre))')
+      .eq('usuario_id', req.usuarioId)
       .order('fecha', { ascending: false })
       .limit(200);
 
@@ -189,7 +180,7 @@ router.get('/', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// PUT /api/ventas/:id/estado — cuerpo: { estado }
+// PUT /api/ventas/:id/estado
 router.put('/:id/estado', async (req, res, next) => {
   try {
     const { estado } = req.body;
@@ -200,6 +191,7 @@ router.put('/:id/estado', async (req, res, next) => {
       .from('ventas')
       .update({ estado })
       .eq('id', req.params.id)
+      .eq('usuario_id', req.usuarioId)
       .select().single();
     if (error) throw new Error(error.message);
     if (!data) return res.status(404).json({ error: 'Venta no encontrada' });

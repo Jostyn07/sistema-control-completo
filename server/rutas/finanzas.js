@@ -1,24 +1,6 @@
 // ============================================================
 // MÓDULO 6 — FINANZAS Y PUNTO DE EQUILIBRIO  (/api/finanzas)
-// - GET  /resumen           ingresos, costos, utilidad, punto de
-//                           equilibrio y ROI (fórmulas del documento)
-// - GET  /costos-fijos      lista editable
-// - POST /costos-fijos      agrega o edita un costo fijo mensual
-// - DELETE /costos-fijos/:id
-// - GET  /capital           capital invertido registrado
-// - POST /capital           registra un aporte de capital
-// - GET  /historico-mensual?meses=N   para el gráfico
-//
-// Fórmulas (del documento):
-//   ingresos_mes        = Σ ventas del mes
-//   costos_variables_mes= Σ costo congelado de cada venta del mes
-//   utilidad_mes        = ingresos − costos variables − costos fijos
-//   punto_equilibrio    = costos fijos ÷ margen de contribución ponderado
-//                         (margen según el mix real de productos vendidos)
-//   roi_acumulado       = utilidad acumulada desde el inicio ÷ capital invertido
-//
-// Decisión documentada: la utilidad acumulada resta los costos fijos
-// mensuales por cada mes transcurrido desde la primera venta (inclusive).
+// Requiere sesión. Todo se filtra por req.usuarioId.
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
@@ -27,15 +9,14 @@ const router = express.Router();
 function inicioDeMes(fecha) {
   return new Date(fecha.getFullYear(), fecha.getMonth(), 1);
 }
-
 function claveMes(fecha) {
   const f = new Date(fecha);
   return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}`;
 }
 
-async function obtenerCostosFijosMensuales() {
+async function obtenerCostosFijosMensuales(usuarioId) {
   const { data, error } = await supabase
-    .from('costos_fijos').select('*').eq('activo', true).order('nombre');
+    .from('costos_fijos').select('*').eq('usuario_id', usuarioId).eq('activo', true).order('nombre');
   if (error) throw new Error(error.message);
   const total = (data || []).reduce((s, c) => s + Number(c.valor_mensual), 0);
   return { lista: data || [], total: Math.round(total * 100) / 100 };
@@ -47,23 +28,16 @@ router.get('/resumen', async (req, res, next) => {
     const ahora = new Date();
     const desdeMes = inicioDeMes(ahora).toISOString();
 
-    // Ventas del mes actual
     const { data: ventasMes, error: eMes } = await supabase
-      .from('ventas').select('total, costo_total').gte('fecha', desdeMes);
+      .from('ventas').select('total, costo_total').eq('usuario_id', req.usuarioId).gte('fecha', desdeMes);
     if (eMes) throw new Error(eMes.message);
 
     const ingresosMes = (ventasMes || []).reduce((s, v) => s + Number(v.total), 0);
     const costosVariablesMes = (ventasMes || []).reduce((s, v) => s + Number(v.costo_total), 0);
 
-    // Costos fijos
-    const costosFijos = await obtenerCostosFijosMensuales();
-
-    // Utilidad del mes
+    const costosFijos = await obtenerCostosFijosMensuales(req.usuarioId);
     const utilidadMes = ingresosMes - costosVariablesMes - costosFijos.total;
 
-    // Punto de equilibrio: costos fijos ÷ margen de contribución ponderado.
-    // El margen ponderado sale del mix REAL de lo vendido este mes:
-    //   (ingresos − costos variables) ÷ ingresos
     let puntoEquilibrio = null;
     let margenContribucion = null;
     let notaEquilibrio = null;
@@ -78,9 +52,8 @@ router.get('/resumen', async (req, res, next) => {
       notaEquilibrio = 'Aún no hay ventas este mes; el punto de equilibrio se calcula con el mix real de lo vendido.';
     }
 
-    // ROI acumulado: utilidad acumulada desde el inicio ÷ capital invertido
     const { data: todasVentas, error: eTodas } = await supabase
-      .from('ventas').select('total, costo_total, fecha').order('fecha', { ascending: true });
+      .from('ventas').select('total, costo_total, fecha').eq('usuario_id', req.usuarioId).order('fecha', { ascending: true });
     if (eTodas) throw new Error(eTodas.message);
 
     let utilidadAcumulada = 0;
@@ -95,14 +68,14 @@ router.get('/resumen', async (req, res, next) => {
     }
 
     const { data: capital, error: eCap } = await supabase
-      .from('capital_invertido').select('valor');
+      .from('capital_invertido').select('valor').eq('usuario_id', req.usuarioId);
     if (eCap) throw new Error(eCap.message);
     const capitalTotal = (capital || []).reduce((s, c) => s + Number(c.valor), 0);
 
     let roiAcumulado = null;
     let notaRoi = null;
     if (capitalTotal > 0) {
-      roiAcumulado = Math.round((utilidadAcumulada / capitalTotal) * 1000) / 10; // en %
+      roiAcumulado = Math.round((utilidadAcumulada / capitalTotal) * 1000) / 10;
     } else {
       notaRoi = 'Registra el capital invertido para calcular el ROI.';
     }
@@ -113,7 +86,7 @@ router.get('/resumen', async (req, res, next) => {
       costos_variables_mes: Math.round(costosVariablesMes * 100) / 100,
       costos_fijos_mes: costosFijos.total,
       utilidad_mes: Math.round(utilidadMes * 100) / 100,
-      margen_contribucion_ponderado: margenContribucion != null ? Math.round(margenContribucion * 1000) / 10 : null, // en %
+      margen_contribucion_ponderado: margenContribucion != null ? Math.round(margenContribucion * 1000) / 10 : null,
       punto_equilibrio: puntoEquilibrio,
       falta_para_equilibrio: puntoEquilibrio != null ? Math.max(0, Math.round((puntoEquilibrio - ingresosMes) * 100) / 100) : null,
       nota_equilibrio: notaEquilibrio,
@@ -130,7 +103,7 @@ router.get('/resumen', async (req, res, next) => {
 // GET /api/finanzas/costos-fijos
 router.get('/costos-fijos', async (req, res, next) => {
   try {
-    const costos = await obtenerCostosFijosMensuales();
+    const costos = await obtenerCostosFijosMensuales(req.usuarioId);
     res.json(costos);
   } catch (err) { next(err); }
 });
@@ -143,23 +116,30 @@ router.post('/costos-fijos', async (req, res, next) => {
     if (valor_mensual == null || isNaN(valor_mensual) || Number(valor_mensual) < 0)
       return res.status(400).json({ error: 'El valor mensual debe ser un número mayor o igual a 0' });
 
-    const fila = { nombre: nombre.trim(), valor_mensual: Number(valor_mensual) };
     let resultado;
     if (id) {
-      resultado = await supabase.from('costos_fijos').update(fila).eq('id', id).select().single();
+      resultado = await supabase
+        .from('costos_fijos')
+        .update({ nombre: nombre.trim(), valor_mensual: Number(valor_mensual) })
+        .eq('id', id)
+        .eq('usuario_id', req.usuarioId)
+        .select().single();
     } else {
-      resultado = await supabase.from('costos_fijos').insert(fila).select().single();
+      resultado = await supabase
+        .from('costos_fijos')
+        .insert({ usuario_id: req.usuarioId, nombre: nombre.trim(), valor_mensual: Number(valor_mensual) })
+        .select().single();
     }
     if (resultado.error) throw new Error(resultado.error.message);
     res.status(id ? 200 : 201).json(resultado.data);
   } catch (err) { next(err); }
 });
 
-// DELETE /api/finanzas/costos-fijos/:id — desactiva (conserva el histórico)
+// DELETE /api/finanzas/costos-fijos/:id
 router.delete('/costos-fijos/:id', async (req, res, next) => {
   try {
     const { error } = await supabase
-      .from('costos_fijos').update({ activo: false }).eq('id', req.params.id);
+      .from('costos_fijos').update({ activo: false }).eq('id', req.params.id).eq('usuario_id', req.usuarioId);
     if (error) throw new Error(error.message);
     res.json({ desactivado: true });
   } catch (err) { next(err); }
@@ -169,14 +149,14 @@ router.delete('/costos-fijos/:id', async (req, res, next) => {
 router.get('/capital', async (req, res, next) => {
   try {
     const { data, error } = await supabase
-      .from('capital_invertido').select('*').order('fecha', { ascending: false });
+      .from('capital_invertido').select('*').eq('usuario_id', req.usuarioId).order('fecha', { ascending: false });
     if (error) throw new Error(error.message);
     const total = (data || []).reduce((s, c) => s + Number(c.valor), 0);
     res.json({ lista: data || [], total: Math.round(total * 100) / 100 });
   } catch (err) { next(err); }
 });
 
-// POST /api/finanzas/capital — cuerpo: { concepto, valor }
+// POST /api/finanzas/capital
 router.post('/capital', async (req, res, next) => {
   try {
     const { concepto, valor } = req.body;
@@ -186,14 +166,14 @@ router.post('/capital', async (req, res, next) => {
 
     const { data, error } = await supabase
       .from('capital_invertido')
-      .insert({ concepto: concepto.trim(), valor: Number(valor) })
+      .insert({ usuario_id: req.usuarioId, concepto: concepto.trim(), valor: Number(valor) })
       .select().single();
     if (error) throw new Error(error.message);
     res.status(201).json(data);
   } catch (err) { next(err); }
 });
 
-// GET /api/finanzas/historico-mensual?meses=N (por defecto 6)
+// GET /api/finanzas/historico-mensual?meses=N
 router.get('/historico-mensual', async (req, res, next) => {
   try {
     const meses = Math.min(24, Math.max(1, Number(req.query.meses || 6)));
@@ -203,12 +183,12 @@ router.get('/historico-mensual', async (req, res, next) => {
     const { data: ventas, error } = await supabase
       .from('ventas')
       .select('total, costo_total, fecha')
+      .eq('usuario_id', req.usuarioId)
       .gte('fecha', desde.toISOString());
     if (error) throw new Error(error.message);
 
-    const costosFijos = await obtenerCostosFijosMensuales();
+    const costosFijos = await obtenerCostosFijosMensuales(req.usuarioId);
 
-    // Arma los N meses aunque no tengan ventas (para que el gráfico no salte meses)
     const historico = [];
     for (let i = meses - 1; i >= 0; i--) {
       const mesFecha = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);

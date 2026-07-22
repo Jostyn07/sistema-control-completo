@@ -1,15 +1,10 @@
 // ============================================================
 // MÓDULO 5 — COMPRAS  (/api/compras)
-// - GET  /pendientes   cruza inventario vs punto de reorden y arma
-//                      la lista sugerida (materiales en amarillo/rojo)
-// - POST /             registra la compra, SUMA el stock del material
-//                      y guarda el precio pagado en el historial de
-//                      precios del material (origen: 'compra')
+// Requiere sesión. Todo se filtra por req.usuarioId.
+// - GET  /pendientes   cruza inventario vs punto de reorden (del usuario)
+// - POST /             registra la compra, suma el stock y guarda el
+//                      precio pagado en el historial del material
 // - GET  /historial    compras pasadas con filtros proveedor/fecha
-//
-// Cantidad sugerida: lo necesario para quedar con el doble del punto
-// de reorden (una cobertura cómoda sin inmovilizar capital de más):
-//   sugerido = (punto_reorden × 2) − stock_actual   (mínimo 1)
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
@@ -19,7 +14,7 @@ const router = express.Router();
 // GET /api/compras/pendientes
 router.get('/pendientes', async (req, res, next) => {
   try {
-    const inventario = await servicioInventario.obtenerInventarioMateriales();
+    const inventario = await servicioInventario.obtenerInventarioMateriales(req.usuarioId);
 
     const pendientes = inventario
       .filter(m => m.estado === 'rojo' || m.estado === 'amarillo')
@@ -40,7 +35,6 @@ router.get('/pendientes', async (req, res, next) => {
           costo_estimado: Math.round(sugerido * m.costo_unitario * 100) / 100
         };
       })
-      // Rojo primero (lo urgente arriba)
       .sort((a, b) => (a.estado === 'rojo' ? 0 : 1) - (b.estado === 'rojo' ? 0 : 1));
 
     res.json(pendientes);
@@ -48,7 +42,6 @@ router.get('/pendientes', async (req, res, next) => {
 });
 
 // POST /api/compras
-// Cuerpo: { material_id, proveedor, cantidad, precio_unitario, notas? }
 router.post('/', async (req, res, next) => {
   try {
     const { material_id, proveedor, cantidad, precio_unitario, notas } = req.body;
@@ -60,13 +53,13 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ error: 'El precio unitario debe ser un número mayor o igual a 0' });
 
     const { data: material, error: eGet } = await supabase
-      .from('materiales').select('*').eq('id', material_id).single();
+      .from('materiales').select('*').eq('id', material_id).eq('usuario_id', req.usuarioId).single();
     if (eGet || !material) return res.status(404).json({ error: 'Material no encontrado' });
 
-    // 1) Registrar la compra
     const { data: compra, error: eCompra } = await supabase
       .from('compras')
       .insert({
+        usuario_id: req.usuarioId,
         material_id,
         proveedor: proveedor.trim(),
         cantidad: Number(cantidad),
@@ -76,18 +69,18 @@ router.post('/', async (req, res, next) => {
       .select().single();
     if (eCompra) throw new Error(eCompra.message);
 
-    // 2) Sumar el stock del material
     const nuevoStock = Math.round((Number(material.stock_actual) + Number(cantidad)) * 100) / 100;
     const { error: eStock } = await supabase
       .from('materiales')
       .update({ stock_actual: nuevoStock, actualizado_en: new Date().toISOString() })
-      .eq('id', material_id);
+      .eq('id', material_id)
+      .eq('usuario_id', req.usuarioId);
     if (eStock) throw new Error(eStock.message);
 
-    // 3) Guardar el precio pagado en el historial de precios del material
     const precioDiferente = Number(precio_unitario) !== Number(material.costo_unitario);
     if (precioDiferente) {
       const { error: eHist } = await supabase.from('materiales_historial_precio').insert({
+        usuario_id: req.usuarioId,
         material_id,
         costo_anterior: material.costo_unitario,
         costo_nuevo: Number(precio_unitario),
@@ -100,9 +93,6 @@ router.post('/', async (req, res, next) => {
       ...compra,
       stock_nuevo: nuevoStock,
       precio_diferente: precioDiferente,
-      // El costo del material NO se cambia automáticamente: esa decisión
-      // (y el recálculo de todos los productos) se hace conscientemente
-      // desde la pestaña Materiales. Aquí solo se sugiere.
       sugerencia: precioDiferente
         ? `Pagaste un precio distinto al costo registrado (${material.costo_unitario}). Si este es el nuevo precio normal, actualízalo en la pestaña Materiales para que los costos de tus productos se recalculen.`
         : null
@@ -116,6 +106,7 @@ router.get('/historial', async (req, res, next) => {
     let consulta = supabase
       .from('compras')
       .select('*, materiales(nombre, unidad)')
+      .eq('usuario_id', req.usuarioId)
       .order('fecha', { ascending: false })
       .limit(200);
 

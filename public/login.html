@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesión — Sistema de Control</title>
+  <link rel="stylesheet" href="/css/estilos.css">
+</head>
+<body>
+  <main class="pagina-login">
+    <div class="tarjeta tarjeta-login">
+      <h1 id="tituloFormulario">Iniciar sesión</h1>
+
+      <div id="camposRegistro" hidden>
+        <label class="campo">
+          <span class="campo__etiqueta">Nombre</span>
+          <input type="text" id="campoNombre" placeholder="Tu nombre">
+        </label>
+      </div>
+
+      <label class="campo">
+        <span class="campo__etiqueta">Correo</span>
+        <input type="email" id="campoCorreo" placeholder="tucorreo@ejemplo.com">
+      </label>
+      <label class="campo">
+        <span class="campo__etiqueta">Contraseña</span>
+        <input type="password" id="campoContrasena" placeholder="Mínimo 6 caracteres">
+      </label>
+
+      <button type="button" class="boton boton--primario boton--ancho" id="botonPrincipal" onclick="enviarFormulario()">
+        Entrar
+      </button>
+
+      <p class="texto-secundario" style="text-align:center; margin-top:14px">
+        <span id="textoAlternar">¿No tienes cuenta?</span>
+        <a href="#" id="enlaceAlternar" onclick="alternarModo(event)">Crear una</a>
+      </p>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+</body>
+</html>

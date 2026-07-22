@@ -241,3 +241,12 @@ a:hover { color: var(--accent); }
   .pagina__encabezado h1 { font-size: 2rem; }
   .boton { min-height: 44px; }
 }
+
+/* ---- Login / registro ---- */
+.pagina-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.tarjeta-login { width: 100%; max-width: 380px; }
+.tarjeta-login h1 { font-size: 1.3rem; margin: 0 0 16px; text-align: center; }
+.boton--ancho { width: 100%; margin-top: 6px; }
+
+/* ---- Usuario actual en la navegación ---- */
+.navegacion__usuario { margin-left: auto; display: flex; align-items: center; gap: 10px; padding: 8px 0; }

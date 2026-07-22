@@ -1,42 +1,33 @@
 // ============================================================
 // SERVICIO INTERNO DE INVENTARIO — no es un endpoint.
 // Lo usan el módulo 3 (Inventario) y el módulo 5 (Compras).
-//
-// Fórmula del documento:
-//   punto_reorden = (consumo_diario_promedio × tiempo_entrega_proveedor)
-//                   + stock_seguridad
-//
-// El consumo diario promedio se calcula con datos reales: cuánto
-// material consumieron las ventas de los últimos N días (según las
-// fichas técnicas de los productos vendidos). Si aún no hay ventas,
-// el consumo es 0 y el punto de reorden queda en el stock de seguridad.
+// Todas las funciones reciben usuarioId y filtran por él, para
+// que el punto de reorden se calcule solo con los datos de ese usuario.
 // ============================================================
 const supabase = require('../supabase/cliente');
 
-const DIAS_VENTANA_CONSUMO = 30; // ventana para promediar el consumo
+const DIAS_VENTANA_CONSUMO = 30;
 
-// Devuelve un Map material_id -> consumo diario promedio (unidades/día)
-async function calcularConsumoDiarioPromedio() {
+// Devuelve un Map material_id -> consumo diario promedio, solo del usuario dado
+async function calcularConsumoDiarioPromedio(usuarioId) {
   const desde = new Date();
   desde.setDate(desde.getDate() - DIAS_VENTANA_CONSUMO);
 
-  // Ventas de la ventana con sus items
   const { data: items, error: eItems } = await supabase
     .from('ventas_items')
-    .select('producto_id, cantidad, ventas!inner(fecha)')
+    .select('producto_id, cantidad, ventas!inner(fecha, usuario_id)')
+    .eq('ventas.usuario_id', usuarioId)
     .gte('ventas.fecha', desde.toISOString());
   if (eItems) throw new Error(eItems.message);
 
   if (!items || items.length === 0) return new Map();
 
-  // Unidades vendidas por producto en la ventana
   const unidadesPorProducto = new Map();
   for (const item of items) {
     unidadesPorProducto.set(item.producto_id,
       (unidadesPorProducto.get(item.producto_id) || 0) + Number(item.cantidad));
   }
 
-  // Fichas técnicas de esos productos
   const productoIds = [...unidadesPorProducto.keys()];
   const { data: fichas, error: eFichas } = await supabase
     .from('productos_materiales')
@@ -44,7 +35,6 @@ async function calcularConsumoDiarioPromedio() {
     .in('producto_id', productoIds);
   if (eFichas) throw new Error(eFichas.message);
 
-  // Consumo total de cada material en la ventana = Σ unidades_vendidas × cantidad_por_unidad
   const consumoTotal = new Map();
   for (const ficha of fichas || []) {
     const unidades = unidadesPorProducto.get(ficha.producto_id) || 0;
@@ -52,7 +42,6 @@ async function calcularConsumoDiarioPromedio() {
       (consumoTotal.get(ficha.material_id) || 0) + unidades * Number(ficha.cantidad));
   }
 
-  // Promedio diario
   const consumoDiario = new Map();
   for (const [materialId, total] of consumoTotal) {
     consumoDiario.set(materialId, total / DIAS_VENTANA_CONSUMO);
@@ -60,7 +49,6 @@ async function calcularConsumoDiarioPromedio() {
   return consumoDiario;
 }
 
-// Punto de reorden de UN material (recibe la fila del material y su consumo diario)
 function calcularPuntoReorden(material, consumoDiario) {
   const consumo = Number(consumoDiario || 0);
   const entrega = Number(material.tiempo_entrega_dias || 0);
@@ -68,10 +56,6 @@ function calcularPuntoReorden(material, consumoDiario) {
   return Math.round((consumo * entrega + seguridad) * 100) / 100;
 }
 
-// Estado semáforo según stock vs punto de reorden
-//   rojo:    stock <= punto de reorden (ya hay que comprar)
-//   amarillo: stock <= punto de reorden × 1.5 (se acerca)
-//   verde:   lo demás
 function estadoSemaforo(stockActual, puntoReorden) {
   const stock = Number(stockActual);
   if (puntoReorden <= 0) return stock > 0 ? 'verde' : 'rojo';
@@ -80,16 +64,17 @@ function estadoSemaforo(stockActual, puntoReorden) {
   return 'verde';
 }
 
-// Vista completa de inventario por material: stock + reorden + estado + consumo
-async function obtenerInventarioMateriales() {
+// Vista completa de inventario por material, solo del usuario dado
+async function obtenerInventarioMateriales(usuarioId) {
   const { data: materiales, error } = await supabase
     .from('materiales')
     .select('*')
+    .eq('usuario_id', usuarioId)
     .eq('activo', true)
     .order('nombre');
   if (error) throw new Error(error.message);
 
-  const consumoDiario = await calcularConsumoDiarioPromedio();
+  const consumoDiario = await calcularConsumoDiarioPromedio(usuarioId);
 
   return (materiales || []).map(m => {
     const consumo = consumoDiario.get(m.id) || 0;
