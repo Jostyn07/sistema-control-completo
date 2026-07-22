@@ -6,8 +6,8 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 
-const rutasMateriales = require('./sistema-control/server/rutas/materiales');
-const rutasProductos = require('./sistema-control/server/rutas/productos');
+const rutasMateriales = require('./rutas/materiales');
+const rutasProductos = require('./rutas/productos');
 
 const app = express();
 app.use(express.json());
@@ -23,6 +23,11 @@ app.use('/api/ventas', require('./rutas/ventas'));
 app.use('/api/compras', require('./rutas/compras'));
 app.use('/api/finanzas', require('./rutas/finanzas'));
 app.use('/api/facturacion', require('./rutas/facturacion'));
+// app.use('/api/inventario',  require('./rutas/inventario'));  // módulo 3
+// app.use('/api/ventas',      require('./rutas/ventas'));      // módulo 4
+// app.use('/api/compras',     require('./rutas/compras'));     // módulo 5
+// app.use('/api/finanzas',    require('./rutas/finanzas'));    // módulo 6
+// app.use('/api/facturacion', require('./rutas/facturacion')); // módulo 7
 
 // Manejador de errores único: cualquier ruta que haga next(error) cae aquí
 app.use((err, req, res, next) => {
