@@ -1,0 +1,16 @@
+{
+  "name": "sistema-control-flores",
+  "version": "1.0.0",
+  "description": "Sistema de control de producción, inventario y finanzas",
+  "main": "server/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  }
+}
