@@ -1,0 +1,125 @@
+/* ============================================================
+   estilos.css — PROVISIONAL
+   Este archivo existe solo para que el sistema sea usable
+   mientras se construye el diseño real en Claude Design.
+   Cuando ese diseño esté listo, se reemplaza este archivo
+   completo SIN tocar los HTML: las clases ya están puestas
+   (navegacion, pagina, tarjeta, tabla, campo, boton, modal, aviso).
+   ============================================================ */
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; background: #f5f5f4; color: #1c1917; }
+
+.navegacion { display: flex; gap: 4px; padding: 12px 16px; background: #fff; border-bottom: 1px solid #e7e5e4; flex-wrap: wrap; }
+.navegacion__enlace { padding: 8px 14px; border-radius: 8px; text-decoration: none; color: #57534e; }
+.navegacion__enlace--activo, .navegacion__enlace:hover { background: #f5f5f4; color: #1c1917; }
+
+.pagina { max-width: 1000px; margin: 0 auto; padding: 24px 16px; }
+.pagina__encabezado { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+.pagina__encabezado h1 { margin: 0; font-size: 1.5rem; }
+
+.tarjeta { background: #fff; border: 1px solid #e7e5e4; border-radius: 12px; padding: 16px; overflow-x: auto; }
+
+.tabla { width: 100%; border-collapse: collapse; font-size: 0.925rem; }
+.tabla th { text-align: left; padding: 10px 8px; border-bottom: 2px solid #e7e5e4; color: #57534e; font-weight: 600; }
+.tabla td { padding: 10px 8px; border-bottom: 1px solid #f5f5f4; }
+.tabla__vacio { color: #78716c; text-align: center; padding: 24px 8px; }
+.tabla__acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.boton { padding: 8px 14px; border: 1px solid #d6d3d1; border-radius: 8px; background: #fff; cursor: pointer; font-size: 0.9rem; }
+.boton:hover { background: #f5f5f4; }
+.boton--primario { background: #1c1917; color: #fff; border-color: #1c1917; }
+.boton--primario:hover { background: #292524; }
+.boton--pequeno { padding: 4px 10px; font-size: 0.8rem; }
+.boton--peligro { color: #b91c1c; border-color: #fecaca; }
+.boton--peligro:hover { background: #fef2f2; }
+
+.campo { display: block; margin-bottom: 12px; }
+.campo__etiqueta { display: block; font-size: 0.85rem; color: #57534e; margin-bottom: 4px; }
+.campo input { width: 100%; padding: 9px 10px; border: 1px solid #d6d3d1; border-radius: 8px; font-size: 0.95rem; }
+.campo input:focus { outline: 2px solid #1c1917; outline-offset: 1px; }
+
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+.modal[hidden] { display: none; }
+.modal__contenido { width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; }
+.modal__acciones { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+.aviso { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 10px 18px; border-radius: 10px; background: #1c1917; color: #fff; font-size: 0.9rem; z-index: 100; }
+.aviso--error { background: #b91c1c; }
+
+/* ---- Productos: tarjetas ---- */
+.tarjetas-productos { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.tarjeta-producto { background: #fff; border: 1px solid #e7e5e4; border-radius: 12px; overflow: hidden; }
+.tarjeta-producto__foto { width: 100%; height: 140px; object-fit: cover; display: block; }
+.tarjeta-producto__foto--vacia { display: flex; align-items: center; justify-content: center; color: #a8a29e; background: #f5f5f4; font-size: 0.85rem; }
+.tarjeta-producto__cuerpo { padding: 12px; }
+.tarjeta-producto__cuerpo h3 { margin: 0 0 4px; font-size: 1rem; }
+.tarjeta-producto__precio { margin: 0; font-weight: 600; }
+.tarjeta-producto__margen { margin: 2px 0 10px; font-size: 0.85rem; color: #16a34a; }
+.tarjeta-producto__margen--negativo { color: #b91c1c; }
+
+/* ---- Formulario de ficha técnica ---- */
+.modal__contenido--ancho { max-width: 640px; }
+.fila-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.agregar-material { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.agregar-material select { flex: 1; min-width: 160px; padding: 9px 10px; border: 1px solid #d6d3d1; border-radius: 8px; }
+.tarjeta--resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-top: 14px; background: #f5f5f4; }
+.tarjeta--resumen strong { display: block; font-size: 1.05rem; }
+
+/* ---- Inventario ---- */
+.seccion { margin-bottom: 24px; }
+.seccion h2 { font-size: 1.1rem; margin: 0 0 12px; }
+.texto-secundario { color: #78716c; font-size: 0.85rem; }
+.semaforo { display: inline-block; width: 14px; height: 14px; border-radius: 50%; }
+.semaforo--verde { background: #16a34a; }
+.semaforo--amarillo { background: #eab308; }
+.semaforo--rojo { background: #dc2626; }
+.capacidad__numero { font-size: 1.6rem; font-weight: 700; margin: 4px 0; }
+.capacidad__numero--cero { color: #b91c1c; }
+.capacidad__numero .texto-secundario { font-size: 0.85rem; font-weight: 400; }
+
+/* ---- Ventas: etiquetas de estado ---- */
+.etiqueta-estado { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+.etiqueta-estado--pendiente { background: #fef3c7; color: #92400e; }
+.etiqueta-estado--en_produccion { background: #dbeafe; color: #1e40af; }
+.etiqueta-estado--listo { background: #dcfce7; color: #166534; }
+.etiqueta-estado--entregado { background: #f5f5f4; color: #57534e; }
+
+/* ---- Finanzas: panel e indicadores ---- */
+.panel-finanzas { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.indicador { display: flex; flex-direction: column; gap: 4px; }
+.indicador__valor { font-size: 1.35rem; font-weight: 700; }
+.indicador__valor--positivo { color: #16a34a; }
+.indicador__valor--negativo { color: #b91c1c; }
+
+/* ---- Finanzas: gráfico de barras (divs + CSS) ---- */
+.grafico { display: flex; gap: 12px; align-items: flex-end; height: 180px; padding: 8px 0; }
+.grafico__mes { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.grafico__barras { flex: 1; display: flex; gap: 4px; align-items: flex-end; width: 100%; justify-content: center; }
+.grafico__barra { width: 24px; border-radius: 4px 4px 0 0; min-height: 2px; }
+.grafico__barra--ingresos { background: #16a34a; }
+.grafico__barra--costos { background: #dc2626; }
+.grafico__etiqueta { font-size: 0.75rem; color: #78716c; margin-top: 6px; }
+.grafico__leyenda { display: flex; gap: 16px; font-size: 0.85rem; color: #57534e; margin-top: 8px; }
+.grafico__muestra { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; }
+.grafico__muestra--ingresos { background: #16a34a; }
+.grafico__muestra--costos { background: #dc2626; }
+
+/* ---- Facturación ---- */
+.factura__encabezado { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 2px solid #e7e5e4; padding-bottom: 12px; }
+
+@media print {
+  body * { visibility: hidden; }
+  #areaImprimible, #areaImprimible * { visibility: visible; }
+  #areaImprimible { position: absolute; left: 0; top: 0; width: 100%; }
+  .modal { position: static; background: none; padding: 0; }
+  .modal__contenido { max-width: none; max-height: none; border: none; box-shadow: none; }
+  .modal__acciones--no-imprimir { display: none; }
+}
+
+
+/* ---- Página principal (dashboard) ---- */
+.cuadricula-inicio { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.numero-resumen { font-size: 1.5rem; font-weight: 700; margin: 0; }
+.numero-resumen .texto-secundario { font-size: 0.9rem; font-weight: 400; }
+.alerta { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; font-size: 0.9rem; }

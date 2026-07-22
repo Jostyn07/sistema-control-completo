@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Productos — Sistema de Control</title>
+  <link rel="stylesheet" href="/css/estilos.css">
+</head>
+<body>
+
+  <nav class="navegacion">
+    <a href="/" class="navegacion__enlace">Inicio</a>
+    <a href="/materiales.html" class="navegacion__enlace">Materiales</a>
+    <a href="/productos.html" class="navegacion__enlace navegacion__enlace--activo">Productos</a>
+    <a href="/inventario.html" class="navegacion__enlace">Inventario</a>
+    <a href="/compras.html" class="navegacion__enlace">Compras</a>
+    <a href="/ventas.html" class="navegacion__enlace">Ventas</a>
+    <a href="/finanzas.html" class="navegacion__enlace">Finanzas</a>
+    <a href="/facturacion.html" class="navegacion__enlace">Facturación</a>
+  </nav>
+
+  <main class="pagina">
+    <header class="pagina__encabezado">
+      <h1>Productos</h1>
+      <button type="button" class="boton boton--primario" onclick="abrirFichaProducto()">
+        Nueva ficha técnica
+      </button>
+    </header>
+
+    <!-- 1. Lista de productos (tarjetas con foto, precio y margen) -->
+    <section class="tarjetas-productos" id="listaProductos">
+      <p class="tabla__vacio">Cargando productos…</p>
+    </section>
+
+    <!-- 2. Formulario de ficha técnica -->
+    <div class="modal" id="modalProducto" hidden>
+      <div class="modal__contenido tarjeta modal__contenido--ancho">
+        <h2 id="tituloFicha">Nueva ficha técnica</h2>
+        <input type="hidden" id="campoProductoId">
+
+        <label class="campo">
+          <span class="campo__etiqueta">Nombre del producto *</span>
+          <input type="text" id="campoNombreProducto" placeholder="Ej: Ramo mediano flores de chelines">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">URL de foto (opcional)</span>
+          <input type="text" id="campoFoto" placeholder="https://...">
+        </label>
+
+        <div class="fila-campos">
+          <label class="campo">
+            <span class="campo__etiqueta">Precio de venta (COP) *</span>
+            <input type="number" id="campoPrecioVenta" min="0" step="500" oninput="calcularCostoEnVivo()">
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">Minutos de fabricación</span>
+            <input type="number" id="campoMinutos" min="0" step="1" value="0" oninput="calcularCostoEnVivo()">
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">Costo por minuto de mano de obra (COP)</span>
+            <input type="number" id="campoCostoMinuto" min="0" step="10" value="0" oninput="calcularCostoEnVivo()">
+          </label>
+        </div>
+
+        <h3>Materiales que usa</h3>
+        <div class="agregar-material">
+          <select id="selectorMaterial"></select>
+          <input type="number" id="cantidadMaterial" min="0.0001" step="0.01" placeholder="Cantidad" style="max-width:120px">
+          <button type="button" class="boton" onclick="agregarMaterialAFicha()">Agregar</button>
+        </div>
+        <table class="tabla">
+          <thead><tr><th>Material</th><th>Cantidad</th><th>Costo unitario</th><th>Subtotal</th><th></th></tr></thead>
+          <tbody id="cuerpoTablaFicha">
+            <tr><td colspan="5" class="tabla__vacio">Aún no has agregado materiales</td></tr>
+          </tbody>
+        </table>
+
+        <!-- 3. Simulador de margen en vivo -->
+        <section class="tarjeta tarjeta--resumen" id="resumenCosto">
+          <div><span class="campo__etiqueta">Costo materiales</span><strong id="resumenCostoMateriales">$0</strong></div>
+          <div><span class="campo__etiqueta">Costo mano de obra</span><strong id="resumenCostoManoObra">$0</strong></div>
+          <div><span class="campo__etiqueta">Costo total</span><strong id="resumenCostoTotal">$0</strong></div>
+          <div><span class="campo__etiqueta">Margen</span><strong id="resumenMargen">$0 (0%)</strong></div>
+        </section>
+
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarFichaProducto()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="guardarProducto()">Guardar ficha técnica</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desglose de costo puntual -->
+    <div class="modal" id="modalDesglose" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2 id="tituloDesglose">Desglose de costo</h2>
+        <div id="contenidoDesglose"></div>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarDesglose()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/productos.js"></script>
+</body>
+</html>

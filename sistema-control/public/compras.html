@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compras — Sistema de Control</title>
+  <link rel="stylesheet" href="/css/estilos.css">
+</head>
+<body>
+
+  <nav class="navegacion">
+    <a href="/" class="navegacion__enlace">Inicio</a>
+    <a href="/materiales.html" class="navegacion__enlace">Materiales</a>
+    <a href="/productos.html" class="navegacion__enlace">Productos</a>
+    <a href="/inventario.html" class="navegacion__enlace">Inventario</a>
+    <a href="/compras.html" class="navegacion__enlace navegacion__enlace--activo">Compras</a>
+    <a href="/ventas.html" class="navegacion__enlace">Ventas</a>
+    <a href="/finanzas.html" class="navegacion__enlace">Finanzas</a>
+    <a href="/facturacion.html" class="navegacion__enlace">Facturación</a>
+  </nav>
+
+  <main class="pagina">
+    <header class="pagina__encabezado">
+      <h1>Compras</h1>
+      <button type="button" class="boton boton--primario" onclick="abrirFormularioCompra()">Registrar compra</button>
+    </header>
+
+    <!-- 1. Pendientes de compra (se genera sola) -->
+    <section class="tarjeta seccion">
+      <h2>Pendientes de compra</h2>
+      <p class="texto-secundario">Esta lista se arma sola: materiales en zona roja o amarilla según su punto de reorden.</p>
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Estado</th>
+            <th>Material</th>
+            <th>Stock actual</th>
+            <th>Punto de reorden</th>
+            <th>Cantidad sugerida</th>
+            <th>Proveedor sugerido</th>
+            <th>Costo estimado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="cuerpoPendientes">
+          <tr><td colspan="8" class="tabla__vacio">Cargando pendientes…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 3. Historial con filtros -->
+    <section class="tarjeta seccion">
+      <h2>Historial de compras</h2>
+      <div class="agregar-material">
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Proveedor</span>
+          <input type="text" id="filtroProveedor" placeholder="Nombre del proveedor">
+        </label>
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Desde</span>
+          <input type="date" id="filtroDesde">
+        </label>
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Hasta</span>
+          <input type="date" id="filtroHasta">
+        </label>
+        <button type="button" class="boton" style="align-self:flex-end" onclick="cargarHistorialCompras()">Filtrar</button>
+      </div>
+      <table class="tabla">
+        <thead>
+          <tr><th>Fecha</th><th>Material</th><th>Proveedor</th><th>Cantidad</th><th>Precio unitario</th><th>Total</th><th>Notas</th></tr>
+        </thead>
+        <tbody id="cuerpoHistorialCompras">
+          <tr><td colspan="7" class="tabla__vacio">Cargando historial…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 2. Formulario de registrar compra -->
+    <div class="modal" id="modalCompra" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2>Registrar compra</h2>
+        <p class="texto-secundario">Al confirmar, el stock del material se suma automáticamente.</p>
+
+        <label class="campo">
+          <span class="campo__etiqueta">Material *</span>
+          <select id="selectorMaterialCompra" style="width:100%;padding:9px 10px;border:1px solid #d6d3d1;border-radius:8px" onchange="precargarDatosMaterial()"></select>
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Proveedor *</span>
+          <input type="text" id="campoProveedorCompra">
+        </label>
+        <div class="fila-campos">
+          <label class="campo">
+            <span class="campo__etiqueta">Cantidad *</span>
+            <input type="number" id="campoCantidadCompra" min="0.01" step="1" oninput="calcularTotalCompra()">
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">Precio unitario pagado (COP) *</span>
+            <input type="number" id="campoPrecioCompra" min="0" step="50" oninput="calcularTotalCompra()">
+          </label>
+        </div>
+        <label class="campo">
+          <span class="campo__etiqueta">Notas (opcional)</span>
+          <input type="text" id="campoNotasCompra" placeholder="Ej: promoción, compra de emergencia…">
+        </label>
+
+        <section class="tarjeta tarjeta--resumen">
+          <div><span class="campo__etiqueta">Total de la compra</span><strong id="totalCompra">$0</strong></div>
+        </section>
+
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarFormularioCompra()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="confirmarCompra()">Confirmar compra</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/compras.js"></script>
+</body>
+</html>

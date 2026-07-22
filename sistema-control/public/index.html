@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inicio — Sistema de Control</title>
+  <link rel="stylesheet" href="/css/estilos.css">
+</head>
+<body>
+
+  <nav class="navegacion">
+    <a href="/" class="navegacion__enlace navegacion__enlace--activo">Inicio</a>
+    <a href="/materiales.html" class="navegacion__enlace">Materiales</a>
+    <a href="/productos.html" class="navegacion__enlace">Productos</a>
+    <a href="/inventario.html" class="navegacion__enlace">Inventario</a>
+    <a href="/compras.html" class="navegacion__enlace">Compras</a>
+    <a href="/ventas.html" class="navegacion__enlace">Ventas</a>
+    <a href="/finanzas.html" class="navegacion__enlace">Finanzas</a>
+    <a href="/facturacion.html" class="navegacion__enlace">Facturación</a>
+  </nav>
+
+  <main class="pagina">
+    <header class="pagina__encabezado">
+      <h1>Resumen del negocio</h1>
+      <span class="texto-secundario" id="indicadorFecha"></span>
+    </header>
+
+    <!-- Alertas: lo que requiere acción HOY -->
+    <section class="seccion" id="seccionAlertas"></section>
+
+    <!-- Indicadores financieros del mes -->
+    <section class="panel-finanzas" id="panelIndicadores">
+      <p class="tabla__vacio">Cargando indicadores…</p>
+    </section>
+
+    <div class="cuadricula-inicio">
+      <!-- Pedidos activos -->
+      <section class="tarjeta">
+        <div class="pagina__encabezado" style="margin-bottom:8px">
+          <h2 style="margin:0;font-size:1.05rem">Pedidos activos</h2>
+          <a href="/ventas.html" class="boton boton--pequeno">Ir a Ventas</a>
+        </div>
+        <div id="resumenPedidos"><p class="tabla__vacio">Cargando…</p></div>
+      </section>
+
+      <!-- Materiales por comprar -->
+      <section class="tarjeta">
+        <div class="pagina__encabezado" style="margin-bottom:8px">
+          <h2 style="margin:0;font-size:1.05rem">Por comprar</h2>
+          <a href="/compras.html" class="boton boton--pequeno">Ir a Compras</a>
+        </div>
+        <div id="resumenCompras"><p class="tabla__vacio">Cargando…</p></div>
+      </section>
+
+      <!-- Capacidad de producción -->
+      <section class="tarjeta">
+        <div class="pagina__encabezado" style="margin-bottom:8px">
+          <h2 style="margin:0;font-size:1.05rem">Capacidad de producción</h2>
+          <a href="/inventario.html" class="boton boton--pequeno">Ir a Inventario</a>
+        </div>
+        <div id="resumenCapacidad"><p class="tabla__vacio">Cargando…</p></div>
+      </section>
+
+      <!-- Facturas pendientes -->
+      <section class="tarjeta">
+        <div class="pagina__encabezado" style="margin-bottom:8px">
+          <h2 style="margin:0;font-size:1.05rem">Por facturar</h2>
+          <a href="/facturacion.html" class="boton boton--pequeno">Ir a Facturación</a>
+        </div>
+        <div id="resumenFacturacion"><p class="tabla__vacio">Cargando…</p></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/inicio.js"></script>
+</body>
+</html>

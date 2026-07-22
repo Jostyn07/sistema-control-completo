@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ventas — Sistema de Control</title>
+  <link rel="stylesheet" href="/css/estilos.css">
+</head>
+<body>
+
+  <nav class="navegacion">
+    <a href="/" class="navegacion__enlace">Inicio</a>
+    <a href="/materiales.html" class="navegacion__enlace">Materiales</a>
+    <a href="/productos.html" class="navegacion__enlace">Productos</a>
+    <a href="/inventario.html" class="navegacion__enlace">Inventario</a>
+    <a href="/compras.html" class="navegacion__enlace">Compras</a>
+    <a href="/ventas.html" class="navegacion__enlace navegacion__enlace--activo">Ventas</a>
+    <a href="/finanzas.html" class="navegacion__enlace">Finanzas</a>
+    <a href="/facturacion.html" class="navegacion__enlace">Facturación</a>
+  </nav>
+
+  <main class="pagina">
+    <header class="pagina__encabezado">
+      <h1>Ventas</h1>
+      <button type="button" class="boton boton--primario" onclick="abrirNuevaVenta()">Nueva venta</button>
+    </header>
+
+    <!-- 2. Pedidos con estado -->
+    <section class="tarjeta seccion">
+      <h2>Pedidos</h2>
+      <table class="tabla">
+        <thead>
+          <tr><th>Fecha</th><th>Cliente</th><th>Productos</th><th>Total</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody id="cuerpoPedidos">
+          <tr><td colspan="6" class="tabla__vacio">Cargando pedidos…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 3. Historial con filtros -->
+    <section class="tarjeta seccion">
+      <h2>Historial</h2>
+      <div class="agregar-material">
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Desde</span>
+          <input type="date" id="filtroDesde">
+        </label>
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Hasta</span>
+          <input type="date" id="filtroHasta">
+        </label>
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Estado</span>
+          <select id="filtroEstado">
+            <option value="">Todos</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="en_produccion">En producción</option>
+            <option value="listo">Listo</option>
+            <option value="entregado">Entregado</option>
+          </select>
+        </label>
+        <button type="button" class="boton" style="align-self:flex-end" onclick="cargarHistorialVentas()">Filtrar</button>
+      </div>
+      <table class="tabla">
+        <thead>
+          <tr><th>Fecha</th><th>Cliente</th><th>Productos</th><th>Total</th><th>Costo</th><th>Ganancia</th><th>Estado</th></tr>
+        </thead>
+        <tbody id="cuerpoHistorial">
+          <tr><td colspan="7" class="tabla__vacio">Cargando historial…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 1. Formulario de nueva venta -->
+    <div class="modal" id="modalVenta" hidden>
+      <div class="modal__contenido tarjeta modal__contenido--ancho">
+        <h2>Nueva venta</h2>
+
+        <label class="campo">
+          <span class="campo__etiqueta">Cliente (opcional)</span>
+          <input type="text" id="campoCliente" placeholder="Nombre del cliente">
+        </label>
+
+        <h3>Productos</h3>
+        <div class="agregar-material">
+          <select id="selectorProductoVenta"></select>
+          <input type="number" id="cantidadVenta" min="1" step="1" placeholder="Cantidad" style="max-width:110px">
+          <button type="button" class="boton" onclick="agregarItemVenta()">Agregar</button>
+        </div>
+        <table class="tabla">
+          <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th><th></th></tr></thead>
+          <tbody id="cuerpoItemsVenta">
+            <tr><td colspan="5" class="tabla__vacio">Aún no has agregado productos</td></tr>
+          </tbody>
+        </table>
+
+        <section class="tarjeta tarjeta--resumen">
+          <div><span class="campo__etiqueta">Total de la venta</span><strong id="totalVenta">$0</strong></div>
+        </section>
+
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarNuevaVenta()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="registrarVenta()">Registrar venta</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/ventas.js"></script>
+</body>
+</html>

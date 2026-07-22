@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Materiales — Sistema de Control</title>
+  <!-- estilos.css se reemplaza por el que salga de Claude Design -->
+  <link rel="stylesheet" href="/css/estilos.css">
+</head>
+<body>
+
+  <!-- Navegación entre pestañas (misma en todas las páginas) -->
+  <nav class="navegacion">
+    <a href="/" class="navegacion__enlace">Inicio</a>
+    <a href="/materiales.html" class="navegacion__enlace navegacion__enlace--activo">Materiales</a>
+    <a href="/productos.html" class="navegacion__enlace">Productos</a>
+    <a href="/inventario.html" class="navegacion__enlace">Inventario</a>
+    <a href="/compras.html" class="navegacion__enlace">Compras</a>
+    <a href="/ventas.html" class="navegacion__enlace">Ventas</a>
+    <a href="/finanzas.html" class="navegacion__enlace">Finanzas</a>
+    <a href="/facturacion.html" class="navegacion__enlace">Facturación</a>
+  </nav>
+
+  <main class="pagina">
+    <header class="pagina__encabezado">
+      <h1>Materiales</h1>
+      <button type="button" class="boton boton--primario" onclick="abrirFormularioMaterial()">
+        Agregar material
+      </button>
+    </header>
+
+    <!-- 1. Lista de materiales -->
+    <section class="tarjeta">
+      <table class="tabla" id="tablaMateriales">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Unidad</th>
+            <th>Costo unitario</th>
+            <th>Proveedor</th>
+            <th>Entrega (días)</th>
+            <th>Stock</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpoTablaMateriales">
+          <tr><td colspan="7" class="tabla__vacio">Cargando materiales…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 2. Formulario nuevo / editar (modal) -->
+    <div class="modal" id="modalMaterial" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2 id="tituloFormulario">Nuevo material</h2>
+        <input type="hidden" id="campoId">
+
+        <label class="campo">
+          <span class="campo__etiqueta">Nombre *</span>
+          <input type="text" id="campoNombre" placeholder="Ej: Chelín rojo">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Unidad de medida *</span>
+          <input type="text" id="campoUnidad" placeholder="Ej: unidad, metro, paquete">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Costo unitario (COP) *</span>
+          <input type="number" id="campoCosto" min="0" step="50" placeholder="Ej: 800">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Proveedor *</span>
+          <input type="text" id="campoProveedor" placeholder="Nombre del proveedor">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Tiempo de entrega (días)</span>
+          <input type="number" id="campoEntrega" min="0" step="1" value="1">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Stock de seguridad</span>
+          <input type="number" id="campoStockSeguridad" min="0" step="1" value="0">
+        </label>
+        <label class="campo" id="grupoStockInicial">
+          <span class="campo__etiqueta">Stock inicial</span>
+          <input type="number" id="campoStockInicial" min="0" step="1" value="0">
+        </label>
+
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarFormularioMaterial()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="guardarMaterial()">Guardar material</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Historial de precios (modal) -->
+    <div class="modal" id="modalHistorial" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2 id="tituloHistorial">Historial de precios</h2>
+        <div id="contenidoHistorial"></div>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarHistorial()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/materiales.js"></script>
+</body>
+</html>
