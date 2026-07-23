@@ -131,4 +131,46 @@ router.post('/iniciar-pago', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/suscripcion/cancelar — deja de renovar, pero conserva el
+// acceso hasta la fecha ya pagada (no se corta de inmediato).
+router.post('/cancelar', async (req, res, next) => {
+  try {
+    const { data: actual, error: eGet } = await supabase
+      .from('suscripciones').select('estado, fecha_vencimiento').eq('usuario_id', req.usuarioId).maybeSingle();
+    if (eGet) throw new Error(eGet.message);
+    if (!actual || !['activa', 'prueba'].includes(actual.estado))
+      return res.status(400).json({ error: 'No tienes una suscripción activa para cancelar' });
+
+    const { error } = await supabase
+      .from('suscripciones')
+      .update({ estado: 'cancelada', actualizado_en: new Date().toISOString() })
+      .eq('usuario_id', req.usuarioId);
+    if (error) throw new Error(error.message);
+
+    res.json({ cancelada: true, fecha_vencimiento: actual.fecha_vencimiento });
+  } catch (err) { next(err); }
+});
+
+// POST /api/suscripcion/reactivar — deshace una cancelación, siempre
+// que todavía no se haya pasado la fecha de vencimiento.
+router.post('/reactivar', async (req, res, next) => {
+  try {
+    const { data: actual, error: eGet } = await supabase
+      .from('suscripciones').select('estado, fecha_vencimiento').eq('usuario_id', req.usuarioId).maybeSingle();
+    if (eGet) throw new Error(eGet.message);
+    if (!actual || actual.estado !== 'cancelada')
+      return res.status(400).json({ error: 'Esta suscripción no está cancelada' });
+    if (actual.fecha_vencimiento && new Date(actual.fecha_vencimiento) < new Date())
+      return res.status(400).json({ error: 'Ya venció; elige un plan para volver a activarla' });
+
+    const { error } = await supabase
+      .from('suscripciones')
+      .update({ estado: 'activa', actualizado_en: new Date().toISOString() })
+      .eq('usuario_id', req.usuarioId);
+    if (error) throw new Error(error.message);
+
+    res.json({ reactivada: true });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

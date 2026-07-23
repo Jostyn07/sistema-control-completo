@@ -29,6 +29,20 @@ async function cargarEstadoActual() {
     }
 
     let notaEstado = '';
+    let notaFecha = '';
+    let botonAccion = '';
+
+    if (r.fecha_vencimiento) {
+      const fechaTexto = new Date(r.fecha_vencimiento).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+      if (r.estado === 'activa') {
+        // Honesto: el cobro NO es automático todavía, así que no decimos
+        // "próximo cobro" — eso prometería algo que el sistema no hace hoy.
+        notaFecha = `<p class="texto-secundario" style="margin:4px 0 0">Acceso vigente hasta el ${fechaTexto}. El cobro no es automático todavía: vuelve aquí antes de esa fecha para renovar manualmente.</p>`;
+      } else if (r.estado === 'cancelada') {
+        notaFecha = `<p class="texto-secundario" style="margin:4px 0 0">Cancelada. Conservas el acceso hasta el ${fechaTexto}.</p>`;
+      }
+    }
+
     if (r.estado === 'prueba' && r.fecha_vencimiento) {
       const diasRestantes = Math.max(0, Math.ceil((new Date(r.fecha_vencimiento) - new Date()) / 86400000));
       notaEstado = diasRestantes > 0
@@ -38,17 +52,45 @@ async function cargarEstadoActual() {
       notaEstado = '<p class="texto-secundario" style="margin:4px 0 0;color:#b91c1c">Elige un plan para seguir usando el sistema sin interrupciones.</p>';
     }
 
+    if (r.estado === 'activa' || r.estado === 'prueba') {
+      botonAccion = '<button type="button" class="boton boton--pequeno" style="margin-top:10px" onclick="cancelarSuscripcion()">Cancelar suscripción</button>';
+    } else if (r.estado === 'cancelada') {
+      botonAccion = '<button type="button" class="boton boton--pequeno boton--primario" style="margin-top:10px" onclick="reactivarSuscripcion()">Reactivar</button>';
+    }
+
     contenedor.innerHTML = `
       <div class="indicador">
         <span class="campo__etiqueta">Estado</span>
         <strong style="font-size:1.2rem">${ETIQUETA_ESTADO_SUSCRIPCION[r.estado] || r.estado}</strong>
       </div>
       ${plan ? `<p style="margin:8px 0 0">Plan actual: <strong>${escaparHtml(plan.nombre)}</strong> — ${formatearPesos(plan.precio_mensual)}/mes</p>` : ''}
-      ${r.fecha_vencimiento ? `<p class="texto-secundario" style="margin:4px 0 0">Vence: ${new Date(r.fecha_vencimiento).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>` : ''}
+      ${notaFecha}
       ${notaEstado}
+      ${botonAccion}
     `;
   } catch (err) {
     contenedor.innerHTML = `<p class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</p>`;
+  }
+}
+
+async function cancelarSuscripcion() {
+  if (!confirm('¿Cancelar tu suscripción? Conservas el acceso hasta la fecha ya pagada; después no se renovará.')) return;
+  try {
+    await API.enviar('/api/suscripcion/cancelar', {});
+    mostrarAviso('Suscripción cancelada. Conservas el acceso hasta la fecha ya pagada.');
+    cargarEstadoActual();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
+async function reactivarSuscripcion() {
+  try {
+    await API.enviar('/api/suscripcion/reactivar', {});
+    mostrarAviso('Suscripción reactivada');
+    cargarEstadoActual();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
   }
 }
 
