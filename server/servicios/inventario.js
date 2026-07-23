@@ -5,6 +5,7 @@
 // que el punto de reorden se calcule solo con los datos de ese usuario.
 // ============================================================
 const supabase = require('../supabase/cliente');
+const { procesarComprasVencidas } = require('./compras');
 
 const DIAS_VENTANA_CONSUMO = 30;
 
@@ -66,6 +67,8 @@ function estadoSemaforo(stockActual, puntoReorden) {
 
 // Vista completa de inventario por material, solo del usuario dado
 async function obtenerInventarioMateriales(usuarioId) {
+  await procesarComprasVencidas(usuarioId); // suma stock de pedidos que ya deberían haber llegado
+
   const { data: materiales, error } = await supabase
     .from('materiales')
     .select('*')

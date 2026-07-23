@@ -28,6 +28,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; font-family: var(--serif); background: var(--bg); color: var(--ink); font-size: 16px; line-height: 1.55; }
 h1, h2, h3, h4 { font-weight: 600; line-height: 1.12; }
 a { color: var(--accent-texto); text-decoration: underline; text-underline-offset: 3px; }
@@ -260,3 +261,7 @@ a:hover { color: var(--accent); }
 /* ---- Banner de precio de hora global (Productos) ---- */
 .banner-precio-hora { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .banner-precio-hora strong { display: block; font-size: 1.2rem; }
+
+/* ---- Vista previa de foto subida (Productos) ---- */
+.previsualizacion-foto { margin-top: 8px; }
+.previsualizacion-foto__imagen { max-width: 160px; max-height: 160px; border-radius: 8px; border: 1px solid #e7e5e4; display: block; }

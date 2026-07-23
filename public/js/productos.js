@@ -89,6 +89,38 @@ async function cargarListaProductos() {
 }
 
 // ---- 2. Abrir formulario de ficha técnica ----
+// Sube la foto elegida al bucket de Supabase (vía el backend, nunca
+// directo desde el navegador) y guarda la URL resultante en el campo
+// oculto que sí se manda al guardar la ficha técnica.
+async function subirFotoProducto() {
+  const input = document.getElementById('campoFotoArchivo');
+  const archivo = input.files[0];
+  if (!archivo) return;
+
+  const previsualizacion = document.getElementById('previsualizacionFoto');
+  previsualizacion.innerHTML = '<p class="texto-secundario">Subiendo imagen…</p>';
+
+  try {
+    const formData = new FormData();
+    formData.append('foto', archivo);
+    const token = localStorage.getItem('token_sesion');
+
+    const respuesta = await fetch('/api/almacenamiento/foto-producto', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }, // sin Content-Type: el navegador arma el multipart solo
+      body: formData
+    });
+    const datos = await respuesta.json();
+    if (!respuesta.ok) throw new Error(datos.error || 'No se pudo subir la imagen');
+
+    document.getElementById('campoFoto').value = datos.url;
+    previsualizacion.innerHTML = `<img src="${datos.url}" class="previsualizacion-foto__imagen" alt="Vista previa">`;
+  } catch (err) {
+    previsualizacion.innerHTML = '';
+    mostrarAviso(err.message, 'error');
+  }
+}
+
 async function abrirFichaProducto(id) {
   const modal = document.getElementById('modalProducto');
   const titulo = document.getElementById('tituloFicha');
@@ -112,6 +144,9 @@ async function abrirFichaProducto(id) {
     document.getElementById('campoProductoId').value = p.id;
     document.getElementById('campoNombreProducto').value = p.nombre;
     document.getElementById('campoFoto').value = p.foto_url || '';
+    document.getElementById('previsualizacionFoto').innerHTML = p.foto_url
+      ? `<img src="${escaparHtml(p.foto_url)}" class="previsualizacion-foto__imagen" alt="Foto actual">`
+      : '';
     document.getElementById('campoPrecioVenta').value = p.precio_venta;
     document.getElementById('campoMinutos').value = p.minutos_fabricacion;
 
@@ -131,6 +166,8 @@ async function abrirFichaProducto(id) {
     document.getElementById('campoProductoId').value = '';
     document.getElementById('campoNombreProducto').value = '';
     document.getElementById('campoFoto').value = '';
+    document.getElementById('previsualizacionFoto').innerHTML = '';
+    document.getElementById('campoFotoArchivo').value = '';
     document.getElementById('campoPrecioVenta').value = '';
     document.getElementById('campoMinutos').value = 0;
     filasFichaEnEdicion = [];

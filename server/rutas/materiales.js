@@ -12,6 +12,7 @@
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const { calcularCostoProducto } = require('../servicios/costos');
+const { procesarComprasVencidas } = require('../servicios/compras');
 const router = express.Router();
 
 // Campos obligatorios y sus validaciones básicas
@@ -74,6 +75,7 @@ async function recalcularProductosQueUsan(materialId, usuarioId) {
 // GET /api/materiales — solo los del usuario que hace la petición
 router.get('/', async (req, res, next) => {
   try {
+    await procesarComprasVencidas(req.usuarioId); // suma stock de pedidos que ya deberían haber llegado
     const { data, error } = await supabase
       .from('materiales')
       .select('*')

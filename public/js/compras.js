@@ -4,11 +4,15 @@
 //   cargarPendientesCompra()
 //   abrirFormularioCompra(materialId)
 //   confirmarCompra(datosCompra)
+//   cargarEnCamino()
+//   marcarLlegada(compraId)
 //   cargarHistorialCompras(filtros)
 // ============================================================
 
 let pendientesEnMemoria = [];
 let materialesParaCompra = [];
+
+const ETIQUETA_ESTADO_COMPRA = { pendiente: 'Pendiente', recibida: 'Recibida' };
 
 // ---- 1. Pendientes de compra (lista automática) ----
 async function cargarPendientesCompra() {
@@ -30,7 +34,10 @@ async function cargarPendientesCompra() {
         <td><strong>${p.cantidad_sugerida} ${escaparHtml(p.unidad)}</strong></td>
         <td>${escaparHtml(p.proveedor_sugerido)} <span class="texto-secundario">(${p.tiempo_entrega_dias} día(s))</span></td>
         <td>${formatearPesos(p.costo_estimado)}</td>
-        <td><button type="button" class="boton boton--pequeno boton--primario" onclick="abrirFormularioCompra('${p.material_id}')">Comprar</button></td>
+        <td>
+          <button type="button" class="boton boton--pequeno boton--primario" onclick="abrirFormularioCompra('${p.material_id}')">Comprar</button>
+          ${p.ya_en_camino > 0 ? `<div class="texto-secundario" style="margin-top:4px">Ya pediste ${p.ya_en_camino} ${escaparHtml(p.unidad)}, llega ${formatearFechaCorta(p.llega_aprox)}</div>` : ''}
+        </td>
       </tr>`).join('');
   } catch (err) {
     cuerpo.innerHTML = `<tr><td colspan="8" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
@@ -100,12 +107,48 @@ async function confirmarCompra() {
 
   try {
     const resultado = await API.enviar('/api/compras', datosCompra);
-    mostrarAviso(`Compra registrada. Stock actualizado a ${resultado.stock_nuevo}.`);
+    mostrarAviso(resultado.mensaje || 'Pedido registrado');
     if (resultado.sugerencia) {
-      // Aviso aparte, un momento después, para que se alcancen a leer los dos
       setTimeout(() => mostrarAviso(resultado.sugerencia, 'error'), 1800);
     }
     cerrarFormularioCompra();
+    cargarPendientesCompra();
+    cargarEnCamino();
+    cargarHistorialCompras();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
+// ---- 3. Pedidos en camino ----
+async function cargarEnCamino() {
+  const cuerpo = document.getElementById('cuerpoEnCamino');
+  try {
+    const pedidos = await API.obtener('/api/compras/en-camino');
+    if (pedidos.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="6" class="tabla__vacio">No hay pedidos en camino en este momento.</td></tr>';
+      return;
+    }
+    cuerpo.innerHTML = pedidos.map(p => `
+      <tr>
+        <td>${escaparHtml(p.materiales ? p.materiales.nombre : '—')}</td>
+        <td>${p.cantidad} ${escaparHtml(p.materiales ? p.materiales.unidad : '')}</td>
+        <td>${escaparHtml(p.proveedor)}</td>
+        <td>${formatearFecha(p.fecha)}</td>
+        <td>${formatearFechaCorta(p.fecha_estimada_llegada)}</td>
+        <td><button type="button" class="boton boton--pequeno boton--primario" onclick="marcarLlegada('${p.id}')">Marcar como llegada</button></td>
+      </tr>`).join('');
+  } catch (err) {
+    cuerpo.innerHTML = `<tr><td colspan="6" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function marcarLlegada(compraId) {
+  if (!confirm('¿Confirmar que este pedido ya llegó? El stock se sumará ahora.')) return;
+  try {
+    const resultado = await API.enviar(`/api/compras/${compraId}/recibir`, {});
+    mostrarAviso(resultado.mensaje || 'Llegada confirmada');
+    cargarEnCamino();
     cargarPendientesCompra();
     cargarHistorialCompras();
   } catch (err) {
@@ -113,7 +156,7 @@ async function confirmarCompra() {
   }
 }
 
-// ---- 3. Historial con filtros ----
+// ---- 4. Historial con filtros ----
 async function cargarHistorialCompras() {
   const cuerpo = document.getElementById('cuerpoHistorialCompras');
   const filtros = new URLSearchParams();
@@ -127,7 +170,7 @@ async function cargarHistorialCompras() {
   try {
     const compras = await API.obtener('/api/compras/historial' + (filtros.toString() ? '?' + filtros.toString() : ''));
     if (compras.length === 0) {
-      cuerpo.innerHTML = '<tr><td colspan="7" class="tabla__vacio">No hay compras con esos filtros.</td></tr>';
+      cuerpo.innerHTML = '<tr><td colspan="8" class="tabla__vacio">No hay compras con esos filtros.</td></tr>';
       return;
     }
     cuerpo.innerHTML = compras.map(c => `
@@ -138,15 +181,21 @@ async function cargarHistorialCompras() {
         <td>${c.cantidad} ${escaparHtml(c.materiales ? c.materiales.unidad : '')}</td>
         <td>${formatearPesos(c.precio_unitario)}</td>
         <td>${formatearPesos(c.total)}</td>
+        <td><span class="etiqueta-estado etiqueta-estado--${c.estado === 'recibida' ? 'listo' : 'pendiente'}">${ETIQUETA_ESTADO_COMPRA[c.estado] || c.estado}</span></td>
         <td>${escaparHtml(c.notas || '')}</td>
       </tr>`).join('');
   } catch (err) {
-    cuerpo.innerHTML = `<tr><td colspan="7" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
+    cuerpo.innerHTML = `<tr><td colspan="8" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
   }
 }
 
 function formatearFecha(fecha) {
   return new Date(fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function formatearFechaCorta(fecha) {
+  if (!fecha) return '—';
+  return new Date(fecha + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
 }
 
 function escaparHtml(texto) {
@@ -157,5 +206,6 @@ function escaparHtml(texto) {
 
 document.addEventListener('DOMContentLoaded', () => {
   cargarPendientesCompra();
+  cargarEnCamino();
   cargarHistorialCompras();
 });

@@ -52,8 +52,10 @@
           <input type="text" id="campoNombreProducto" placeholder="Ej: Ramo mediano flores de chelines">
         </label>
         <label class="campo">
-          <span class="campo__etiqueta">URL de foto (opcional)</span>
-          <input type="text" id="campoFoto" placeholder="https://...">
+          <span class="campo__etiqueta">Foto del producto (opcional)</span>
+          <input type="file" id="campoFotoArchivo" accept="image/*" onchange="subirFotoProducto()">
+          <input type="hidden" id="campoFoto">
+          <div id="previsualizacionFoto" class="previsualizacion-foto"></div>
         </label>
 
         <div class="fila-campos">
