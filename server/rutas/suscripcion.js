@@ -11,7 +11,7 @@
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const { obtenerCredenciales, registrarMetodoPago } = require('../servicios/epayco');
-const { sincronizarEstadoSuscripcion, tienePagoAceptadoPrevio } = require('../servicios/suscripcion');
+const { sincronizarEstadoSuscripcion, calcularBloqueo, tienePagoAceptadoPrevio } = require('../servicios/suscripcion');
 const router = express.Router();
 
 // GET /api/suscripcion/llave-publica-epayco — la Public Key es
@@ -47,7 +47,8 @@ router.get('/mi-suscripcion', async (req, res, next) => {
       .eq('usuario_id', req.usuarioId)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    res.json(data ? { ...data, tiene_metodo_pago: !!data.epayco_customer_id } : { estado: 'sin_suscripcion' });
+    const bloqueo = data ? calcularBloqueo(data) : { vencida: false, enGracia: false, bloqueada: false, diasGraciaRestantes: null };
+    res.json(data ? { ...data, tiene_metodo_pago: !!data.epayco_customer_id, ...bloqueo } : { estado: 'sin_suscripcion' });
   } catch (err) { next(err); }
 });
 

@@ -49,7 +49,9 @@ async function cargarEstadoActual() {
         ? `<p class="texto-secundario" style="margin:4px 0 0">Te quedan ${diasRestantes} día(s) de prueba gratis.</p>`
         : '<p class="texto-secundario" style="margin:4px 0 0">Tu prueba gratis ya terminó.</p>';
     } else if (r.estado === 'vencida') {
-      notaEstado = '<p class="texto-secundario" style="margin:4px 0 0;color:#b91c1c">Elige un plan para seguir usando el sistema sin interrupciones.</p>';
+      notaEstado = r.bloqueada
+        ? '<p class="texto-secundario" style="margin:4px 0 0;color:#b91c1c">Ya no puedes crear ni editar información. Puedes seguir viendo todo — elige un plan para volver a editar.</p>'
+        : `<p class="texto-secundario" style="margin:4px 0 0;color:#c2410c">Venció, pero puedes seguir editando ${r.diasGraciaRestantes} día(s) más antes de pasar a solo lectura.</p>`;
     }
 
     if (r.estado === 'activa' || r.estado === 'prueba') {

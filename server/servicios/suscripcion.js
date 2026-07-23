@@ -10,6 +10,7 @@
 const supabase = require('../supabase/cliente');
 
 const DIAS_PRUEBA_GRATIS = 7;
+const DIAS_GRACIA = 3; // días de solo-lectura extra después de vencer, antes de bloquear la edición
 const ESTADOS_ACEPTADOS = ['Aceptada', 'Aceptado'];
 
 // Al registrarse, cualquier usuario nuevo arranca con el plan más
@@ -40,9 +41,11 @@ async function crearPruebaGratis(usuarioId) {
   if (error) throw new Error(error.message);
 }
 
-// Si la prueba o el plan pagado ya vencieron, lo marca como "vencida".
-// Se llama cada vez que se consulta el estado, así siempre está al día
-// sin depender de un proceso programado aparte.
+// Si la prueba, el plan pagado, o una cancelación ya vencieron, lo marca
+// como "vencida". Se llama cada vez que se consulta el estado, así
+// siempre está al día sin depender de un proceso programado aparte.
+// Incluye "cancelada" a propósito: cancelar solo significa "no renueves",
+// pero una vez pasa la fecha ya pagada, debe tratarse igual que vencida.
 async function sincronizarEstadoSuscripcion(usuarioId) {
   const { data, error } = await supabase
     .from('suscripciones').select('estado, fecha_vencimiento').eq('usuario_id', usuarioId).maybeSingle();
@@ -50,7 +53,7 @@ async function sincronizarEstadoSuscripcion(usuarioId) {
   if (!data) return null;
 
   const vencida = data.fecha_vencimiento && new Date(data.fecha_vencimiento) < new Date();
-  if (vencida && (data.estado === 'prueba' || data.estado === 'activa')) {
+  if (vencida && ['prueba', 'activa', 'cancelada'].includes(data.estado)) {
     const { error: eUpd } = await supabase
       .from('suscripciones')
       .update({ estado: 'vencida', actualizado_en: new Date().toISOString() })
@@ -59,6 +62,22 @@ async function sincronizarEstadoSuscripcion(usuarioId) {
     data.estado = 'vencida';
   }
   return data;
+}
+
+// Calcula si a una suscripción vencida ya se le acabó el período de
+// gracia (solo-lectura) y debe bloquearse la edición. Lo usa tanto el
+// middleware de bloqueo como la pantalla de Suscripción, para que
+// ambos midan exactamente lo mismo.
+function calcularBloqueo(sub) {
+  if (!sub || sub.estado !== 'vencida') {
+    return { vencida: false, enGracia: false, bloqueada: false, diasGraciaRestantes: null };
+  }
+  const diasVencida = sub.fecha_vencimiento
+    ? (Date.now() - new Date(sub.fecha_vencimiento).getTime()) / 86400000
+    : Infinity;
+  const bloqueada = diasVencida >= DIAS_GRACIA;
+  const diasGraciaRestantes = bloqueada ? 0 : Math.max(0, Math.ceil(DIAS_GRACIA - diasVencida));
+  return { vencida: true, enGracia: !bloqueada, bloqueada, diasGraciaRestantes };
 }
 
 // ¿Ya pagó alguna vez de verdad? Si nunca ha tenido un pago aceptado,
@@ -76,6 +95,8 @@ async function tienePagoAceptadoPrevio(usuarioId) {
 module.exports = {
   crearPruebaGratis,
   sincronizarEstadoSuscripcion,
+  calcularBloqueo,
   tienePagoAceptadoPrevio,
-  DIAS_PRUEBA_GRATIS
+  DIAS_PRUEBA_GRATIS,
+  DIAS_GRACIA
 };
