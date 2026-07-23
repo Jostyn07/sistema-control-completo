@@ -60,25 +60,40 @@ async function cargarPlanes() {
       contenedor.innerHTML = '<p class="tabla__vacio">No hay planes disponibles todavía.</p>';
       return;
     }
-    contenedor.innerHTML = planes.map(p => `
-      <article class="tarjeta-producto">
-        <div class="tarjeta-producto__cuerpo">
-          <h3>${escaparHtml(p.nombre)}</h3>
-          <p class="tarjeta-producto__precio">${formatearPesos(p.precio_mensual)} <span class="texto-secundario">/mes</span></p>
-          <p class="texto-secundario" style="color:#16a34a">50% de descuento tu primer mes</p>
-          <p class="texto-secundario">${escaparHtml(p.descripcion || '')}</p>
-          <ul style="padding-left:18px;margin:8px 0">
-            <li>${p.limite_materiales != null ? `Hasta ${p.limite_materiales} materiales` : 'Materiales ilimitados'}</li>
-            <li>${p.limite_productos != null ? `Hasta ${p.limite_productos} productos` : 'Productos ilimitados'}</li>
-            <li>${p.limite_ventas_mes != null ? `Hasta ${p.limite_ventas_mes} ventas/mes` : 'Ventas ilimitadas'}</li>
-            <li>${p.incluye_rentabilidad_productos ? '✓' : '—'} Rentabilidad por producto</li>
-            <li>${p.incluye_analisis_clientes ? '✓' : '—'} Análisis de clientes</li>
-            <li>${p.incluye_meta_ventas ? '✓' : '—'} Meta de ventas y proyección</li>
-            <li>${p.incluye_valor_inventario ? '✓' : '—'} Valor del inventario</li>
-          </ul>
-          <button type="button" class="boton boton--primario" onclick="elegirPlan('${p.id}')">Elegir este plan</button>
-        </div>
-      </article>`).join('');
+
+    // El plan más caro se marca como recomendado — misma lógica que
+    // usamos para decidir el plan de la prueba gratis.
+    const idMasCaro = planes.reduce((a, b) => Number(b.precio_mensual) > Number(a.precio_mensual) ? b : a).id;
+
+    contenedor.innerHTML = `<div class="planes-comparacion">` + planes.map(p => {
+      const destacado = p.id === idMasCaro;
+      const filas = [
+        { texto: p.limite_materiales != null ? `Hasta ${p.limite_materiales} materiales` : 'Materiales ilimitados', si: true },
+        { texto: p.limite_productos != null ? `Hasta ${p.limite_productos} productos` : 'Productos ilimitados', si: true },
+        { texto: p.limite_ventas_mes != null ? `Hasta ${p.limite_ventas_mes} ventas al mes` : 'Ventas ilimitadas', si: true },
+        { texto: 'Rentabilidad por producto', si: p.incluye_rentabilidad_productos },
+        { texto: 'Análisis de clientes', si: p.incluye_analisis_clientes },
+        { texto: 'Meta de ventas y proyección', si: p.incluye_meta_ventas },
+        { texto: 'Valor del inventario', si: p.incluye_valor_inventario }
+      ];
+
+      return `
+      <article class="tarjeta-plan${destacado ? ' tarjeta-plan--destacado' : ''}">
+        ${destacado ? '<span class="tarjeta-plan__badge">Recomendado</span>' : ''}
+        <h3 class="tarjeta-plan__nombre">${escaparHtml(p.nombre)}</h3>
+        <p class="tarjeta-plan__precio">${formatearPesos(p.precio_mensual)}<span>/mes</span></p>
+        <p class="tarjeta-plan__descuento">50% de descuento tu primer mes</p>
+        <p class="tarjeta-plan__descripcion">${escaparHtml(p.descripcion || '')}</p>
+        <ul class="tarjeta-plan__lista">
+          ${filas.map(f => `
+            <li class="tarjeta-plan__fila${f.si ? '' : ' tarjeta-plan__fila--no'}">
+              <span class="tarjeta-plan__icono tarjeta-plan__icono--${f.si ? 'si' : 'no'}">${f.si ? '✓' : '–'}</span>
+              <span>${escaparHtml(f.texto)}</span>
+            </li>`).join('')}
+        </ul>
+        <button type="button" class="boton ${destacado ? 'boton--primario' : ''} boton--ancho" onclick="elegirPlan('${p.id}')">Elegir ${escaparHtml(p.nombre)}</button>
+      </article>`;
+    }).join('') + `</div>`;
   } catch (err) {
     contenedor.innerHTML = `<p class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</p>`;
   }
