@@ -10,11 +10,75 @@
 
 let costosFijosEnMemoria = [];
 
+// ---- Meta de ventas del mes ----
+let metaVentasActual = null;
+
+function pintarPanelMeta(r) {
+  const contenedor = document.getElementById('panelMeta');
+  metaVentasActual = r.meta_ventas_mensual;
+
+  if (r.meta_ventas_mensual == null) {
+    contenedor.innerHTML = `
+      <p class="texto-secundario">Aún no has definido una meta de ventas para este mes.</p>
+      <p class="texto-secundario">Con lo vendido hasta hoy (${formatearPesos(r.ingresos_mes)}), el ritmo actual proyecta cerrar el mes en <strong>${formatearPesos(r.proyeccion_cierre_mes)}</strong>.</p>`;
+    return;
+  }
+
+  const pct = Math.min(100, r.avance_meta_pct);
+  const colorBarra = r.avance_meta_pct >= 100 ? '#16a34a' : r.avance_meta_pct >= 70 ? '#0088b0' : '#eab308';
+
+  let textoRitmo;
+  if (r.avance_meta_pct >= 100) {
+    textoRitmo = '¡Meta cumplida este mes!';
+  } else if (r.dias_restantes_mes <= 0) {
+    textoRitmo = 'El mes ya terminó sin alcanzar la meta.';
+  } else {
+    textoRitmo = `Necesitas vender ${formatearPesos(r.ritmo_necesario_diario)}/día en los ${r.dias_restantes_mes} día(s) que quedan para alcanzarla.`;
+  }
+
+  contenedor.innerHTML = `
+    <div class="barra-progreso">
+      <div class="barra-progreso__relleno" style="width:${pct}%;background:${colorBarra}"></div>
+    </div>
+    <p style="margin:8px 0 4px">
+      <strong>${formatearPesos(r.ingresos_mes)}</strong> de <strong>${formatearPesos(r.meta_ventas_mensual)}</strong>
+      <span class="texto-secundario">(${r.avance_meta_pct}%)</span>
+    </p>
+    <p class="texto-secundario" style="margin:0">${textoRitmo}</p>
+    <p class="texto-secundario" style="margin:4px 0 0">Proyección de cierre al ritmo actual: ${formatearPesos(r.proyeccion_cierre_mes)}</p>`;
+}
+
+function abrirMetaVentas() {
+  document.getElementById('campoMetaVentas').value = metaVentasActual ?? '';
+  document.getElementById('modalMeta').hidden = false;
+}
+
+function cerrarMetaVentas() {
+  document.getElementById('modalMeta').hidden = true;
+}
+
+async function guardarMetaVentas() {
+  const valor = document.getElementById('campoMetaVentas').value;
+  if (valor === '' || Number(valor) < 0) {
+    mostrarAviso('La meta no es válida', 'error');
+    return;
+  }
+  try {
+    await API.actualizar('/api/configuracion/meta-ventas', { meta_ventas_mensual: valor });
+    mostrarAviso('Meta de ventas actualizada');
+    cerrarMetaVentas();
+    cargarResumenFinanciero();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
 // ---- 1. Panel resumen ----
 async function cargarResumenFinanciero() {
   const panel = document.getElementById('panelResumen');
   try {
     const r = await API.obtener('/api/finanzas/resumen');
+    pintarPanelMeta(r);
 
     const colorUtilidad = r.utilidad_mes >= 0 ? 'indicador__valor--positivo' : 'indicador__valor--negativo';
     const colorFlujo = r.flujo_caja_mes >= 0 ? 'indicador__valor--positivo' : 'indicador__valor--negativo';
@@ -104,6 +168,7 @@ async function cargarResumenFinanciero() {
   } catch (err) {
     panel.innerHTML = `<p class="tabla__vacio">No se pudo cargar el resumen: ${escaparHtml(err.message)}</p>`;
     document.getElementById('panelFlujoCaja').innerHTML = '';
+    document.getElementById('panelMeta').innerHTML = '';
   }
 }
 

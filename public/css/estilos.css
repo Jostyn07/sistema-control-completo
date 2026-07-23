@@ -265,3 +265,7 @@ a:hover { color: var(--accent); }
 /* ---- Vista previa de foto subida (Productos) ---- */
 .previsualizacion-foto { margin-top: 8px; }
 .previsualizacion-foto__imagen { max-width: 160px; max-height: 160px; border-radius: 8px; border: 1px solid #e7e5e4; display: block; }
+
+/* ---- Meta de ventas: barra de progreso ---- */
+.barra-progreso { width: 100%; height: 10px; background: var(--surface, #e7e5e4); border-radius: 999px; overflow: hidden; }
+.barra-progreso__relleno { height: 100%; border-radius: 999px; transition: width 0.3s ease; }

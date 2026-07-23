@@ -24,6 +24,15 @@
       <h1>Finanzas y punto de equilibrio</h1>
     </header>
 
+    <!-- Meta de ventas del mes: avance en tiempo real -->
+    <section class="tarjeta seccion">
+      <div class="pagina__encabezado" style="margin-bottom:8px">
+        <h2 style="margin:0">Meta de ventas del mes</h2>
+        <button type="button" class="boton" onclick="abrirMetaVentas()">Cambiar meta</button>
+      </div>
+      <div id="panelMeta"><p class="tabla__vacio">Cargando…</p></div>
+    </section>
+
     <!-- 1. Panel resumen -->
     <section class="panel-finanzas" id="panelResumen">
       <p class="tabla__vacio">Cargando resumen…</p>
@@ -125,6 +134,21 @@
         <div class="modal__acciones">
           <button type="button" class="boton" onclick="cerrarCapital()">Cancelar</button>
           <button type="button" class="boton boton--primario" onclick="guardarCapital()">Registrar</button>
+        </div>
+      </div>
+    </div>
+    <!-- Modal meta de ventas -->
+    <div class="modal" id="modalMeta" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2>Meta de ventas del mes</h2>
+        <p class="texto-secundario">Se aplica desde ahora; puedes cambiarla cuando quieras, sin perder el historial de meses anteriores.</p>
+        <label class="campo">
+          <span class="campo__etiqueta">Meta de ingresos (COP) *</span>
+          <input type="number" id="campoMetaVentas" min="0" step="1000">
+        </label>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarMetaVentas()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="guardarMetaVentas()">Guardar</button>
         </div>
       </div>
     </div>

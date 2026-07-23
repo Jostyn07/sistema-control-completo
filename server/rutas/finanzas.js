@@ -33,6 +33,27 @@ router.get('/resumen', async (req, res, next) => {
     if (eMes) throw new Error(eMes.message);
 
     const ingresosMes = (ventasMes || []).reduce((s, v) => s + Number(v.total), 0);
+
+    // Meta de ventas y avance del mes en curso
+    const { data: configProd, error: eConfigProd } = await supabase
+      .from('configuracion_produccion').select('meta_ventas_mensual').eq('usuario_id', req.usuarioId).maybeSingle();
+    if (eConfigProd) throw new Error(eConfigProd.message);
+    const metaVentas = configProd && configProd.meta_ventas_mensual != null ? Number(configProd.meta_ventas_mensual) : null;
+
+    const diaActual = ahora.getDate();
+    const diasEnMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).getDate();
+    const diasRestantesMes = diasEnMes - diaActual;
+    const promedioDiario = diaActual > 0 ? ingresosMes / diaActual : 0;
+    const proyeccionCierreMes = Math.round(promedioDiario * diasEnMes * 100) / 100;
+
+    let avanceMetaPct = null, faltanteMeta = null, ritmoNecesarioDiario = null;
+    if (metaVentas != null && metaVentas > 0) {
+      avanceMetaPct = Math.round((ingresosMes / metaVentas) * 1000) / 10;
+      faltanteMeta = Math.max(0, Math.round((metaVentas - ingresosMes) * 100) / 100);
+      ritmoNecesarioDiario = diasRestantesMes > 0
+        ? Math.round((faltanteMeta / diasRestantesMes) * 100) / 100
+        : (faltanteMeta > 0 ? null : 0); // null = ya no quedan días y no se alcanzó
+    }
     const costosVariablesMes = (ventasMes || []).reduce((s, v) => s + Number(v.costo_total), 0);
 
     const costosFijos = await obtenerCostosFijosMensuales(req.usuarioId);
@@ -118,6 +139,12 @@ router.get('/resumen', async (req, res, next) => {
       margen_bruto_pct: margenBrutoPct,
       utilidad_operativa_mes: Math.round(utilidadOperativaMes * 100) / 100,
       valor_inventario: Math.round(valorInventario * 100) / 100,
+      meta_ventas_mensual: metaVentas,
+      avance_meta_pct: avanceMetaPct,
+      faltante_meta: faltanteMeta,
+      dias_restantes_mes: diasRestantesMes,
+      ritmo_necesario_diario: ritmoNecesarioDiario,
+      proyeccion_cierre_mes: proyeccionCierreMes,
       compras_mes: Math.round(comprasMesTotal * 100) / 100,
       flujo_caja_mes: Math.round(flujoCajaMes * 100) / 100,
       margen_contribucion_ponderado: margenContribucion != null ? Math.round(margenContribucion * 1000) / 10 : null,
