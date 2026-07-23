@@ -22,7 +22,10 @@ async function cargarConfiguracionFiscal() {
 
 function abrirConfiguracion() {
   const c = configuracionEnMemoria || {};
-  document.getElementById('campoTieneRut').value = c.nit ? 'si' : 'no';
+  let modo = 'no';
+  if (c.resolucion_numero) modo = 'si';
+  else if (c.nit) modo = 'natural';
+  document.getElementById('campoTieneRut').value = modo;
   document.getElementById('campoRazonSocial').value = c.razon_social || '';
   document.getElementById('campoNit').value = c.nit || '';
   document.getElementById('campoRegimen').value = c.regimen || '';
@@ -35,12 +38,16 @@ function abrirConfiguracion() {
   document.getElementById('modalConfiguracion').hidden = false;
 }
 
-// Muestra/oculta NIT, régimen y resolución según si el negocio tiene RUT
+// Muestra/oculta NIT, régimen y resolución según el modo elegido:
+// "si" (empresa con resolución), "natural" (persona natural con RUT,
+// sin resolución todavía) o "no" (sin RUT).
 function alternarCamposRut() {
-  const tieneRut = document.getElementById('campoTieneRut').value === 'si';
-  document.getElementById('grupoNit').hidden = !tieneRut;
-  document.getElementById('grupoRegimen').hidden = !tieneRut;
-  document.getElementById('grupoResolucion').hidden = !tieneRut;
+  const modo = document.getElementById('campoTieneRut').value;
+  const tieneNit = modo === 'si' || modo === 'natural';
+  const tieneResolucion = modo === 'si';
+  document.getElementById('grupoNit').hidden = !tieneNit;
+  document.getElementById('grupoRegimen').hidden = !tieneNit;
+  document.getElementById('grupoResolucion').hidden = !tieneResolucion;
 }
 
 function cerrarConfiguracion() {
@@ -48,24 +55,31 @@ function cerrarConfiguracion() {
 }
 
 async function guardarConfiguracionFiscal() {
-  const tieneRut = document.getElementById('campoTieneRut').value === 'si';
+  const modo = document.getElementById('campoTieneRut').value;
+  const tieneNit = modo === 'si' || modo === 'natural';
+  const tieneResolucion = modo === 'si';
+
   const datos = {
     razon_social: document.getElementById('campoRazonSocial').value,
-    nit: tieneRut ? document.getElementById('campoNit').value : '',
-    regimen: tieneRut ? document.getElementById('campoRegimen').value : '',
-    resolucion_numero: tieneRut ? document.getElementById('campoResolucionNumero').value : '',
-    resolucion_prefijo: tieneRut ? document.getElementById('campoResolucionPrefijo').value : '',
-    resolucion_desde: tieneRut ? document.getElementById('campoResolucionDesde').value : null,
-    resolucion_hasta: tieneRut ? document.getElementById('campoResolucionHasta').value : null,
-    resolucion_vigencia: tieneRut ? (document.getElementById('campoResolucionVigencia').value || null) : null
+    nit: tieneNit ? document.getElementById('campoNit').value : '',
+    regimen: tieneNit ? document.getElementById('campoRegimen').value : '',
+    resolucion_numero: tieneResolucion ? document.getElementById('campoResolucionNumero').value : '',
+    resolucion_prefijo: tieneResolucion ? document.getElementById('campoResolucionPrefijo').value : '',
+    resolucion_desde: tieneResolucion ? document.getElementById('campoResolucionDesde').value : null,
+    resolucion_hasta: tieneResolucion ? document.getElementById('campoResolucionHasta').value : null,
+    resolucion_vigencia: tieneResolucion ? (document.getElementById('campoResolucionVigencia').value || null) : null
   };
 
   if (!datos.razon_social.trim()) {
-    mostrarAviso('El nombre del negocio es obligatorio', 'error');
+    mostrarAviso('El nombre es obligatorio', 'error');
     return;
   }
-  if (tieneRut && (!datos.nit.trim() || !datos.resolucion_numero.trim() || datos.resolucion_desde === '' || datos.resolucion_hasta === '')) {
-    mostrarAviso('Completa los campos obligatorios: NIT, resolución y rango de numeración', 'error');
+  if (tieneNit && !datos.nit.trim()) {
+    mostrarAviso('El NIT es obligatorio en este modo', 'error');
+    return;
+  }
+  if (tieneResolucion && (!datos.resolucion_numero.trim() || datos.resolucion_desde === '' || datos.resolucion_hasta === '')) {
+    mostrarAviso('Completa la resolución y el rango de numeración', 'error');
     return;
   }
 
@@ -149,18 +163,19 @@ async function verFactura(facturaId) {
     const { factura, config } = await API.obtener(`/api/facturacion/${facturaId}/detalle`);
     const venta = factura.ventas;
     const items = venta.ventas_items || [];
-    const tieneRut = !!(config && config.nit);
+    const tieneNit = !!(config && config.nit);
+    const tieneResolucion = !!(config && config.resolucion_numero);
 
     contenido.innerHTML = `
       <div class="factura" id="areaImprimible">
         <header class="factura__encabezado">
           <div>
             <h2 style="margin:0">${escaparHtml(config ? config.razon_social : '')}</h2>
-            ${tieneRut ? `<p class="texto-secundario" style="margin:2px 0">NIT: ${escaparHtml(config.nit)}</p>` : ''}
-            ${tieneRut && config.regimen ? `<p class="texto-secundario" style="margin:2px 0">${escaparHtml(config.regimen)}</p>` : ''}
+            ${tieneNit ? `<p class="texto-secundario" style="margin:2px 0">NIT: ${escaparHtml(config.nit)}</p>` : ''}
+            ${tieneNit && config.regimen ? `<p class="texto-secundario" style="margin:2px 0">${escaparHtml(config.regimen)}</p>` : ''}
           </div>
           <div style="text-align:right">
-            <h3 style="margin:0">${tieneRut ? 'Factura de venta' : 'Recibo'}</h3>
+            <h3 style="margin:0">${tieneResolucion ? 'Factura de venta' : 'Recibo'}</h3>
             <p style="margin:2px 0"><strong>${escaparHtml(factura.numero)}</strong></p>
             <p class="texto-secundario" style="margin:2px 0">${formatearFecha(factura.fecha)}</p>
           </div>
@@ -183,13 +198,13 @@ async function verFactura(facturaId) {
         </table>
 
         <footer class="texto-secundario" style="margin-top:16px">
-          ${tieneRut
+          ${tieneResolucion
             ? `Resolución de facturación DIAN N° ${escaparHtml(config.resolucion_numero)} — numeración autorizada
                ${escaparHtml(String(config.resolucion_prefijo || ''))}${config.resolucion_desde} a
                ${escaparHtml(String(config.resolucion_prefijo || ''))}${config.resolucion_hasta}
                ${config.resolucion_vigencia ? ` — vigente hasta ${formatearFecha(config.resolucion_vigencia)}` : ''}.
                ${factura.cufe ? `<br>CUFE: ${escaparHtml(factura.cufe)}` : '<br>CUFE pendiente de validación ante la DIAN.'}`
-            : 'Recibo interno — este negocio aún no tiene RUT registrado, así que este documento no es una factura electrónica válida ante la DIAN.'}
+            : ''}
         </footer>
       </div>`;
   } catch (err) {
