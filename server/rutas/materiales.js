@@ -11,6 +11,7 @@
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
+const { calcularCostoProducto } = require('../servicios/costos');
 const router = express.Router();
 
 // Campos obligatorios y sus validaciones básicas
@@ -27,7 +28,8 @@ function validarMaterial(datos) {
 }
 
 // Recalcula costo_calculado de los productos (del mismo usuario) que usan un material.
-// Costo producto = suma(cantidad × costo material) + minutos × costo_minuto_mano_obra
+// El costo de mano de obra se toma del precio de hora global (servicios/costos.js),
+// no de un valor guardado por producto.
 async function recalcularProductosQueUsan(materialId, usuarioId) {
   const { data: filas, error: e1 } = await supabase
     .from('productos_materiales')
@@ -41,7 +43,7 @@ async function recalcularProductosQueUsan(materialId, usuarioId) {
   for (const productoId of productoIds) {
     const { data: producto, error: e2 } = await supabase
       .from('productos')
-      .select('id, minutos_fabricacion, costo_minuto_mano_obra')
+      .select('id, minutos_fabricacion')
       .eq('id', productoId)
       .eq('usuario_id', usuarioId)
       .single();
@@ -49,14 +51,15 @@ async function recalcularProductosQueUsan(materialId, usuarioId) {
 
     const { data: mats, error: e3 } = await supabase
       .from('productos_materiales')
-      .select('cantidad, materiales(costo_unitario)')
+      .select('material_id, cantidad')
       .eq('producto_id', productoId);
     if (e3) throw new Error(e3.message);
 
-    const costoMateriales = (mats || []).reduce(
-      (suma, m) => suma + Number(m.cantidad) * Number(m.materiales.costo_unitario), 0);
-    const costoManoObra = Number(producto.minutos_fabricacion) * Number(producto.costo_minuto_mano_obra);
-    const costoTotal = Math.round((costoMateriales + costoManoObra) * 100) / 100;
+    const costoTotal = await calcularCostoProducto({
+      materiales: (mats || []).map(m => ({ material_id: m.material_id, cantidad: m.cantidad })),
+      minutosFabricacion: producto.minutos_fabricacion,
+      usuarioId
+    });
 
     const { error: e4 } = await supabase
       .from('productos')

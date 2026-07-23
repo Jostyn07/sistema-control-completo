@@ -256,3 +256,7 @@ a:hover { color: var(--accent); }
 .separador-login::before, .separador-login::after { content: ""; flex: 1; height: 1px; background: #e7e5e4; }
 .boton--google { display: flex; align-items: center; justify-content: center; gap: 10px; background: #fff; border: 1px solid #d6d3d1; color: #1c1917; font-weight: 500; }
 .boton--google:hover { background: #f5f5f4; }
+
+/* ---- Banner de precio de hora global (Productos) ---- */
+.banner-precio-hora { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.banner-precio-hora strong { display: block; font-size: 1.2rem; }

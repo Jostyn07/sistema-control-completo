@@ -1,6 +1,10 @@
 // ============================================================
 // MÓDULO 2 — PRODUCTOS / FICHAS TÉCNICAS  (/api/productos)
 // Requiere sesión. Cada consulta se filtra por req.usuarioId.
+// El costo de mano de obra ya NO se guarda por producto: se calcula
+// con el precio de hora global (server/servicios/costos.js), así
+// que cambiarlo en un solo lugar (Configuración) afecta a todos
+// los productos automáticamente.
 // - GET    /                    productos con costo, precio y margen
 // - POST   /                    crear producto + su lista de materiales
 // - PUT    /:id                 editar ficha técnica; recalcula costo y margen
@@ -10,6 +14,7 @@
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
+const { calcularCostoProducto, obtenerCostoMinutoManoObra } = require('../servicios/costos');
 const router = express.Router();
 
 function validarProducto(datos) {
@@ -19,8 +24,6 @@ function validarProducto(datos) {
     errores.push('El precio de venta debe ser un número mayor o igual a 0');
   if (datos.minutos_fabricacion != null && (isNaN(datos.minutos_fabricacion) || Number(datos.minutos_fabricacion) < 0))
     errores.push('Los minutos de fabricación deben ser un número válido');
-  if (datos.costo_minuto_mano_obra != null && (isNaN(datos.costo_minuto_mano_obra) || Number(datos.costo_minuto_mano_obra) < 0))
-    errores.push('El costo por minuto de mano de obra debe ser un número válido');
   if (!Array.isArray(datos.materiales) || datos.materiales.length === 0)
     errores.push('La ficha técnica debe tener al menos un material');
   else {
@@ -32,28 +35,6 @@ function validarProducto(datos) {
     }
   }
   return errores;
-}
-
-// Calcula costo total a partir de la lista de materiales de la ficha,
-// verificando que cada material pertenezca al mismo usuario.
-async function calcularCostoDesdeLista(materiales, minutosFabricacion, costoMinutoManoObra, usuarioId) {
-  const ids = materiales.map(m => m.material_id);
-  const { data: filasMateriales, error } = await supabase
-    .from('materiales')
-    .select('id, costo_unitario')
-    .eq('usuario_id', usuarioId)
-    .in('id', ids);
-  if (error) throw new Error(error.message);
-
-  const costoPorId = new Map(filasMateriales.map(m => [m.id, Number(m.costo_unitario)]));
-  let costoMateriales = 0;
-  for (const m of materiales) {
-    const costoUnitario = costoPorId.get(m.material_id);
-    if (costoUnitario == null) throw new Error('Uno de los materiales de la ficha no existe o no te pertenece');
-    costoMateriales += costoUnitario * Number(m.cantidad);
-  }
-  const costoManoObra = Number(minutosFabricacion || 0) * Number(costoMinutoManoObra || 0);
-  return Math.round((costoMateriales + costoManoObra) * 100) / 100;
 }
 
 function conMargen(producto) {
@@ -84,8 +65,11 @@ router.post('/', async (req, res, next) => {
     const errores = validarProducto(req.body);
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
-    const costoCalculado = await calcularCostoDesdeLista(
-      req.body.materiales, req.body.minutos_fabricacion, req.body.costo_minuto_mano_obra, req.usuarioId);
+    const costoCalculado = await calcularCostoProducto({
+      materiales: req.body.materiales,
+      minutosFabricacion: req.body.minutos_fabricacion,
+      usuarioId: req.usuarioId
+    });
 
     const { data: producto, error: eProd } = await supabase
       .from('productos')
@@ -95,7 +79,6 @@ router.post('/', async (req, res, next) => {
         foto_url: req.body.foto_url || null,
         precio_venta: Number(req.body.precio_venta),
         minutos_fabricacion: Number(req.body.minutos_fabricacion || 0),
-        costo_minuto_mano_obra: Number(req.body.costo_minuto_mano_obra || 0),
         costo_calculado: costoCalculado
       })
       .select().single();
@@ -119,8 +102,11 @@ router.put('/:id', async (req, res, next) => {
     const errores = validarProducto(req.body);
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
-    const costoCalculado = await calcularCostoDesdeLista(
-      req.body.materiales, req.body.minutos_fabricacion, req.body.costo_minuto_mano_obra, req.usuarioId);
+    const costoCalculado = await calcularCostoProducto({
+      materiales: req.body.materiales,
+      minutosFabricacion: req.body.minutos_fabricacion,
+      usuarioId: req.usuarioId
+    });
 
     const { data: producto, error: eProd } = await supabase
       .from('productos')
@@ -129,7 +115,6 @@ router.put('/:id', async (req, res, next) => {
         foto_url: req.body.foto_url || null,
         precio_venta: Number(req.body.precio_venta),
         minutos_fabricacion: Number(req.body.minutos_fabricacion || 0),
-        costo_minuto_mano_obra: Number(req.body.costo_minuto_mano_obra || 0),
         costo_calculado: costoCalculado,
         actualizado_en: new Date().toISOString()
       })
@@ -211,7 +196,9 @@ router.get('/:id/costo', async (req, res, next) => {
       subtotal: Math.round(Number(f.cantidad) * Number(f.materiales.costo_unitario) * 100) / 100
     }));
     const costoMateriales = Math.round(materiales.reduce((s, m) => s + m.subtotal, 0) * 100) / 100;
-    const costoManoObra = Math.round(Number(producto.minutos_fabricacion) * Number(producto.costo_minuto_mano_obra) * 100) / 100;
+
+    const costoMinuto = await obtenerCostoMinutoManoObra(req.usuarioId);
+    const costoManoObra = Math.round(Number(producto.minutos_fabricacion) * costoMinuto * 100) / 100;
 
     res.json({
       producto_id: producto.id,

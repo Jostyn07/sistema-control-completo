@@ -12,6 +12,47 @@
 let productosEnMemoria = [];
 let materialesDisponibles = [];   // precios actuales, pedidos una sola vez al abrir la ficha
 let filasFichaEnEdicion = [];     // [{ material_id, nombre, unidad, costo_unitario, cantidad }]
+let costoMinutoGlobal = 0;        // se calcula a partir del precio de hora global
+
+// ---- Precio de hora global (un solo lugar, afecta todos los productos) ----
+async function cargarPrecioHora() {
+  try {
+    const config = await API.obtener('/api/configuracion/produccion');
+    const costoHora = Number(config.costo_hora_mano_obra || 0);
+    costoMinutoGlobal = costoHora / 60;
+    document.getElementById('textoPrecioHoraBanner').textContent = formatearPesos(costoHora) + ' / hora';
+    const textoFicha = document.getElementById('textoPrecioHoraActual');
+    if (textoFicha) textoFicha.textContent = `Precio de hora vigente: ${formatearPesos(costoHora)} (se cambia desde el botón "Cambiar" arriba)`;
+  } catch (err) {
+    document.getElementById('textoPrecioHoraBanner').textContent = 'No se pudo cargar';
+  }
+}
+
+function abrirPrecioHora() {
+  document.getElementById('campoPrecioHora').value = Math.round(costoMinutoGlobal * 60);
+  document.getElementById('modalPrecioHora').hidden = false;
+}
+
+function cerrarPrecioHora() {
+  document.getElementById('modalPrecioHora').hidden = true;
+}
+
+async function guardarPrecioHora() {
+  const valor = document.getElementById('campoPrecioHora').value;
+  if (valor === '' || Number(valor) < 0) {
+    mostrarAviso('El precio por hora no es válido', 'error');
+    return;
+  }
+  try {
+    const resultado = await API.actualizar('/api/configuracion/produccion', { costo_hora_mano_obra: valor });
+    mostrarAviso(`Precio de hora actualizado. Se recalcularon ${resultado.productos_recalculados} producto(s).`);
+    cerrarPrecioHora();
+    await cargarPrecioHora();
+    cargarListaProductos();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
 
 // ---- 1. Lista de productos (tarjetas) ----
 async function cargarListaProductos() {
@@ -73,7 +114,6 @@ async function abrirFichaProducto(id) {
     document.getElementById('campoFoto').value = p.foto_url || '';
     document.getElementById('campoPrecioVenta').value = p.precio_venta;
     document.getElementById('campoMinutos').value = p.minutos_fabricacion;
-    document.getElementById('campoCostoMinuto').value = p.costo_minuto_mano_obra;
 
     // Trae el desglose para precargar las filas de materiales de la ficha
     try {
@@ -93,7 +133,6 @@ async function abrirFichaProducto(id) {
     document.getElementById('campoFoto').value = '';
     document.getElementById('campoPrecioVenta').value = '';
     document.getElementById('campoMinutos').value = 0;
-    document.getElementById('campoCostoMinuto').value = 0;
     filasFichaEnEdicion = [];
   }
 
@@ -157,11 +196,10 @@ function pintarFilasFicha() {
 // ---- 3. Simulador de margen: recalcula costo y margen sin guardar ----
 function calcularCostoEnVivo() {
   const minutos = Number(document.getElementById('campoMinutos').value || 0);
-  const costoMinuto = Number(document.getElementById('campoCostoMinuto').value || 0);
   const precioVenta = Number(document.getElementById('campoPrecioVenta').value || 0);
 
   const costoMateriales = filasFichaEnEdicion.reduce((s, f) => s + f.costo_unitario * f.cantidad, 0);
-  const costoManoObra = minutos * costoMinuto;
+  const costoManoObra = minutos * costoMinutoGlobal;
   const costoTotal = costoMateriales + costoManoObra;
   const margenValor = precioVenta - costoTotal;
   const margenPorcentaje = precioVenta > 0 ? (margenValor / precioVenta) * 100 : 0;
@@ -202,7 +240,6 @@ async function guardarProducto() {
     foto_url: document.getElementById('campoFoto').value,
     precio_venta: precioVenta,
     minutos_fabricacion: document.getElementById('campoMinutos').value,
-    costo_minuto_mano_obra: document.getElementById('campoCostoMinuto').value,
     materiales: filasFichaEnEdicion.map(f => ({ material_id: f.material_id, cantidad: f.cantidad }))
   };
 
@@ -277,4 +314,7 @@ function escaparHtml(texto) {
   return div.innerHTML;
 }
 
-document.addEventListener('DOMContentLoaded', cargarListaProductos);
+document.addEventListener('DOMContentLoaded', () => {
+  cargarPrecioHora();
+  cargarListaProductos();
+});

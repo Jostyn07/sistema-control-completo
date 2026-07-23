@@ -27,6 +27,15 @@
       </button>
     </header>
 
+    <!-- Precio de hora global: se cambia en un solo lugar y afecta todas las fichas -->
+    <section class="tarjeta banner-precio-hora">
+      <div>
+        <span class="campo__etiqueta">Precio de hora de mano de obra</span>
+        <strong id="textoPrecioHoraBanner">Cargando…</strong>
+      </div>
+      <button type="button" class="boton" onclick="abrirPrecioHora()">Cambiar</button>
+    </section>
+
     <!-- 1. Lista de productos (tarjetas con foto, precio y margen) -->
     <section class="tarjetas-productos" id="listaProductos">
       <p class="tabla__vacio">Cargando productos…</p>
@@ -56,11 +65,8 @@
             <span class="campo__etiqueta">Minutos de fabricación</span>
             <input type="number" id="campoMinutos" min="0" step="1" value="0" oninput="calcularCostoEnVivo()">
           </label>
-          <label class="campo">
-            <span class="campo__etiqueta">Costo por minuto de mano de obra (COP)</span>
-            <input type="number" id="campoCostoMinuto" min="0" step="10" value="0" oninput="calcularCostoEnVivo()">
-          </label>
         </div>
+        <p class="texto-secundario" id="textoPrecioHoraActual" style="margin:-8px 0 12px"></p>
 
         <h3>Materiales que usa</h3>
         <div class="agregar-material">
@@ -97,6 +103,25 @@
         <div id="contenidoDesglose"></div>
         <div class="modal__acciones">
           <button type="button" class="boton" onclick="cerrarDesglose()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+    <!-- Cambiar precio de hora global -->
+    <div class="modal" id="modalPrecioHora" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2>Precio de hora de mano de obra</h2>
+        <p class="texto-secundario">
+          Este valor es único para todo tu negocio. Al cambiarlo, se recalcula
+          automáticamente el costo de todos tus productos — no hace falta
+          editar cada ficha técnica una por una.
+        </p>
+        <label class="campo">
+          <span class="campo__etiqueta">Precio por hora (COP) *</span>
+          <input type="number" id="campoPrecioHora" min="0" step="500">
+        </label>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarPrecioHora()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="guardarPrecioHora()">Guardar</button>
         </div>
       </div>
     </div>
