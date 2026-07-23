@@ -59,24 +59,33 @@
     <!-- 1. Configuración fiscal (modal, carga única) -->
     <div class="modal" id="modalConfiguracion" hidden>
       <div class="modal__contenido tarjeta modal__contenido--ancho">
-        <h2>Configuración fiscal</h2>
-        <p class="texto-secundario">Datos del RUT y de la resolución de numeración de la DIAN. Se cargan una sola vez.</p>
+        <h2>Configuración del negocio</h2>
+        <p class="texto-secundario">Se carga una sola vez. Si aún no tienes RUT, puedes usar el sistema igual: se generarán recibos internos numerados en vez de facturas con numeración de la DIAN.</p>
+
+        <label class="campo">
+          <span class="campo__etiqueta">¿Tienes RUT registrado? *</span>
+          <select id="campoTieneRut" style="width:100%;padding:9px 10px;border:1px solid #d6d3d1;border-radius:8px" onchange="alternarCamposRut()">
+            <option value="si">Sí, tengo RUT</option>
+            <option value="no">Aún no tengo RUT</option>
+          </select>
+        </label>
 
         <div class="fila-campos">
           <label class="campo">
-            <span class="campo__etiqueta">Razón social / Nombre *</span>
-            <input type="text" id="campoRazonSocial">
+            <span class="campo__etiqueta">Nombre del negocio *</span>
+            <input type="text" id="campoRazonSocial" placeholder="Ej: S&S Asesorías">
           </label>
-          <label class="campo">
+          <label class="campo" id="grupoNit">
             <span class="campo__etiqueta">NIT *</span>
             <input type="text" id="campoNit" placeholder="Con dígito de verificación">
           </label>
         </div>
-        <label class="campo">
+        <label class="campo" id="grupoRegimen">
           <span class="campo__etiqueta">Régimen (opcional)</span>
           <input type="text" id="campoRegimen" placeholder="Ej: No responsable de IVA / Régimen simple">
         </label>
 
+        <div id="grupoResolucion">
         <h3>Resolución de numeración</h3>
         <div class="fila-campos">
           <label class="campo">
@@ -101,6 +110,7 @@
             <span class="campo__etiqueta">Vigencia hasta</span>
             <input type="date" id="campoResolucionVigencia">
           </label>
+        </div>
         </div>
 
         <div class="modal__acciones">

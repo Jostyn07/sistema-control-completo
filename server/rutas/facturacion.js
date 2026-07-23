@@ -24,26 +24,47 @@ router.get('/configuracion', async (req, res, next) => {
 router.post('/configuracion', async (req, res, next) => {
   try {
     const c = req.body;
-    if (!c.razon_social || !c.razon_social.trim()) return res.status(400).json({ error: 'La razón social es obligatoria' });
-    if (!c.nit || !c.nit.trim()) return res.status(400).json({ error: 'El NIT es obligatorio' });
-    if (!c.resolucion_numero || !c.resolucion_numero.trim())
-      return res.status(400).json({ error: 'El número de resolución de facturación es obligatorio' });
-    if (c.resolucion_desde == null || c.resolucion_hasta == null || isNaN(c.resolucion_desde) || isNaN(c.resolucion_hasta))
-      return res.status(400).json({ error: 'El rango de numeración (desde/hasta) es obligatorio' });
-    if (Number(c.resolucion_desde) > Number(c.resolucion_hasta))
-      return res.status(400).json({ error: 'El "desde" de la numeración no puede ser mayor que el "hasta"' });
+    if (!c.razon_social || !c.razon_social.trim()) return res.status(400).json({ error: 'El nombre del negocio es obligatorio' });
 
-    const fila = {
-      usuario_id: req.usuarioId,
-      razon_social: c.razon_social.trim(),
-      nit: c.nit.trim(),
-      regimen: (c.regimen || '').trim() || null,
-      resolucion_numero: c.resolucion_numero.trim(),
-      resolucion_prefijo: (c.resolucion_prefijo || '').trim() || null,
-      resolucion_desde: Number(c.resolucion_desde),
-      resolucion_hasta: Number(c.resolucion_hasta),
-      resolucion_vigencia: c.resolucion_vigencia || null
-    };
+    const tieneRut = !!(c.nit && c.nit.trim());
+    let fila;
+
+    if (tieneRut) {
+      if (!c.resolucion_numero || !c.resolucion_numero.trim())
+        return res.status(400).json({ error: 'El número de resolución de facturación es obligatorio' });
+      if (c.resolucion_desde == null || c.resolucion_hasta == null || isNaN(c.resolucion_desde) || isNaN(c.resolucion_hasta))
+        return res.status(400).json({ error: 'El rango de numeración (desde/hasta) es obligatorio' });
+      if (Number(c.resolucion_desde) > Number(c.resolucion_hasta))
+        return res.status(400).json({ error: 'El "desde" de la numeración no puede ser mayor que el "hasta"' });
+
+      fila = {
+        usuario_id: req.usuarioId,
+        razon_social: c.razon_social.trim(),
+        nit: c.nit.trim(),
+        regimen: (c.regimen || '').trim() || null,
+        resolucion_numero: c.resolucion_numero.trim(),
+        resolucion_prefijo: (c.resolucion_prefijo || '').trim() || null,
+        resolucion_desde: Number(c.resolucion_desde),
+        resolucion_hasta: Number(c.resolucion_hasta),
+        resolucion_vigencia: c.resolucion_vigencia || null
+      };
+    } else {
+      // Sin RUT: solo el nombre del negocio. Sin NIT no hay resolución
+      // posible de la DIAN, así que estos campos quedan vacíos a propósito;
+      // las "facturas" que se generen serán recibos internos simples.
+      fila = {
+        usuario_id: req.usuarioId,
+        razon_social: c.razon_social.trim(),
+        nit: null,
+        regimen: null,
+        resolucion_numero: null,
+        resolucion_prefijo: null,
+        resolucion_desde: null,
+        resolucion_hasta: null,
+        resolucion_vigencia: null
+      };
+    }
+
     const { data, error } = await supabase
       .from('configuracion_fiscal').upsert(fila).select().single();
     if (error) throw new Error(error.message);
@@ -76,7 +97,7 @@ router.post('/generar', async (req, res, next) => {
       .from('configuracion_fiscal').select('*').eq('usuario_id', req.usuarioId).maybeSingle();
     if (eConf) throw new Error(eConf.message);
     if (!config) return res.status(400).json({
-      error: 'Primero carga la configuración fiscal (datos del RUT y resolución de numeración).'
+      error: 'Primero carga la configuración del negocio (al menos el nombre; el RUT es opcional).'
     });
 
     const { data: venta, error: eVenta } = await supabase
@@ -88,15 +109,29 @@ router.post('/generar', async (req, res, next) => {
       .from('facturas').select('id', { count: 'exact', head: true }).eq('usuario_id', req.usuarioId);
     if (eCount) throw new Error(eCount.message);
 
-    const consecutivo = Number(config.resolucion_desde) + (count || 0);
-    if (consecutivo > Number(config.resolucion_hasta)) {
-      return res.status(409).json({
-        error: `Se agotó el rango de numeración autorizado (${config.resolucion_desde}–${config.resolucion_hasta}). Solicita una nueva resolución a la DIAN y actualiza la configuración.`
-      });
-    }
-    const numero = `${config.resolucion_prefijo || ''}${consecutivo}`;
+    const tieneRut = !!config.nit;
+    let numero, emision;
 
-    const emision = await proveedor.emitir({ venta, config, numero });
+    if (tieneRut) {
+      const consecutivo = Number(config.resolucion_desde) + (count || 0);
+      if (consecutivo > Number(config.resolucion_hasta)) {
+        return res.status(409).json({
+          error: `Se agotó el rango de numeración autorizado (${config.resolucion_desde}–${config.resolucion_hasta}). Solicita una nueva resolución a la DIAN y actualiza la configuración.`
+        });
+      }
+      numero = `${config.resolucion_prefijo || ''}${consecutivo}`;
+      emision = await proveedor.emitir({ venta, config, numero });
+    } else {
+      // Sin RUT no hay resolución de la DIAN posible: se genera un recibo
+      // interno con numeración propia, sin validez fiscal ante la DIAN.
+      numero = `REC-${(count || 0) + 1}`;
+      emision = {
+        cufe: null,
+        pdf_url: null,
+        estado: 'recibo_interno',
+        nota: 'Este es un recibo interno (sin RUT registrado), no una factura electrónica válida ante la DIAN.'
+      };
+    }
 
     const { data: factura, error: eFact } = await supabase
       .from('facturas')
