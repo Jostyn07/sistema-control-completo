@@ -6,6 +6,7 @@
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
+const { crearPruebaGratis } = require('../servicios/suscripcion');
 const router = express.Router();
 
 // POST /api/auth/registro
@@ -28,6 +29,15 @@ router.post('/registro', async (req, res, next) => {
         ? 'Ya existe una cuenta con ese correo'
         : error.message;
       return res.status(400).json({ error: mensaje });
+    }
+
+    // Arranca con 7 días de prueba gratis, sin necesidad de pagar nada.
+    // Si esto falla, no bloquea el registro — el usuario queda creado
+    // igual y puede elegir un plan manualmente desde Suscripción.
+    try {
+      await crearPruebaGratis(data.user.id);
+    } catch (errPrueba) {
+      console.error('[registro] No se pudo crear la prueba gratis:', errPrueba.message);
     }
 
     res.status(201).json({ creado: true, usuario_id: data.user.id });

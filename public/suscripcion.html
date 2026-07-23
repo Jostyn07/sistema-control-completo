@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suscripción — Sistema de Control</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+  <nav class="navegacion">
+    <a href="./index.html" class="navegacion__enlace">Inicio</a>
+    <a href="./materiales.html" class="navegacion__enlace">Materiales</a>
+    <a href="./productos.html" class="navegacion__enlace">Productos</a>
+    <a href="./inventario.html" class="navegacion__enlace">Inventario</a>
+    <a href="./compras.html" class="navegacion__enlace">Compras</a>
+    <a href="./ventas.html" class="navegacion__enlace">Ventas</a>
+    <a href="./finanzas.html" class="navegacion__enlace">Finanzas</a>
+    <a href="./facturacion.html" class="navegacion__enlace">Facturación</a>
+    <a href="./suscripcion.html" class="navegacion__enlace navegacion__enlace--activo">Suscripción</a>
+  </nav>
+
+  <main class="pagina">
+    <header class="pagina__encabezado">
+      <h1>Tu suscripción</h1>
+    </header>
+
+    <!-- Estado actual -->
+    <section class="tarjeta seccion" id="seccionEstadoActual">
+      <div id="estadoActual"><p class="tabla__vacio">Cargando…</p></div>
+    </section>
+
+    <!-- Planes disponibles -->
+    <section class="seccion">
+      <h2>Planes</h2>
+      <div class="tarjetas-productos" id="listaPlanes">
+        <p class="tabla__vacio">Cargando planes…</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://checkout.epayco.co/checkout.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/suscripcion.js"></script>
+  <script>
+    if (exigirSesion()) { mostrarUsuarioActual(); }
+  </script>
+</body>
+</html>

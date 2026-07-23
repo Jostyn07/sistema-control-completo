@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Procesando tu pago… — Sistema de Control</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <main class="pagina-login">
+    <div class="tarjeta tarjeta-login" style="text-align:center;max-width:440px">
+      <h1 id="tituloGracias">Confirmando tu pago…</h1>
+      <p class="texto-secundario" id="textoGracias">
+        Esto puede tardar unos segundos mientras ePayco nos confirma la transacción.
+      </p>
+      <a href="suscripcion.html" class="boton boton--primario boton--ancho" style="margin-top:16px">Ir a mi suscripción</a>
+    </div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    if (exigirSesion()) {
+      // No confiamos en los parámetros de esta URL para activar nada — eso
+      // ya lo decidió el webhook de ePayco directo con el backend. Aquí
+      // solo consultamos el estado real para mostrarle algo útil al usuario.
+      (async () => {
+        try {
+          const r = await API.obtener('/api/suscripcion/mi-suscripcion');
+          if (r.estado === 'activa') {
+            document.getElementById('tituloGracias').textContent = '¡Listo! Tu suscripción está activa';
+            document.getElementById('textoGracias').textContent = 'Ya puedes usar el sistema sin restricciones.';
+          } else {
+            document.getElementById('tituloGracias').textContent = 'Estamos confirmando tu pago';
+            document.getElementById('textoGracias').textContent = 'Si ya pagaste, puede tardar un momento en reflejarse. Actualiza esta página en unos segundos.';
+          }
+        } catch (err) {
+          document.getElementById('textoGracias').textContent = 'No se pudo consultar el estado: ' + err.message;
+        }
+      })();
+    }
+  </script>
+</body>
+</html>

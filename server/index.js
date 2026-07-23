@@ -20,6 +20,12 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 // ---- Rutas públicas de autenticación (sin token todavía) ----
 app.use('/api/auth', rutasAuth);
 
+// ---- Webhooks de terceros: PÚBLICOS también, nunca llevan nuestro
+// token de sesión (los llaman los servidores del proveedor, no el
+// navegador del usuario) — su seguridad depende de validar la firma
+// dentro de cada ruta, no de este middleware.
+app.use('/api/webhooks', require('./rutas/webhooks'));
+
 // ---- A partir de aquí, toda ruta de /api/* exige sesión válida ----
 app.use('/api', requiereAutenticacion);
 
@@ -33,6 +39,7 @@ app.use('/api/finanzas', require('./rutas/finanzas'));
 app.use('/api/facturacion', require('./rutas/facturacion'));
 app.use('/api/configuracion', require('./rutas/configuracion'));
 app.use('/api/almacenamiento', require('./rutas/almacenamiento'));
+app.use('/api/suscripcion', require('./rutas/suscripcion'));
 
 // Manejador de errores único: cualquier ruta que haga next(error) cae aquí
 app.use((err, req, res, next) => {
