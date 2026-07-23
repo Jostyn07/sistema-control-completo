@@ -30,10 +30,10 @@
       <h2>Pedidos</h2>
       <table class="tabla">
         <thead>
-          <tr><th>Fecha</th><th>Cliente</th><th>Productos</th><th>Total</th><th>Estado</th><th></th></tr>
+          <tr><th>Fecha</th><th>Cliente</th><th>Entrega</th><th>Productos</th><th>Total</th><th>Estado</th><th></th></tr>
         </thead>
         <tbody id="cuerpoPedidos">
-          <tr><td colspan="6" class="tabla__vacio">Cargando pedidos…</td></tr>
+          <tr><td colspan="7" class="tabla__vacio">Cargando pedidos…</td></tr>
         </tbody>
       </table>
     </section>
@@ -64,10 +64,10 @@
       </div>
       <table class="tabla">
         <thead>
-          <tr><th>Fecha</th><th>Cliente</th><th>Contacto</th><th>Productos</th><th>Total</th><th>Costo</th><th>Ganancia</th><th>Estado</th></tr>
+          <tr><th>Fecha</th><th>Cliente</th><th>Contacto</th><th>Entrega</th><th>Productos</th><th>Total</th><th>Costo</th><th>Ganancia</th><th>Estado</th></tr>
         </thead>
         <tbody id="cuerpoHistorial">
-          <tr><td colspan="7" class="tabla__vacio">Cargando historial…</td></tr>
+          <tr><td colspan="9" class="tabla__vacio">Cargando historial…</td></tr>
         </tbody>
       </table>
     </section>
@@ -95,6 +95,11 @@
           Teléfono y cédula se guardan cifrados; nadie puede leerlos directo desde la base de datos.
         </p>
 
+        <label class="campo">
+          <span class="campo__etiqueta">Fecha de entrega (opcional)</span>
+          <input type="date" id="campoFechaEntrega">
+        </label>
+
         <h3>Productos</h3>
         <div class="agregar-material">
           <select id="selectorProductoVenta"></select>
@@ -115,6 +120,21 @@
         <div class="modal__acciones">
           <button type="button" class="boton" onclick="cerrarNuevaVenta()">Cancelar</button>
           <button type="button" class="boton boton--primario" onclick="registrarVenta()">Registrar venta</button>
+        </div>
+      </div>
+    </div>
+    <!-- Cambiar fecha de entrega de un pedido -->
+    <div class="modal" id="modalFechaEntrega" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2>Fecha de entrega</h2>
+        <input type="hidden" id="campoVentaFechaEntregaId">
+        <label class="campo">
+          <span class="campo__etiqueta">Fecha de entrega</span>
+          <input type="date" id="campoNuevaFechaEntrega">
+        </label>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarFechaEntrega()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="guardarFechaEntrega()">Guardar</button>
         </div>
       </div>
     </div>

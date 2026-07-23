@@ -10,6 +10,8 @@
 // ============================================================
 
 let pendientesEnMemoria = [];
+let enCaminoEnMemoria = [];
+let historialEnMemoria = [];
 let materialesParaCompra = [];
 
 const ETIQUETA_ESTADO_COMPRA = { pendiente: 'Pendiente', recibida: 'Recibida' };
@@ -124,19 +126,22 @@ async function confirmarCompra() {
 async function cargarEnCamino() {
   const cuerpo = document.getElementById('cuerpoEnCamino');
   try {
-    const pedidos = await API.obtener('/api/compras/en-camino');
-    if (pedidos.length === 0) {
+    enCaminoEnMemoria = await API.obtener('/api/compras/en-camino');
+    if (enCaminoEnMemoria.length === 0) {
       cuerpo.innerHTML = '<tr><td colspan="6" class="tabla__vacio">No hay pedidos en camino en este momento.</td></tr>';
       return;
     }
-    cuerpo.innerHTML = pedidos.map(p => `
+    cuerpo.innerHTML = enCaminoEnMemoria.map(p => `
       <tr>
         <td>${escaparHtml(p.materiales ? p.materiales.nombre : '—')}</td>
         <td>${p.cantidad} ${escaparHtml(p.materiales ? p.materiales.unidad : '')}</td>
         <td>${escaparHtml(p.proveedor)}</td>
         <td>${formatearFecha(p.fecha)}</td>
         <td>${formatearFechaCorta(p.fecha_estimada_llegada)}</td>
-        <td><button type="button" class="boton boton--pequeno boton--primario" onclick="marcarLlegada('${p.id}')">Marcar como llegada</button></td>
+        <td class="tabla__acciones">
+          <button type="button" class="boton boton--pequeno boton--primario" onclick="marcarLlegada('${p.id}')">Marcar como llegada</button>
+          <button type="button" class="boton boton--pequeno boton--peligro" onclick="abrirEliminarCompra('${p.id}')">Eliminar</button>
+        </td>
       </tr>`).join('');
   } catch (err) {
     cuerpo.innerHTML = `<tr><td colspan="6" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
@@ -156,6 +161,42 @@ async function marcarLlegada(compraId) {
   }
 }
 
+// ---- Eliminar compra (con motivo obligatorio; revierte el stock si ya estaba recibida) ----
+function abrirEliminarCompra(compraId) {
+  const compra = [...enCaminoEnMemoria, ...historialEnMemoria].find(c => c.id === compraId);
+  document.getElementById('campoEliminarCompraId').value = compraId;
+  document.getElementById('campoMotivoEliminarCompra').value = '';
+
+  const texto = document.getElementById('textoEliminarCompra');
+  if (compra && compra.estado === 'recibida') {
+    texto.textContent = `Esta compra ya está marcada como recibida: su cantidad (${compra.cantidad} ${compra.materiales ? compra.materiales.unidad : ''}) ya se sumó al stock. Al eliminarla, esa cantidad se restará automáticamente.`;
+  } else {
+    texto.textContent = 'Esta compra aún no ha llegado, así que no afecta el stock actual.';
+  }
+  document.getElementById('modalEliminarCompra').hidden = false;
+}
+
+function cerrarEliminarCompra() {
+  document.getElementById('modalEliminarCompra').hidden = true;
+}
+
+async function confirmarEliminarCompra() {
+  const compraId = document.getElementById('campoEliminarCompraId').value;
+  const motivo = document.getElementById('campoMotivoEliminarCompra').value;
+  if (!motivo.trim()) { mostrarAviso('El motivo es obligatorio', 'error'); return; }
+
+  try {
+    const resultado = await API.eliminar(`/api/compras/${compraId}`, { motivo });
+    mostrarAviso(resultado.stock_revertido ? 'Compra eliminada y el stock se corrigió' : 'Compra eliminada');
+    cerrarEliminarCompra();
+    cargarPendientesCompra();
+    cargarEnCamino();
+    cargarHistorialCompras();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
 // ---- 4. Historial con filtros ----
 async function cargarHistorialCompras() {
   const cuerpo = document.getElementById('cuerpoHistorialCompras');
@@ -168,12 +209,12 @@ async function cargarHistorialCompras() {
   if (hasta) filtros.set('hasta', hasta);
 
   try {
-    const compras = await API.obtener('/api/compras/historial' + (filtros.toString() ? '?' + filtros.toString() : ''));
-    if (compras.length === 0) {
-      cuerpo.innerHTML = '<tr><td colspan="8" class="tabla__vacio">No hay compras con esos filtros.</td></tr>';
+    historialEnMemoria = await API.obtener('/api/compras/historial' + (filtros.toString() ? '?' + filtros.toString() : ''));
+    if (historialEnMemoria.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="9" class="tabla__vacio">No hay compras con esos filtros.</td></tr>';
       return;
     }
-    cuerpo.innerHTML = compras.map(c => `
+    cuerpo.innerHTML = historialEnMemoria.map(c => `
       <tr>
         <td>${formatearFecha(c.fecha)}</td>
         <td>${escaparHtml(c.materiales ? c.materiales.nombre : '—')}</td>
@@ -183,6 +224,7 @@ async function cargarHistorialCompras() {
         <td>${formatearPesos(c.total)}</td>
         <td><span class="etiqueta-estado etiqueta-estado--${c.estado === 'recibida' ? 'listo' : 'pendiente'}">${ETIQUETA_ESTADO_COMPRA[c.estado] || c.estado}</span></td>
         <td>${escaparHtml(c.notas || '')}</td>
+        <td><button type="button" class="boton boton--pequeno boton--peligro" onclick="abrirEliminarCompra('${c.id}')">Eliminar</button></td>
       </tr>`).join('');
   } catch (err) {
     cuerpo.innerHTML = `<tr><td colspan="8" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;

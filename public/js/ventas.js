@@ -48,6 +48,7 @@ async function abrirNuevaVenta() {
   document.getElementById('campoCliente').value = '';
   document.getElementById('campoClienteTelefono').value = '';
   document.getElementById('campoClienteCedula').value = '';
+  document.getElementById('campoFechaEntrega').value = '';
   document.getElementById('cantidadVenta').value = '';
   pintarItemsVenta();
   document.getElementById('modalVenta').hidden = false;
@@ -118,6 +119,7 @@ async function registrarVenta(forzar = false) {
     cliente: document.getElementById('campoCliente').value,
     cliente_telefono: document.getElementById('campoClienteTelefono').value,
     cliente_cedula: document.getElementById('campoClienteCedula').value,
+    fecha_entrega: document.getElementById('campoFechaEntrega').value || null,
     items: itemsVentaEnEdicion.map(i => ({ producto_id: i.producto_id, cantidad: i.cantidad })),
     forzar
   };
@@ -154,7 +156,7 @@ async function cargarPedidos() {
     const pedidosActivos = ventas.filter(v => v.estado !== 'entregado');
 
     if (pedidosActivos.length === 0) {
-      cuerpo.innerHTML = '<tr><td colspan="6" class="tabla__vacio">No hay pedidos activos. Los entregados quedan en el historial.</td></tr>';
+      cuerpo.innerHTML = '<tr><td colspan="7" class="tabla__vacio">No hay pedidos activos. Los entregados quedan en el historial.</td></tr>';
       return;
     }
 
@@ -164,6 +166,7 @@ async function cargarPedidos() {
       <tr>
         <td>${formatearFecha(v.fecha)}</td>
         <td>${escaparHtml(v.cliente || '—')}</td>
+        <td>${celdaFechaEntrega(v)}</td>
         <td>${resumenProductos(v)}</td>
         <td>${formatearPesos(v.total)}</td>
         <td><span class="etiqueta-estado etiqueta-estado--${v.estado}">${ETIQUETA_ESTADO[v.estado]}</span></td>
@@ -171,7 +174,47 @@ async function cargarPedidos() {
       </tr>`;
     }).join('');
   } catch (err) {
-    cuerpo.innerHTML = `<tr><td colspan="6" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
+    cuerpo.innerHTML = `<tr><td colspan="7" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
+  }
+}
+
+function celdaFechaEntrega(venta) {
+  const hoy = new Date().toISOString().slice(0, 10);
+  let clase = '';
+  let texto = 'Sin definir';
+  if (venta.fecha_entrega) {
+    texto = formatearFechaCortaVenta(venta.fecha_entrega);
+    if (venta.fecha_entrega < hoy) clase = ' style="color:#b91c1c;font-weight:600"';
+    else if (venta.fecha_entrega === hoy) clase = ' style="color:#c2410c;font-weight:600"';
+  }
+  return `<span${clase}>${texto}</span> <button type="button" class="boton boton--pequeno" onclick="abrirFechaEntrega('${venta.id}', '${venta.fecha_entrega || ''}')">Cambiar</button>`;
+}
+
+function formatearFechaCortaVenta(fecha) {
+  return new Date(fecha + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+}
+
+function abrirFechaEntrega(ventaId, fechaActual) {
+  document.getElementById('campoVentaFechaEntregaId').value = ventaId;
+  document.getElementById('campoNuevaFechaEntrega').value = fechaActual || '';
+  document.getElementById('modalFechaEntrega').hidden = false;
+}
+
+function cerrarFechaEntrega() {
+  document.getElementById('modalFechaEntrega').hidden = true;
+}
+
+async function guardarFechaEntrega() {
+  const ventaId = document.getElementById('campoVentaFechaEntregaId').value;
+  const fecha = document.getElementById('campoNuevaFechaEntrega').value;
+  try {
+    await API.actualizar(`/api/ventas/${ventaId}/fecha-entrega`, { fecha_entrega: fecha || null });
+    mostrarAviso('Fecha de entrega actualizada');
+    cerrarFechaEntrega();
+    cargarPedidos();
+    cargarHistorialVentas();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
   }
 }
 
@@ -200,7 +243,7 @@ async function cargarHistorialVentas() {
   try {
     const ventas = await API.obtener('/api/ventas' + (filtros.toString() ? '?' + filtros.toString() : ''));
     if (ventas.length === 0) {
-      cuerpo.innerHTML = '<tr><td colspan="8" class="tabla__vacio">No hay ventas con esos filtros.</td></tr>';
+      cuerpo.innerHTML = '<tr><td colspan="9" class="tabla__vacio">No hay ventas con esos filtros.</td></tr>';
       return;
     }
     cuerpo.innerHTML = ventas.map(v => `
@@ -208,6 +251,7 @@ async function cargarHistorialVentas() {
         <td>${formatearFecha(v.fecha)}</td>
         <td>${escaparHtml(v.cliente || '—')}</td>
         <td>${contactoCliente(v)}</td>
+        <td>${v.fecha_entrega ? formatearFechaCortaVenta(v.fecha_entrega) : '—'}</td>
         <td>${resumenProductos(v)}</td>
         <td>${formatearPesos(v.total)}</td>
         <td>${formatearPesos(v.costo_total)}</td>

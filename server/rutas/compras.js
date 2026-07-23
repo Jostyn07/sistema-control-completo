@@ -168,4 +168,53 @@ router.get('/historial', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// DELETE /api/compras/:id — cuerpo: { motivo }
+// Si la compra ya estaba "recibida" (su cantidad ya se sumó al stock),
+// se revierte esa cantidad automáticamente antes de borrarla, y queda
+// un rastro en el historial de ajustes explicando por qué.
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { motivo } = req.body;
+    if (!motivo || !motivo.trim())
+      return res.status(400).json({ error: 'Escribe el motivo de la eliminación (para trazabilidad)' });
+
+    const { data: compra, error: eGet } = await supabase
+      .from('compras').select('*').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+    if (eGet || !compra) return res.status(404).json({ error: 'Compra no encontrada' });
+
+    let stockRevertido = false;
+    if (compra.estado === 'recibida') {
+      const { data: material, error: eMat } = await supabase
+        .from('materiales').select('stock_actual, unidad').eq('id', compra.material_id).eq('usuario_id', req.usuarioId).single();
+      if (eMat || !material) throw new Error('El material de esta compra ya no existe');
+
+      const stockAnterior = Number(material.stock_actual);
+      const stockNuevo = Math.max(0, Math.round((stockAnterior - Number(compra.cantidad)) * 100) / 100);
+
+      const { error: eStock } = await supabase
+        .from('materiales')
+        .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
+        .eq('id', compra.material_id)
+        .eq('usuario_id', req.usuarioId);
+      if (eStock) throw new Error(eStock.message);
+
+      const { error: eAjuste } = await supabase.from('inventario_ajustes').insert({
+        usuario_id: req.usuarioId,
+        material_id: compra.material_id,
+        stock_anterior: stockAnterior,
+        stock_nuevo: stockNuevo,
+        motivo: `Compra eliminada (${compra.cantidad} ${material.unidad} de ${compra.proveedor}): ${motivo.trim()}`,
+        usuario: req.usuarioEmail || null
+      });
+      if (eAjuste) throw new Error(eAjuste.message);
+      stockRevertido = true;
+    }
+
+    const { error: eDel } = await supabase.from('compras').delete().eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+    if (eDel) throw new Error(eDel.message);
+
+    res.json({ eliminado: true, stock_revertido: stockRevertido });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

@@ -150,11 +150,41 @@ async function cargarResumenFacturacion() {
   }
 }
 
+// ---- Entregas próximas ----
+async function cargarResumenEntregas() {
+  const contenedor = document.getElementById('resumenEntregas');
+  try {
+    const entregas = await API.obtener('/api/ventas/por-entregar');
+    if (entregas.length === 0) {
+      contenedor.innerHTML = '<p class="texto-secundario">No hay entregas con fecha programada.</p>';
+      return { vencidas: 0 };
+    }
+    const vencidas = entregas.filter(e => e.vencido);
+    const hoy = entregas.filter(e => e.es_hoy);
+    const proximas = entregas.filter(e => !e.vencido && !e.es_hoy).slice(0, 3);
+
+    contenedor.innerHTML = `
+      <p class="numero-resumen">${entregas.length} <span class="texto-secundario">entrega(s) programada(s)</span></p>
+      <p class="texto-secundario" style="margin:4px 0 8px">
+        ${vencidas.length > 0 ? `<strong style="color:#b91c1c">${vencidas.length} vencida(s)</strong> · ` : ''}
+        ${hoy.length > 0 ? `<strong style="color:#c2410c">${hoy.length} hoy</strong> · ` : ''}
+        ${proximas.length} próxima(s)
+      </p>
+      ${proximas.map(e => `<p style="margin:2px 0" class="texto-secundario">${escaparHtml(e.cliente || 'Sin nombre')} — ${new Date(e.fecha_entrega + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}</p>`).join('')}`;
+    return { vencidas: vencidas.length };
+  } catch (err) {
+    contenedor.innerHTML = `<p class="tabla__vacio">${escaparHtml(err.message)}</p>`;
+    return { vencidas: 0 };
+  }
+}
+
 // ---- Alertas: lo que requiere acción hoy ----
-function pintarAlertas({ rojosCompra, sinStock, sinFacturar }) {
+function pintarAlertas({ rojosCompra, sinStock, sinFacturar, entregasVencidas }) {
   const seccion = document.getElementById('seccionAlertas');
   const alertas = [];
 
+  if (entregasVencidas > 0)
+    alertas.push({ texto: `${entregasVencidas} entrega(s) vencida(s), sin marcar como entregadas.`, enlace: '/ventas.html', accion: 'Ver ventas' });
   if (rojosCompra > 0)
     alertas.push({ texto: `${rojosCompra} material(es) en zona roja: hay que comprar ya para no frenar la producción.`, enlace: '/compras.html', accion: 'Ver compras' });
   if (sinStock > 0)
@@ -175,14 +205,15 @@ function pintarAlertas({ rojosCompra, sinStock, sinFacturar }) {
 
 // ---- Orquestación ----
 async function refrescarInicio() {
-  const [, , compras, sinStock, sinFacturar] = await Promise.all([
+  const [, , compras, sinStock, sinFacturar, entregas] = await Promise.all([
     cargarIndicadores(),
     cargarResumenPedidos(),
     cargarResumenCompras(),
     cargarResumenCapacidad(),
-    cargarResumenFacturacion()
+    cargarResumenFacturacion(),
+    cargarResumenEntregas()
   ]);
-  pintarAlertas({ rojosCompra: compras.rojos, sinStock, sinFacturar });
+  pintarAlertas({ rojosCompra: compras.rojos, sinStock, sinFacturar, entregasVencidas: entregas.vencidas });
 
   document.getElementById('indicadorFecha').textContent =
     new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });

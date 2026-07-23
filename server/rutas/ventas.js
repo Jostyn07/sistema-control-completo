@@ -52,7 +52,7 @@ router.get('/productos-disponibles', async (req, res, next) => {
 // POST /api/ventas
 router.post('/', async (req, res, next) => {
   try {
-    const { cliente, cliente_telefono, cliente_cedula, items, forzar } = req.body;
+    const { cliente, cliente_telefono, cliente_cedula, fecha_entrega, items, forzar } = req.body;
     if (!Array.isArray(items) || items.length === 0)
       return res.status(400).json({ error: 'La venta debe tener al menos un producto' });
     for (const item of items) {
@@ -133,6 +133,7 @@ router.post('/', async (req, res, next) => {
         cliente: (cliente || '').trim() || null,
         cliente_telefono_cifrado: cifrar(cliente_telefono),
         cliente_cedula_cifrada: cifrar(cliente_cedula),
+        fecha_entrega: fecha_entrega || null,
         total, costo_total: costoTotal, estado: 'pendiente'
       })
       .select().single();
@@ -209,6 +210,45 @@ router.put('/:id/estado', async (req, res, next) => {
     if (error) throw new Error(error.message);
     if (!data) return res.status(404).json({ error: 'Venta no encontrada' });
     res.json(data);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/ventas/:id/fecha-entrega — cuerpo: { fecha_entrega } (null para quitarla)
+router.put('/:id/fecha-entrega', async (req, res, next) => {
+  try {
+    const { fecha_entrega } = req.body;
+    const { data, error } = await supabase
+      .from('ventas')
+      .update({ fecha_entrega: fecha_entrega || null })
+      .eq('id', req.params.id)
+      .eq('usuario_id', req.usuarioId)
+      .select().single();
+    if (error) throw new Error(error.message);
+    if (!data) return res.status(404).json({ error: 'Venta no encontrada' });
+    res.json(data);
+  } catch (err) { next(err); }
+});
+
+// GET /api/ventas/por-entregar — pedidos con fecha de entrega, aún no entregados,
+// ordenados por fecha (los más urgentes primero). Lo usa también el dashboard.
+router.get('/por-entregar', async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('ventas')
+      .select('id, cliente, fecha_entrega, estado, total, ventas_items(cantidad, productos(nombre))')
+      .eq('usuario_id', req.usuarioId)
+      .neq('estado', 'entregado')
+      .not('fecha_entrega', 'is', null)
+      .order('fecha_entrega', { ascending: true });
+    if (error) throw new Error(error.message);
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    const conUrgencia = (data || []).map(v => ({
+      ...v,
+      vencido: v.fecha_entrega < hoy,
+      es_hoy: v.fecha_entrega === hoy
+    }));
+    res.json(conUrgencia);
   } catch (err) { next(err); }
 });
 

@@ -39,8 +39,10 @@ const API = {
       body: JSON.stringify(cuerpo)
     }));
   },
-  async eliminar(ruta) {
-    return this._procesar(await fetch(ruta, { method: 'DELETE', headers: this._encabezados() }));
+  async eliminar(ruta, cuerpo) {
+    const opciones = { method: 'DELETE', headers: this._encabezados() };
+    if (cuerpo !== undefined) opciones.body = JSON.stringify(cuerpo);
+    return this._procesar(await fetch(ruta, opciones));
   }
 };
 

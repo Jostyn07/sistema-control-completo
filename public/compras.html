@@ -82,10 +82,10 @@
       </div>
       <table class="tabla">
         <thead>
-          <tr><th>Fecha del pedido</th><th>Material</th><th>Proveedor</th><th>Cantidad</th><th>Precio unitario</th><th>Total</th><th>Estado</th><th>Notas</th></tr>
+          <tr><th>Fecha del pedido</th><th>Material</th><th>Proveedor</th><th>Cantidad</th><th>Precio unitario</th><th>Total</th><th>Estado</th><th>Notas</th><th></th></tr>
         </thead>
         <tbody id="cuerpoHistorialCompras">
-          <tr><td colspan="8" class="tabla__vacio">Cargando historial…</td></tr>
+          <tr><td colspan="9" class="tabla__vacio">Cargando historial…</td></tr>
         </tbody>
       </table>
     </section>
@@ -130,6 +130,22 @@
         <div class="modal__acciones">
           <button type="button" class="boton" onclick="cerrarFormularioCompra()">Cancelar</button>
           <button type="button" class="boton boton--primario" onclick="confirmarCompra()">Registrar pedido</button>
+        </div>
+      </div>
+    </div>
+    <!-- 5. Eliminar compra (con motivo obligatorio) -->
+    <div class="modal" id="modalEliminarCompra" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2>Eliminar compra</h2>
+        <input type="hidden" id="campoEliminarCompraId">
+        <p class="texto-secundario" id="textoEliminarCompra"></p>
+        <label class="campo">
+          <span class="campo__etiqueta">Motivo * (queda registrado)</span>
+          <input type="text" id="campoMotivoEliminarCompra" placeholder="Ej: se registró por error, pedido duplicado…">
+        </label>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarEliminarCompra()">Cancelar</button>
+          <button type="button" class="boton boton--peligro" onclick="confirmarEliminarCompra()">Eliminar compra</button>
         </div>
       </div>
     </div>
