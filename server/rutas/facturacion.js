@@ -129,7 +129,7 @@ router.post('/generar', async (req, res, next) => {
         cufe: null,
         pdf_url: null,
         estado: 'recibo_interno',
-        nota: 'Este es un recibo interno (sin RUT registrado), no una factura electrónica válida ante la DIAN.'
+        nota: ''
       };
     }
 
