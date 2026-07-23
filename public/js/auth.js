@@ -36,16 +36,27 @@ async function iniciarSesionConGoogle() {
 // login normal, para que el resto del sistema no note la diferencia.
 async function completarLoginGoogle() {
   try {
-    const cliente = await obtenerClienteSupabasePublico();
-    const { data, error } = await cliente.auth.getSession();
-    if (error || !data.session) throw new Error('No se pudo completar el inicio de sesión');
+    // Google/Supabase dejan la sesión en el "hash" de la URL (después del #).
+    // La leemos directamente en vez de depender de la librería del navegador
+    // para "adivinarla" — así evitamos cualquier incompatibilidad de versión
+    // entre esa librería y el formato nuevo de llaves de Supabase.
+    const parametros = new URLSearchParams(window.location.hash.slice(1));
+    const token = parametros.get('access_token');
+    if (!token) throw new Error('No se recibió la sesión de Google en la URL');
 
-    const usuario = data.session.user;
-    localStorage.setItem('token_sesion', data.session.access_token);
+    // Validamos el token contra nuestro propio backend (el mismo mecanismo
+    // que usa el resto del sistema, ya probado y funcionando).
+    const respuesta = await fetch('/api/auth/yo', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const usuario = await respuesta.json();
+    if (!respuesta.ok) throw new Error(usuario.error || 'No se pudo validar la sesión');
+
+    localStorage.setItem('token_sesion', token);
     localStorage.setItem('usuario_sesion', JSON.stringify({
       id: usuario.id,
-      correo: usuario.email,
-      nombre: usuario.user_metadata?.full_name || usuario.user_metadata?.name || usuario.email
+      correo: usuario.correo,
+      nombre: usuario.nombre || usuario.correo
     }));
     window.location.href = '/';
   } catch (err) {

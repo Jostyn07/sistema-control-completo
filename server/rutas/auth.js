@@ -70,7 +70,10 @@ router.get('/yo', async (req, res, next) => {
     res.json({
       id: data.user.id,
       correo: data.user.email,
-      nombre: data.user.user_metadata?.nombre || ''
+      nombre: data.user.user_metadata?.nombre
+        || data.user.user_metadata?.full_name
+        || data.user.user_metadata?.name
+        || ''
     });
   } catch (err) { next(err); }
 });
