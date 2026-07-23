@@ -6,6 +6,23 @@
 let modoRegistro = false;
 let clienteSupabasePublico = null;
 
+// Después de cualquier login (normal o con Google), decide si hay que
+// pedir un método de pago antes de dejar entrar al dashboard. Solo
+// aplica mientras la cuenta está en período de prueba y todavía no
+// tiene ninguna tarjeta guardada — nunca a cuentas ya activas.
+async function redirigirTrasLogin() {
+  try {
+    const r = await API.obtener('/api/suscripcion/mi-suscripcion');
+    if (r.estado === 'prueba' && !r.tiene_metodo_pago) {
+      window.location.href = '/agregar-metodo-pago.html';
+      return;
+    }
+  } catch (err) {
+    // si falla la consulta, no bloqueamos el ingreso por eso
+  }
+  window.location.href = '/';
+}
+
 // Crea (una sola vez) el cliente de Supabase del navegador, usando SOLO la
 // llave pública. Se usa exclusivamente para el redireccionamiento a Google;
 // todo lo demás del sistema sigue pasando por nuestro backend.
@@ -42,6 +59,7 @@ async function completarLoginGoogle() {
     // entre esa librería y el formato nuevo de llaves de Supabase.
     const parametros = new URLSearchParams(window.location.hash.slice(1));
     const token = parametros.get('access_token');
+    const refreshToken = parametros.get('refresh_token');
     if (!token) throw new Error('No se recibió la sesión de Google en la URL');
 
     // Validamos el token contra nuestro propio backend (el mismo mecanismo
@@ -53,12 +71,13 @@ async function completarLoginGoogle() {
     if (!respuesta.ok) throw new Error(usuario.error || 'No se pudo validar la sesión');
 
     localStorage.setItem('token_sesion', token);
+    if (refreshToken) localStorage.setItem('refresh_token_sesion', refreshToken);
     localStorage.setItem('usuario_sesion', JSON.stringify({
       id: usuario.id,
       correo: usuario.correo,
       nombre: usuario.nombre || usuario.correo
     }));
-    window.location.href = '/';
+    await redirigirTrasLogin();
   } catch (err) {
     mostrarAviso(err.message, 'error');
     setTimeout(() => { window.location.href = '/login.html'; }, 1500);
@@ -101,8 +120,9 @@ async function enviarFormulario() {
       if (!resultado.ok) throw new Error(datos.error || 'No se pudo iniciar sesión');
 
       localStorage.setItem('token_sesion', datos.token);
+      localStorage.setItem('refresh_token_sesion', datos.refresh_token);
       localStorage.setItem('usuario_sesion', JSON.stringify(datos.usuario));
-      window.location.href = '/';
+      await redirigirTrasLogin();
     }
   } catch (err) {
     mostrarAviso(err.message, 'error');
@@ -131,6 +151,7 @@ function mostrarUsuarioActual() {
 
 function cerrarSesion() {
   localStorage.removeItem('token_sesion');
+  localStorage.removeItem('refresh_token_sesion');
   localStorage.removeItem('usuario_sesion');
   window.location.href = '/login.html';
 }

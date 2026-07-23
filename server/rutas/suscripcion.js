@@ -10,9 +10,18 @@
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
-const { obtenerCredenciales } = require('../servicios/epayco');
+const { obtenerCredenciales, registrarMetodoPago } = require('../servicios/epayco');
 const { sincronizarEstadoSuscripcion, tienePagoAceptadoPrevio } = require('../servicios/suscripcion');
 const router = express.Router();
+
+// GET /api/suscripcion/llave-publica-epayco — la Public Key es
+// segura de exponer, pero solo se la damos a quien ya tiene sesión.
+router.get('/llave-publica-epayco', async (req, res, next) => {
+  try {
+    const { publicKey } = obtenerCredenciales();
+    res.json({ public_key: publicKey });
+  } catch (err) { next(err); }
+});
 
 // GET /api/suscripcion/planes
 router.get('/planes', async (req, res, next) => {
@@ -38,7 +47,38 @@ router.get('/mi-suscripcion', async (req, res, next) => {
       .eq('usuario_id', req.usuarioId)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    res.json(data || { estado: 'sin_suscripcion' });
+    res.json(data ? { ...data, tiene_metodo_pago: !!data.epayco_customer_id } : { estado: 'sin_suscripcion' });
+  } catch (err) { next(err); }
+});
+
+// POST /api/suscripcion/agregar-metodo-pago — cuerpo: { token, nombre, apellido, telefono }
+// El "token" ya lo generó el navegador hablando directo con ePayco;
+// aquí NUNCA llega el número de tarjeta real.
+router.post('/agregar-metodo-pago', async (req, res, next) => {
+  try {
+    const { token, nombre, apellido, telefono } = req.body;
+    if (!token) return res.status(400).json({ error: 'Falta el token de la tarjeta' });
+    if (!nombre || !nombre.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
+
+    const cliente = await registrarMetodoPago({
+      token, nombre: nombre.trim(), apellido: (apellido || '').trim(),
+      correo: req.usuarioEmail, telefono
+    });
+
+    const infoTarjeta = (cliente.data && cliente.data.franchise) ? cliente.data : (cliente.data || {});
+
+    const { error: eUpd } = await supabase
+      .from('suscripciones')
+      .update({
+        epayco_customer_id: cliente.data ? cliente.data.customerId || cliente.data.id_customer : null,
+        tarjeta_franquicia: infoTarjeta.franchise || null,
+        tarjeta_ultimos_4: infoTarjeta.mask ? String(infoTarjeta.mask).slice(-4) : null,
+        actualizado_en: new Date().toISOString()
+      })
+      .eq('usuario_id', req.usuarioId);
+    if (eUpd) throw new Error(eUpd.message);
+
+    res.json({ guardado: true });
   } catch (err) { next(err); }
 });
 

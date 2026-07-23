@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agrega un método de pago — Sistema de Control</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <main class="pagina-login">
+    <div class="tarjeta tarjeta-login" style="max-width:420px">
+      <h1>Tienes 7 días de prueba gratis</h1>
+      <p class="texto-secundario">
+        No se te cobra nada ahora. Guarda un método de pago para que, cuando termine
+        tu prueba, puedas seguir usando el sistema sin interrupciones — con 50% de
+        descuento tu primer mes.
+      </p>
+
+      <form id="formTarjeta">
+        <label class="campo">
+          <span class="campo__etiqueta">Nombre en la tarjeta *</span>
+          <input type="text" name="name" id="campoNombreTitular" required>
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Apellido *</span>
+          <input type="text" name="last-name" id="campoApellidoTitular" required>
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Número de tarjeta *</span>
+          <input type="text" name="number" id="campoNumeroTarjeta" inputmode="numeric" placeholder="0000 0000 0000 0000" required>
+        </label>
+        <div class="fila-campos">
+          <label class="campo">
+            <span class="campo__etiqueta">Mes de vencimiento *</span>
+            <input type="text" name="exp-month" id="campoMesVencimiento" placeholder="MM" maxlength="2" required>
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">Año de vencimiento *</span>
+            <input type="text" name="exp-year" id="campoAnioVencimiento" placeholder="AAAA" maxlength="4" required>
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">CVC *</span>
+            <input type="text" name="cvc" id="campoCVC" inputmode="numeric" maxlength="4" required>
+          </label>
+        </div>
+        <label class="campo">
+          <span class="campo__etiqueta">Teléfono (opcional)</span>
+          <input type="tel" id="campoTelefonoTitular">
+        </label>
+
+        <button type="submit" class="boton boton--primario boton--ancho" id="botonGuardarTarjeta">Guardar método de pago</button>
+      </form>
+      <p class="texto-secundario" style="text-align:center;margin-top:10px">
+        <a href="suscripcion.html">Prefiero hacerlo más tarde desde Suscripción</a>
+      </p>
+    </div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://checkout.epayco.co/epayco.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/agregar-metodo-pago.js"></script>
+  <script>
+    if (!exigirSesion()) { /* exigirSesion ya redirige a login si no hay token */ }
+  </script>
+</body>
+</html>

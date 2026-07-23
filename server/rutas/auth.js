@@ -58,11 +58,31 @@ router.post('/login', async (req, res, next) => {
 
     res.json({
       token: data.session.access_token,
+      refresh_token: data.session.refresh_token,
       usuario: {
         id: data.user.id,
         correo: data.user.email,
         nombre: data.user.user_metadata?.nombre || ''
       }
+    });
+  } catch (err) { next(err); }
+});
+
+// POST /api/auth/refrescar — cuerpo: { refresh_token }
+// Renueva la sesión sin que la persona tenga que volver a iniciar sesión.
+// Los tokens de Supabase expiran cada hora por diseño; el frontend llama
+// esto automáticamente cuando eso pasa, de forma transparente.
+router.post('/refrescar', async (req, res, next) => {
+  try {
+    const { refresh_token } = req.body;
+    if (!refresh_token) return res.status(400).json({ error: 'Falta el refresh_token' });
+
+    const { data, error } = await supabase.auth.refreshSession({ refresh_token });
+    if (error || !data.session) return res.status(401).json({ error: 'No se pudo renovar la sesión' });
+
+    res.json({
+      token: data.session.access_token,
+      refresh_token: data.session.refresh_token
     });
   } catch (err) { next(err); }
 });
