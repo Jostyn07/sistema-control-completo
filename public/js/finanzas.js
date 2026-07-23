@@ -41,14 +41,23 @@ async function cargarResumenFinanciero() {
         <span class="indicador__valor">${formatearPesos(r.ingresos_mes)}</span>
       </div>
       <div class="indicador tarjeta">
-        <span class="campo__etiqueta">Costos del mes (variables + fijos)</span>
-        <span class="indicador__valor">${formatearPesos(r.costos_variables_mes + r.costos_fijos_mes)}</span>
-        <span class="texto-secundario">${formatearPesos(r.costos_variables_mes)} variables · ${formatearPesos(r.costos_fijos_mes)} fijos</span>
+        <span class="campo__etiqueta">Costo de ventas</span>
+        <span class="indicador__valor">${formatearPesos(r.costo_ventas_mes)}</span>
+        <span class="texto-secundario">materiales + mano de obra de lo vendido</span>
       </div>
       <div class="indicador tarjeta">
-        <span class="campo__etiqueta">Utilidad del mes</span>
-        <span class="indicador__valor ${colorUtilidad}">${formatearPesos(r.utilidad_mes)}</span>
-        ${r.margen_contribucion_ponderado != null ? `<span class="texto-secundario">Margen de contribución ponderado: ${r.margen_contribucion_ponderado}%</span>` : ''}
+        <span class="campo__etiqueta">Utilidad bruta</span>
+        <span class="indicador__valor ${r.utilidad_bruta_mes >= 0 ? 'indicador__valor--positivo' : 'indicador__valor--negativo'}">${formatearPesos(r.utilidad_bruta_mes)}</span>
+        ${r.margen_bruto_pct != null ? `<span class="texto-secundario">Margen bruto: ${r.margen_bruto_pct}%</span>` : ''}
+      </div>
+      <div class="indicador tarjeta">
+        <span class="campo__etiqueta">Costos fijos del mes</span>
+        <span class="indicador__valor">${formatearPesos(r.costos_fijos_mes)}</span>
+      </div>
+      <div class="indicador tarjeta">
+        <span class="campo__etiqueta">Utilidad operativa</span>
+        <span class="indicador__valor ${colorUtilidad}">${formatearPesos(r.utilidad_operativa_mes)}</span>
+        <span class="texto-secundario">utilidad bruta − costos fijos</span>
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Punto de equilibrio mensual</span>
@@ -59,6 +68,11 @@ async function cargarResumenFinanciero() {
         <span class="campo__etiqueta">ROI acumulado</span>
         <span class="indicador__valor ${r.roi_acumulado != null && r.roi_acumulado < 0 ? 'indicador__valor--negativo' : ''}">${textoRoi}</span>
         <span class="texto-secundario">${subtextoRoi}</span>
+      </div>
+      <div class="indicador tarjeta">
+        <span class="campo__etiqueta">Valor del inventario</span>
+        <span class="indicador__valor">${formatearPesos(r.valor_inventario)}</span>
+        <span class="texto-secundario">materiales sin vender, a su costo actual</span>
       </div>`;
 
     document.getElementById('panelFlujoCaja').innerHTML = `
@@ -90,6 +104,34 @@ async function cargarResumenFinanciero() {
   } catch (err) {
     panel.innerHTML = `<p class="tabla__vacio">No se pudo cargar el resumen: ${escaparHtml(err.message)}</p>`;
     document.getElementById('panelFlujoCaja').innerHTML = '';
+  }
+}
+
+// ---- Rentabilidad por producto (con lo REALMENTE vendido este mes) ----
+async function cargarRentabilidadProductos() {
+  const cuerpo = document.getElementById('cuerpoRentabilidad');
+  try {
+    const lista = await API.obtener('/api/finanzas/rentabilidad-productos');
+    if (lista.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="6" class="tabla__vacio">Aún no hay ventas este mes para analizar.</td></tr>';
+      return;
+    }
+    cuerpo.innerHTML = lista.map((p, i) => {
+      let clase = '';
+      if (p.margen < 0) clase = ' style="color:#b91c1c"';
+      else if (i === 0) clase = ' style="color:#16a34a;font-weight:600"';
+      return `
+      <tr>
+        <td${clase}>${escaparHtml(p.nombre)}</td>
+        <td>${p.unidades}</td>
+        <td>${formatearPesos(p.ingresos)}</td>
+        <td>${formatearPesos(p.costo)}</td>
+        <td${clase}>${formatearPesos(p.margen)} (${p.margen_pct}%)</td>
+        <td>${p.porcentaje_del_margen_total}%</td>
+      </tr>`;
+    }).join('');
+  } catch (err) {
+    cuerpo.innerHTML = `<tr><td colspan="6" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -252,6 +294,7 @@ async function cargarGraficoMensual() {
 // ---- Utilidades ----
 function refrescarTodo() {
   cargarResumenFinanciero();
+  cargarRentabilidadProductos();
   cargarCostosFijos();
   cargarCapital();
   cargarGraficoMensual();

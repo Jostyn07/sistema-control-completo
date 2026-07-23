@@ -38,6 +38,22 @@ router.get('/resumen', async (req, res, next) => {
     const costosFijos = await obtenerCostosFijosMensuales(req.usuarioId);
     const utilidadMes = ingresosMes - costosVariablesMes - costosFijos.total;
 
+    // Estado de resultados en cascada: utilidad bruta (antes de fijos)
+    // vs. utilidad operativa (después de fijos) — son problemas distintos:
+    // si la bruta ya es mala, el problema está en precios/costo de producción;
+    // si la bruta está bien pero la operativa no, el problema son los fijos.
+    const utilidadBrutaMes = ingresosMes - costosVariablesMes;
+    const margenBrutoPct = ingresosMes > 0 ? Math.round((utilidadBrutaMes / ingresosMes) * 1000) / 10 : null;
+    const utilidadOperativaMes = utilidadBrutaMes - costosFijos.total;
+
+    // Valor del inventario: cuánto dinero tienes inmovilizado en materiales
+    // sin vender todavía (stock actual × costo unitario de cada uno).
+    const { data: materialesInv, error: eInv } = await supabase
+      .from('materiales').select('stock_actual, costo_unitario').eq('usuario_id', req.usuarioId).eq('activo', true);
+    if (eInv) throw new Error(eInv.message);
+    const valorInventario = (materialesInv || []).reduce(
+      (s, m) => s + Number(m.stock_actual) * Number(m.costo_unitario), 0);
+
     // Compras del mes: dinero REAL gastado comprando materiales (por fecha
     // del pedido, sin importar si ya llegó). Es un número distinto al
     // "costo de lo vendido" de arriba: ese es lo que costó fabricar lo que
@@ -97,6 +113,11 @@ router.get('/resumen', async (req, res, next) => {
       costos_variables_mes: Math.round(costosVariablesMes * 100) / 100,
       costos_fijos_mes: costosFijos.total,
       utilidad_mes: Math.round(utilidadMes * 100) / 100,
+      costo_ventas_mes: Math.round(costosVariablesMes * 100) / 100,
+      utilidad_bruta_mes: Math.round(utilidadBrutaMes * 100) / 100,
+      margen_bruto_pct: margenBrutoPct,
+      utilidad_operativa_mes: Math.round(utilidadOperativaMes * 100) / 100,
+      valor_inventario: Math.round(valorInventario * 100) / 100,
       compras_mes: Math.round(comprasMesTotal * 100) / 100,
       flujo_caja_mes: Math.round(flujoCajaMes * 100) / 100,
       margen_contribucion_ponderado: margenContribucion != null ? Math.round(margenContribucion * 1000) / 10 : null,
@@ -231,6 +252,56 @@ router.get('/historico-mensual', async (req, res, next) => {
     }
 
     res.json(historico);
+  } catch (err) { next(err); }
+});
+
+// GET /api/finanzas/rentabilidad-productos — margen de cada producto,
+// con lo REALMENTE vendido este mes (no el margen teórico de la ficha
+// técnica). Ordenado de mayor a menor margen, para ver de un vistazo
+// qué productos sostienen el negocio y cuáles no dejan nada.
+router.get('/rentabilidad-productos', async (req, res, next) => {
+  try {
+    const ahora = new Date();
+    const desdeMes = inicioDeMes(ahora).toISOString();
+
+    const { data: items, error } = await supabase
+      .from('ventas_items')
+      .select('cantidad, precio_unitario, costo_unitario, producto_id, productos(nombre), ventas!inner(fecha, usuario_id)')
+      .eq('ventas.usuario_id', req.usuarioId)
+      .gte('ventas.fecha', desdeMes);
+    if (error) throw new Error(error.message);
+
+    const porProducto = new Map();
+    for (const item of items || []) {
+      const id = item.producto_id;
+      const previo = porProducto.get(id) || {
+        producto_id: id,
+        nombre: item.productos ? item.productos.nombre : 'Producto eliminado',
+        unidades: 0, ingresos: 0, costo: 0
+      };
+      previo.unidades += Number(item.cantidad);
+      previo.ingresos += Number(item.precio_unitario) * Number(item.cantidad);
+      previo.costo += Number(item.costo_unitario) * Number(item.cantidad);
+      porProducto.set(id, previo);
+    }
+
+    const margenTotal = [...porProducto.values()].reduce((s, p) => s + (p.ingresos - p.costo), 0);
+
+    const lista = [...porProducto.values()].map(p => {
+      const margen = Math.round((p.ingresos - p.costo) * 100) / 100;
+      return {
+        producto_id: p.producto_id,
+        nombre: p.nombre,
+        unidades: p.unidades,
+        ingresos: Math.round(p.ingresos * 100) / 100,
+        costo: Math.round(p.costo * 100) / 100,
+        margen,
+        margen_pct: p.ingresos > 0 ? Math.round((margen / p.ingresos) * 1000) / 10 : 0,
+        porcentaje_del_margen_total: margenTotal > 0 ? Math.round((margen / margenTotal) * 1000) / 10 : 0
+      };
+    }).sort((a, b) => b.margen - a.margen);
+
+    res.json(lista);
   } catch (err) { next(err); }
 });
 
