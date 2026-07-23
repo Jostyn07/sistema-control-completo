@@ -13,8 +13,17 @@ async function requiereSuscripcionActiva(req, res, next) {
 
   try {
     const sub = await sincronizarEstadoSuscripcion(req.usuarioId);
-    const estado = calcularBloqueo(sub);
 
+    // Sin ninguna fila de suscripción (nunca se creó la prueba, por ejemplo)
+    // se trata igual que vencida-sin-gracia: no se deja crear ni editar.
+    if (!sub) {
+      return res.status(403).json({
+        error: 'No tienes ninguna suscripción registrada. Elige un plan en Suscripción para poder crear o editar información.',
+        suscripcion_vencida: true
+      });
+    }
+
+    const estado = calcularBloqueo(sub);
     if (!estado.bloqueada) return next();
 
     res.status(403).json({

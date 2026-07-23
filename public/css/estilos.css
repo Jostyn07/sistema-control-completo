@@ -278,7 +278,7 @@ a:hover { color: var(--accent); }
 
 /* ---- Suscripción: tarjetas de comparación de planes ---- */
 .planes-comparacion { display: flex; flex-wrap: wrap; justify-content: center; gap: 24px; align-items: stretch; }
-.tarjeta-plan { flex: 0 1 300px; }
+.tarjeta-plan { flex: 0 1 240px; max-width: 300px; }
 
 .tarjeta-plan {
   position: relative;
