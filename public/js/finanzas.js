@@ -173,6 +173,53 @@ async function cargarResumenFinanciero() {
 }
 
 // ---- Rentabilidad por producto (con lo REALMENTE vendido este mes) ----
+// ---- Análisis de clientes ----
+async function cargarAnalisisClientes() {
+  const resumen = document.getElementById('resumenClientes');
+  const cuerpo = document.getElementById('cuerpoClientes');
+  try {
+    const r = await API.obtener('/api/finanzas/clientes');
+
+    resumen.innerHTML = `
+      <div class="indicador tarjeta">
+        <span class="campo__etiqueta">Clientes distintos</span>
+        <span class="indicador__valor">${r.resumen.total_clientes}</span>
+      </div>
+      <div class="indicador tarjeta">
+        <span class="campo__etiqueta">Clientes recurrentes</span>
+        <span class="indicador__valor">${r.resumen.clientes_recurrentes}</span>
+        <span class="texto-secundario">${r.resumen.pct_recurrentes}% del total</span>
+      </div>
+      <div class="indicador tarjeta">
+        <span class="campo__etiqueta">Ticket promedio general</span>
+        <span class="indicador__valor">${formatearPesos(r.resumen.ticket_promedio_general)}</span>
+      </div>`;
+
+    if (r.clientes.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="7" class="tabla__vacio">Aún no hay ventas registradas.</td></tr>';
+      return;
+    }
+
+    cuerpo.innerHTML = r.clientes.map((c, i) => `
+      <tr>
+        <td${i === 0 ? ' style="font-weight:600"' : ''}>${escaparHtml(c.nombre)}</td>
+        <td>${c.compras}</td>
+        <td>${formatearPesos(c.total_gastado)}</td>
+        <td>${formatearPesos(c.ticket_promedio)}</td>
+        <td>${formatearFechaCliente(c.primera_compra)}</td>
+        <td>${formatearFechaCliente(c.ultima_compra)}</td>
+        <td>${c.recurrente ? '<span class="etiqueta-estado etiqueta-estado--listo">Recurrente</span>' : ''}</td>
+      </tr>`).join('');
+  } catch (err) {
+    resumen.innerHTML = '';
+    cuerpo.innerHTML = `<tr><td colspan="7" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
+  }
+}
+
+function formatearFechaCliente(fecha) {
+  return new Date(fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 async function cargarRentabilidadProductos() {
   const cuerpo = document.getElementById('cuerpoRentabilidad');
   try {
@@ -360,6 +407,7 @@ async function cargarGraficoMensual() {
 function refrescarTodo() {
   cargarResumenFinanciero();
   cargarRentabilidadProductos();
+  cargarAnalisisClientes();
   cargarCostosFijos();
   cargarCapital();
   cargarGraficoMensual();

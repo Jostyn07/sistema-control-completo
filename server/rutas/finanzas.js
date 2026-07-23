@@ -332,4 +332,55 @@ router.get('/rentabilidad-productos', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/finanzas/clientes — quién compra más, con qué frecuencia, y el
+// ticket promedio. Es histórico completo (no solo del mes), porque para
+// identificar clientes recurrentes hace falta ver todo el tiempo que llevas
+// vendiendo, no solo lo último.
+router.get('/clientes', async (req, res, next) => {
+  try {
+    const { data: ventas, error } = await supabase
+      .from('ventas')
+      .select('cliente, total, fecha')
+      .eq('usuario_id', req.usuarioId)
+      .order('fecha', { ascending: true });
+    if (error) throw new Error(error.message);
+
+    const porCliente = new Map();
+    for (const v of ventas || []) {
+      const nombre = (v.cliente && v.cliente.trim()) || 'Sin nombre registrado';
+      const previo = porCliente.get(nombre) || { nombre, compras: 0, total: 0, primera: v.fecha, ultima: v.fecha };
+      previo.compras += 1;
+      previo.total += Number(v.total);
+      if (v.fecha < previo.primera) previo.primera = v.fecha;
+      if (v.fecha > previo.ultima) previo.ultima = v.fecha;
+      porCliente.set(nombre, previo);
+    }
+
+    const lista = [...porCliente.values()].map(c => ({
+      nombre: c.nombre,
+      compras: c.compras,
+      total_gastado: Math.round(c.total * 100) / 100,
+      ticket_promedio: Math.round((c.total / c.compras) * 100) / 100,
+      primera_compra: c.primera,
+      ultima_compra: c.ultima,
+      recurrente: c.compras > 1
+    })).sort((a, b) => b.total_gastado - a.total_gastado);
+
+    const totalClientes = lista.length;
+    const recurrentes = lista.filter(c => c.recurrente).length;
+    const totalGeneral = lista.reduce((s, c) => s + c.total_gastado, 0);
+    const totalCompras = lista.reduce((s, c) => s + c.compras, 0);
+
+    res.json({
+      clientes: lista,
+      resumen: {
+        total_clientes: totalClientes,
+        clientes_recurrentes: recurrentes,
+        pct_recurrentes: totalClientes > 0 ? Math.round((recurrentes / totalClientes) * 1000) / 10 : 0,
+        ticket_promedio_general: totalCompras > 0 ? Math.round((totalGeneral / totalCompras) * 100) / 100 : 0
+      }
+    });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
