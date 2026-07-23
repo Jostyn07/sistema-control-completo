@@ -38,6 +38,17 @@ router.get('/resumen', async (req, res, next) => {
     const costosFijos = await obtenerCostosFijosMensuales(req.usuarioId);
     const utilidadMes = ingresosMes - costosVariablesMes - costosFijos.total;
 
+    // Compras del mes: dinero REAL gastado comprando materiales (por fecha
+    // del pedido, sin importar si ya llegó). Es un número distinto al
+    // "costo de lo vendido" de arriba: ese es lo que costó fabricar lo que
+    // se VENDIÓ; esto es lo que salió del bolsillo comprando materiales,
+    // se hayan usado ya o no. Ambos importan para entender el negocio.
+    const { data: comprasMes, error: eComprasMes } = await supabase
+      .from('compras').select('total').eq('usuario_id', req.usuarioId).gte('fecha', desdeMes);
+    if (eComprasMes) throw new Error(eComprasMes.message);
+    const comprasMesTotal = (comprasMes || []).reduce((s, c) => s + Number(c.total), 0);
+    const flujoCajaMes = ingresosMes - comprasMesTotal - costosFijos.total;
+
     let puntoEquilibrio = null;
     let margenContribucion = null;
     let notaEquilibrio = null;
@@ -86,6 +97,8 @@ router.get('/resumen', async (req, res, next) => {
       costos_variables_mes: Math.round(costosVariablesMes * 100) / 100,
       costos_fijos_mes: costosFijos.total,
       utilidad_mes: Math.round(utilidadMes * 100) / 100,
+      compras_mes: Math.round(comprasMesTotal * 100) / 100,
+      flujo_caja_mes: Math.round(flujoCajaMes * 100) / 100,
       margen_contribucion_ponderado: margenContribucion != null ? Math.round(margenContribucion * 1000) / 10 : null,
       punto_equilibrio: puntoEquilibrio,
       falta_para_equilibrio: puntoEquilibrio != null ? Math.max(0, Math.round((puntoEquilibrio - ingresosMes) * 100) / 100) : null,
@@ -187,6 +200,13 @@ router.get('/historico-mensual', async (req, res, next) => {
       .gte('fecha', desde.toISOString());
     if (error) throw new Error(error.message);
 
+    const { data: compras, error: eCompras } = await supabase
+      .from('compras')
+      .select('total, fecha')
+      .eq('usuario_id', req.usuarioId)
+      .gte('fecha', desde.toISOString());
+    if (eCompras) throw new Error(eCompras.message);
+
     const costosFijos = await obtenerCostosFijosMensuales(req.usuarioId);
 
     const historico = [];
@@ -194,15 +214,19 @@ router.get('/historico-mensual', async (req, res, next) => {
       const mesFecha = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
       const clave = claveMes(mesFecha);
       const ventasDelMes = (ventas || []).filter(v => claveMes(v.fecha) === clave);
+      const comprasDelMes = (compras || []).filter(c => claveMes(c.fecha) === clave);
       const ingresos = ventasDelMes.reduce((s, v) => s + Number(v.total), 0);
       const variables = ventasDelMes.reduce((s, v) => s + Number(v.costo_total), 0);
+      const comprasTotal = comprasDelMes.reduce((s, c) => s + Number(c.total), 0);
       historico.push({
         mes: clave,
         ingresos: Math.round(ingresos * 100) / 100,
         costos_variables: Math.round(variables * 100) / 100,
         costos_fijos: costosFijos.total,
         costos_totales: Math.round((variables + costosFijos.total) * 100) / 100,
-        utilidad: Math.round((ingresos - variables - costosFijos.total) * 100) / 100
+        utilidad: Math.round((ingresos - variables - costosFijos.total) * 100) / 100,
+        compras: Math.round(comprasTotal * 100) / 100,
+        flujo_caja: Math.round((ingresos - comprasTotal - costosFijos.total) * 100) / 100
       });
     }
 

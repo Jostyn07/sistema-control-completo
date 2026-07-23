@@ -17,6 +17,7 @@ async function cargarResumenFinanciero() {
     const r = await API.obtener('/api/finanzas/resumen');
 
     const colorUtilidad = r.utilidad_mes >= 0 ? 'indicador__valor--positivo' : 'indicador__valor--negativo';
+    const colorFlujo = r.flujo_caja_mes >= 0 ? 'indicador__valor--positivo' : 'indicador__valor--negativo';
 
     let textoEquilibrio, subtextoEquilibrio = '';
     if (r.punto_equilibrio != null) {
@@ -59,8 +60,36 @@ async function cargarResumenFinanciero() {
         <span class="indicador__valor ${r.roi_acumulado != null && r.roi_acumulado < 0 ? 'indicador__valor--negativo' : ''}">${textoRoi}</span>
         <span class="texto-secundario">${subtextoRoi}</span>
       </div>`;
+
+    document.getElementById('panelFlujoCaja').innerHTML = `
+      <p class="texto-secundario" style="margin:0 0 10px">
+        Esto es distinto a la "Utilidad del mes" de arriba: ahí se mide cuánto costó fabricar lo que <strong>se vendió</strong>.
+        Aquí se mide el dinero que realmente <strong>entró y salió</strong> este mes, incluyendo lo que gastaste comprando materiales
+        (los hayas usado ya o no).
+      </p>
+      <div class="panel-finanzas" style="margin-bottom:0">
+        <div class="indicador tarjeta">
+          <span class="campo__etiqueta">Ingresos del mes</span>
+          <span class="indicador__valor">${formatearPesos(r.ingresos_mes)}</span>
+        </div>
+        <div class="indicador tarjeta">
+          <span class="campo__etiqueta">Compras del mes</span>
+          <span class="indicador__valor">${formatearPesos(r.compras_mes)}</span>
+          <span class="texto-secundario">materiales comprados, hayan llegado o no</span>
+        </div>
+        <div class="indicador tarjeta">
+          <span class="campo__etiqueta">Costos fijos del mes</span>
+          <span class="indicador__valor">${formatearPesos(r.costos_fijos_mes)}</span>
+        </div>
+        <div class="indicador tarjeta">
+          <span class="campo__etiqueta">Flujo de caja neto</span>
+          <span class="indicador__valor ${colorFlujo}">${formatearPesos(r.flujo_caja_mes)}</span>
+          <span class="texto-secundario">ingresos − compras − costos fijos</span>
+        </div>
+      </div>`;
   } catch (err) {
     panel.innerHTML = `<p class="tabla__vacio">No se pudo cargar el resumen: ${escaparHtml(err.message)}</p>`;
+    document.getElementById('panelFlujoCaja').innerHTML = '';
   }
 }
 
