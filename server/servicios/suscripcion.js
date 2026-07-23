@@ -25,7 +25,10 @@ async function crearPruebaGratis(usuarioId) {
     .limit(1)
     .maybeSingle();
   if (ePlan) throw new Error(ePlan.message);
-  if (!planPrueba) return; // aún no hay planes configurados; no bloquea el registro
+  if (!planPrueba) {
+    console.warn('[crearPruebaGratis] No hay ningún plan activo configurado; no se creó la prueba para', usuarioId);
+    return;
+  }
 
   const ahora = new Date();
   const vencimiento = new Date(ahora);
@@ -39,6 +42,7 @@ async function crearPruebaGratis(usuarioId) {
     fecha_vencimiento: vencimiento.toISOString()
   });
   if (error) throw new Error(error.message);
+  console.log('[crearPruebaGratis] Prueba de 7 días creada para', usuarioId, 'con el plan', planPrueba.id);
 }
 
 // Si la prueba, el plan pagado, o una cancelación ya vencieron, lo marca
