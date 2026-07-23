@@ -204,6 +204,38 @@ function pintarAlertas({ rojosCompra, sinStock, sinFacturar, entregasVencidas })
 }
 
 // ---- Orquestación ----
+// ---- Estado de la suscripción: siempre visible, no como alerta ----
+async function cargarEstadoSuscripcion() {
+  const contenedor = document.getElementById('seccionSuscripcion');
+  try {
+    const r = await API.obtener('/api/suscripcion/mi-suscripcion');
+
+    if (r.estado === 'prueba') {
+      const diasRestantes = r.fecha_vencimiento
+        ? Math.max(0, Math.ceil((new Date(r.fecha_vencimiento) - new Date()) / 86400000))
+        : null;
+      contenedor.innerHTML = `
+        <div class="banner-suscripcion">
+          <span>Prueba gratis${diasRestantes != null ? ` — quedan ${diasRestantes} día(s)` : ''}. No se te ha cobrado nada todavía.</span>
+          <a href="suscripcion.html" class="boton boton--pequeno">Ver planes</a>
+        </div>`;
+      return;
+    }
+    if (r.estado === 'vencida' || r.estado === 'pendiente_pago' || r.estado === 'sin_suscripcion') {
+      contenedor.innerHTML = `
+        <div class="alerta">
+          <span>${r.estado === 'sin_suscripcion' ? 'Aún no tienes ningún plan.' : 'Tu suscripción no está activa.'} Elige un plan para seguir usando el sistema sin interrupciones.</span>
+          <a href="suscripcion.html" class="boton boton--pequeno">Ver planes</a>
+        </div>`;
+      return;
+    }
+    // estado === 'activa': no se muestra nada, no hace falta molestar a quien ya paga
+    contenedor.innerHTML = '';
+  } catch (err) {
+    contenedor.innerHTML = '';
+  }
+}
+
 async function refrescarInicio() {
   const [, , compras, sinStock, sinFacturar, entregas] = await Promise.all([
     cargarIndicadores(),
@@ -214,6 +246,7 @@ async function refrescarInicio() {
     cargarResumenEntregas()
   ]);
   pintarAlertas({ rojosCompra: compras.rojos, sinStock, sinFacturar, entregasVencidas: entregas.vencidas });
+  cargarEstadoSuscripcion();
 
   document.getElementById('indicadorFecha').textContent =
     new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
