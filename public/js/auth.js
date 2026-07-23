@@ -4,6 +4,55 @@
 // ============================================================
 
 let modoRegistro = false;
+let clienteSupabasePublico = null;
+
+// Crea (una sola vez) el cliente de Supabase del navegador, usando SOLO la
+// llave pública. Se usa exclusivamente para el redireccionamiento a Google;
+// todo lo demás del sistema sigue pasando por nuestro backend.
+async function obtenerClienteSupabasePublico() {
+  if (clienteSupabasePublico) return clienteSupabasePublico;
+  const config = await fetch('/api/auth/configuracion-publica').then(r => r.json());
+  if (config.error) throw new Error(config.error);
+  clienteSupabasePublico = window.supabase.createClient(config.url, config.anonKey);
+  return clienteSupabasePublico;
+}
+
+// Botón "Continuar con Google": redirige a Google y vuelve a auth-callback.html
+async function iniciarSesionConGoogle() {
+  try {
+    const cliente = await obtenerClienteSupabasePublico();
+    const { error } = await cliente.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/auth-callback.html' }
+    });
+    if (error) throw error;
+  } catch (err) {
+    mostrarAviso('No se pudo iniciar sesión con Google: ' + err.message, 'error');
+  }
+}
+
+// Se llama desde auth-callback.html cuando Google ya redirigió de vuelta.
+// Toma la sesión que Supabase dejó en la URL y la guarda igual que el
+// login normal, para que el resto del sistema no note la diferencia.
+async function completarLoginGoogle() {
+  try {
+    const cliente = await obtenerClienteSupabasePublico();
+    const { data, error } = await cliente.auth.getSession();
+    if (error || !data.session) throw new Error('No se pudo completar el inicio de sesión');
+
+    const usuario = data.session.user;
+    localStorage.setItem('token_sesion', data.session.access_token);
+    localStorage.setItem('usuario_sesion', JSON.stringify({
+      id: usuario.id,
+      correo: usuario.email,
+      nombre: usuario.user_metadata?.full_name || usuario.user_metadata?.name || usuario.email
+    }));
+    window.location.href = '/';
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+    setTimeout(() => { window.location.href = '/login.html'; }, 1500);
+  }
+}
 
 function alternarModo(evento) {
   if (evento) evento.preventDefault();

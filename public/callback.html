@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciando sesión… — Sistema de Control</title>
+  <link rel="stylesheet" href="/css/estilos.css">
+</head>
+<body>
+  <main class="pagina-login">
+    <div class="tarjeta tarjeta-login" style="text-align:center">
+      <p>Iniciando sesión con Google…</p>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    completarLoginGoogle();
+  </script>
+</body>
+</html>

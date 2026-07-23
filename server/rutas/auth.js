@@ -75,4 +75,16 @@ router.get('/yo', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/auth/configuracion-publica — datos NO secretos que el navegador
+// necesita para hablar directo con Supabase solo durante el login con Google
+// (es el único paso que lo requiere: implica redirigir a Google y volver).
+// SUPABASE_ANON_KEY es la llave pública (Publishable), segura de exponer;
+// nunca se usa aquí la llave secreta.
+router.get('/configuracion-publica', (req, res) => {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+    return res.status(500).json({ error: 'Falta configurar SUPABASE_ANON_KEY en el servidor' });
+  }
+  res.json({ url: process.env.SUPABASE_URL, anonKey: process.env.SUPABASE_ANON_KEY });
+});
+
 module.exports = router;
