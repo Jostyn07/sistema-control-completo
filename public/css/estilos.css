@@ -139,7 +139,7 @@ a:hover { color: var(--accent); }
 /* ---- Productos: tarjetas de listado (elemento discreto: sí llevan filete) ---- */
 .tarjetas-productos { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 30px; }
 .tarjeta-producto { background: transparent; border: none; border-radius: 0; border-bottom: 1px solid var(--hairline); overflow: hidden; padding-bottom: 16px; }
-.tarjeta-producto__foto { width: 100%; height: 150px; object-fit: cover; display: block; filter: grayscale(0.35) contrast(1.15); }
+.tarjeta-producto__foto { width: 100%; height: 150px; object-fit: contain; background-color: var(--bg); display: block; filter: grayscale(0.35) contrast(1.15); }
 .tarjeta-producto__foto--vacia {
   display: flex; align-items: center; justify-content: center;
   color: var(--ink-tenue); background: var(--surface);
