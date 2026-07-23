@@ -8,6 +8,7 @@
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
+const { cifrar, descifrar } = require('../servicios/cifrado');
 const router = express.Router();
 
 const ESTADOS_VALIDOS = ['pendiente', 'en_produccion', 'listo', 'entregado'];
@@ -51,7 +52,7 @@ router.get('/productos-disponibles', async (req, res, next) => {
 // POST /api/ventas
 router.post('/', async (req, res, next) => {
   try {
-    const { cliente, items, forzar } = req.body;
+    const { cliente, cliente_telefono, cliente_cedula, items, forzar } = req.body;
     if (!Array.isArray(items) || items.length === 0)
       return res.status(400).json({ error: 'La venta debe tener al menos un producto' });
     for (const item of items) {
@@ -130,6 +131,8 @@ router.post('/', async (req, res, next) => {
       .insert({
         usuario_id: req.usuarioId,
         cliente: (cliente || '').trim() || null,
+        cliente_telefono_cifrado: cifrar(cliente_telefono),
+        cliente_cedula_cifrada: cifrar(cliente_cedula),
         total, costo_total: costoTotal, estado: 'pendiente'
       })
       .select().single();
@@ -176,7 +179,17 @@ router.get('/', async (req, res, next) => {
 
     const { data, error } = await consulta;
     if (error) throw new Error(error.message);
-    res.json(data);
+
+    // Se descifra solo aquí, en el momento de responder al usuario dueño
+    // de estos datos (la ruta ya exige sesión y filtra por usuario_id).
+    const conDatosDescifrados = (data || []).map(v => ({
+      ...v,
+      cliente_telefono: descifrar(v.cliente_telefono_cifrado),
+      cliente_cedula: descifrar(v.cliente_cedula_cifrada),
+      cliente_telefono_cifrado: undefined,
+      cliente_cedula_cifrada: undefined
+    }));
+    res.json(conDatosDescifrados);
   } catch (err) { next(err); }
 });
 

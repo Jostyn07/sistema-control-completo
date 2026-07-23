@@ -46,6 +46,8 @@ async function abrirNuevaVenta() {
   }
   itemsVentaEnEdicion = [];
   document.getElementById('campoCliente').value = '';
+  document.getElementById('campoClienteTelefono').value = '';
+  document.getElementById('campoClienteCedula').value = '';
   document.getElementById('cantidadVenta').value = '';
   pintarItemsVenta();
   document.getElementById('modalVenta').hidden = false;
@@ -114,6 +116,8 @@ async function registrarVenta(forzar = false) {
   }
   const datosVenta = {
     cliente: document.getElementById('campoCliente').value,
+    cliente_telefono: document.getElementById('campoClienteTelefono').value,
+    cliente_cedula: document.getElementById('campoClienteCedula').value,
     items: itemsVentaEnEdicion.map(i => ({ producto_id: i.producto_id, cantidad: i.cantidad })),
     forzar
   };
@@ -196,13 +200,14 @@ async function cargarHistorialVentas() {
   try {
     const ventas = await API.obtener('/api/ventas' + (filtros.toString() ? '?' + filtros.toString() : ''));
     if (ventas.length === 0) {
-      cuerpo.innerHTML = '<tr><td colspan="7" class="tabla__vacio">No hay ventas con esos filtros.</td></tr>';
+      cuerpo.innerHTML = '<tr><td colspan="8" class="tabla__vacio">No hay ventas con esos filtros.</td></tr>';
       return;
     }
     cuerpo.innerHTML = ventas.map(v => `
       <tr>
         <td>${formatearFecha(v.fecha)}</td>
         <td>${escaparHtml(v.cliente || '—')}</td>
+        <td>${contactoCliente(v)}</td>
         <td>${resumenProductos(v)}</td>
         <td>${formatearPesos(v.total)}</td>
         <td>${formatearPesos(v.costo_total)}</td>
@@ -215,6 +220,13 @@ async function cargarHistorialVentas() {
 }
 
 // ---- Utilidades ----
+function contactoCliente(venta) {
+  const partes = [];
+  if (venta.cliente_telefono) partes.push(escaparHtml(venta.cliente_telefono));
+  if (venta.cliente_cedula) partes.push('CC ' + escaparHtml(venta.cliente_cedula));
+  return partes.length ? partes.join(' · ') : '<span class="texto-secundario">—</span>';
+}
+
 function resumenProductos(venta) {
   return (venta.ventas_items || [])
     .map(i => `${i.cantidad}× ${escaparHtml(i.productos ? i.productos.nombre : 'Producto')}`)

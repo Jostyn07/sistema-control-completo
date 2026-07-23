@@ -64,7 +64,7 @@
       </div>
       <table class="tabla">
         <thead>
-          <tr><th>Fecha</th><th>Cliente</th><th>Productos</th><th>Total</th><th>Costo</th><th>Ganancia</th><th>Estado</th></tr>
+          <tr><th>Fecha</th><th>Cliente</th><th>Contacto</th><th>Productos</th><th>Total</th><th>Costo</th><th>Ganancia</th><th>Estado</th></tr>
         </thead>
         <tbody id="cuerpoHistorial">
           <tr><td colspan="7" class="tabla__vacio">Cargando historial…</td></tr>
@@ -81,6 +81,19 @@
           <span class="campo__etiqueta">Cliente (opcional)</span>
           <input type="text" id="campoCliente" placeholder="Nombre del cliente">
         </label>
+        <div class="fila-campos">
+          <label class="campo">
+            <span class="campo__etiqueta">Teléfono (opcional)</span>
+            <input type="tel" id="campoClienteTelefono" placeholder="Ej: 3001234567">
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">Cédula (opcional)</span>
+            <input type="text" id="campoClienteCedula" placeholder="Ej: 1234567890">
+          </label>
+        </div>
+        <p class="texto-secundario" style="margin:-8px 0 12px">
+          Teléfono y cédula se guardan cifrados; nadie puede leerlos directo desde la base de datos.
+        </p>
 
         <h3>Productos</h3>
         <div class="agregar-material">

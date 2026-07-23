@@ -1,72 +1,171 @@
 // ============================================================
-// SERVICIO DE COMPRAS EN TRÁNSITO — server/servicios/compras.js
-// Una compra ya NO suma stock al registrarse: queda "pendiente" con
-// una fecha estimada de llegada (hoy + tiempo_entrega_dias del
-// material). El stock se suma solo cuando se confirma la llegada:
-//   - automáticamente, cuando se cumple la fecha estimada (se revisa
-//     de forma perezosa cada vez que se consulta inventario/materiales,
-//     sin necesidad de un proceso programado aparte)
-//   - manualmente, si el usuario marca "Llegó" antes de esa fecha
+// MÓDULO 5 — COMPRAS  (/api/compras)
+// Requiere sesión. Todo se filtra por req.usuarioId.
+// - GET  /pendientes    materiales por debajo del punto de reorden
+//                       (también muestra si ya hay un pedido en camino)
+// - POST /              registra el PEDIDO — NO suma stock todavía;
+//                       queda "pendiente" con fecha estimada de llegada
+// - POST /:id/recibir   confirma la llegada manualmente y suma el stock
+// - GET  /en-camino     pedidos hechos que aún no han llegado
+// - GET  /historial     compras pasadas (con su estado) con filtros
 // ============================================================
+const express = require('express');
 const supabase = require('../supabase/cliente');
+const servicioInventario = require('../servicios/inventario');
+const { calcularFechaEstimada, recibirCompra, procesarComprasVencidas } = require('../servicios/compras');
+const router = express.Router();
 
-// Fecha estimada de llegada = hoy + días de entrega del material
-function calcularFechaEstimada(tiempoEntregaDias) {
-  const fecha = new Date();
-  fecha.setDate(fecha.getDate() + Number(tiempoEntregaDias || 0));
-  return fecha.toISOString().slice(0, 10); // YYYY-MM-DD
-}
+// GET /api/compras/pendientes
+router.get('/pendientes', async (req, res, next) => {
+  try {
+    const inventario = await servicioInventario.obtenerInventarioMateriales(req.usuarioId);
 
-// Confirma la llegada de UNA compra puntual: la marca "recibida" y
-// suma su cantidad al stock del material. Se usa tanto para el botón
-// manual "Marcar como llegada" como desde el proceso automático.
-async function recibirCompra(compraId, usuarioId) {
-  const { data: compra, error: eGet } = await supabase
-    .from('compras').select('*').eq('id', compraId).eq('usuario_id', usuarioId).single();
-  if (eGet || !compra) throw new Error('Compra no encontrada');
-  if (compra.estado === 'recibida') return compra; // ya estaba recibida, no duplicar
+    // Pedidos ya en camino, para no sugerir comprar algo que ya se pidió
+    const { data: enCamino, error: eCamino } = await supabase
+      .from('compras')
+      .select('material_id, cantidad, fecha_estimada_llegada')
+      .eq('usuario_id', req.usuarioId)
+      .eq('estado', 'pendiente');
+    if (eCamino) throw new Error(eCamino.message);
 
-  const { data: material, error: eMat } = await supabase
-    .from('materiales').select('stock_actual').eq('id', compra.material_id).eq('usuario_id', usuarioId).single();
-  if (eMat || !material) throw new Error('El material de esta compra ya no existe');
+    const enCaminoPorMaterial = new Map();
+    for (const c of enCamino || []) {
+      const previo = enCaminoPorMaterial.get(c.material_id) || { cantidad: 0, fechaMasCercana: null };
+      previo.cantidad += Number(c.cantidad);
+      if (!previo.fechaMasCercana || c.fecha_estimada_llegada < previo.fechaMasCercana) {
+        previo.fechaMasCercana = c.fecha_estimada_llegada;
+      }
+      enCaminoPorMaterial.set(c.material_id, previo);
+    }
 
-  const nuevoStock = Math.round((Number(material.stock_actual) + Number(compra.cantidad)) * 100) / 100;
-  const { error: eStock } = await supabase
-    .from('materiales')
-    .update({ stock_actual: nuevoStock, actualizado_en: new Date().toISOString() })
-    .eq('id', compra.material_id)
-    .eq('usuario_id', usuarioId);
-  if (eStock) throw new Error(eStock.message);
+    const pendientes = inventario
+      .filter(m => m.estado === 'rojo' || m.estado === 'amarillo')
+      .map(m => {
+        const objetivo = m.punto_reorden * 2;
+        const sugerido = Math.max(1, Math.ceil(objetivo - m.stock_actual));
+        const camino = enCaminoPorMaterial.get(m.id);
+        return {
+          material_id: m.id,
+          nombre: m.nombre,
+          unidad: m.unidad,
+          estado: m.estado,
+          stock_actual: m.stock_actual,
+          punto_reorden: m.punto_reorden,
+          proveedor_sugerido: m.proveedor,
+          tiempo_entrega_dias: m.tiempo_entrega_dias,
+          cantidad_sugerida: sugerido,
+          costo_unitario_actual: m.costo_unitario,
+          costo_estimado: Math.round(sugerido * m.costo_unitario * 100) / 100,
+          ya_en_camino: camino ? camino.cantidad : 0,
+          llega_aprox: camino ? camino.fechaMasCercana : null
+        };
+      })
+      .sort((a, b) => (a.estado === 'rojo' ? 0 : 1) - (b.estado === 'rojo' ? 0 : 1));
 
-  const { data: actualizada, error: eUpd } = await supabase
-    .from('compras')
-    .update({ estado: 'recibida', fecha_llegada: new Date().toISOString() })
-    .eq('id', compraId)
-    .eq('usuario_id', usuarioId)
-    .select().single();
-  if (eUpd) throw new Error(eUpd.message);
+    res.json(pendientes);
+  } catch (err) { next(err); }
+});
 
-  return actualizada;
-}
+// POST /api/compras — registra el PEDIDO. El stock se suma cuando llega.
+router.post('/', async (req, res, next) => {
+  try {
+    const { material_id, proveedor, cantidad, precio_unitario, notas } = req.body;
+    if (!material_id) return res.status(400).json({ error: 'Falta indicar el material' });
+    if (!proveedor || !proveedor.trim()) return res.status(400).json({ error: 'El proveedor es obligatorio' });
+    if (!cantidad || isNaN(cantidad) || Number(cantidad) <= 0)
+      return res.status(400).json({ error: 'La cantidad debe ser mayor a 0' });
+    if (precio_unitario == null || isNaN(precio_unitario) || Number(precio_unitario) < 0)
+      return res.status(400).json({ error: 'El precio unitario debe ser un número mayor o igual a 0' });
 
-// Revisa todas las compras pendientes de un usuario cuya fecha estimada
-// ya pasó, y las marca como recibidas automáticamente (sumando su stock).
-// Se llama al principio de cualquier consulta que muestre stock, para
-// que siempre esté al día sin depender de un proceso programado aparte.
-async function procesarComprasVencidas(usuarioId) {
-  const hoy = new Date().toISOString().slice(0, 10);
-  const { data: vencidas, error } = await supabase
-    .from('compras')
-    .select('id')
-    .eq('usuario_id', usuarioId)
-    .eq('estado', 'pendiente')
-    .lte('fecha_estimada_llegada', hoy);
-  if (error) throw new Error(error.message);
+    const { data: material, error: eGet } = await supabase
+      .from('materiales').select('*').eq('id', material_id).eq('usuario_id', req.usuarioId).single();
+    if (eGet || !material) return res.status(404).json({ error: 'Material no encontrado' });
 
-  for (const compra of vencidas || []) {
-    await recibirCompra(compra.id, usuarioId);
-  }
-  return (vencidas || []).length;
-}
+    const fechaEstimada = calcularFechaEstimada(material.tiempo_entrega_dias);
 
-module.exports = { calcularFechaEstimada, recibirCompra, procesarComprasVencidas };
+    const { data: compra, error: eCompra } = await supabase
+      .from('compras')
+      .insert({
+        usuario_id: req.usuarioId,
+        material_id,
+        proveedor: proveedor.trim(),
+        cantidad: Number(cantidad),
+        precio_unitario: Number(precio_unitario),
+        notas: (notas || '').trim() || null,
+        estado: 'pendiente',
+        fecha_estimada_llegada: fechaEstimada
+      })
+      .select().single();
+    if (eCompra) throw new Error(eCompra.message);
+
+    // El precio pagado se guarda en el historial de todas formas (es
+    // información del costo, independiente de si ya llegó físicamente)
+    const precioDiferente = Number(precio_unitario) !== Number(material.costo_unitario);
+    if (precioDiferente) {
+      const { error: eHist } = await supabase.from('materiales_historial_precio').insert({
+        usuario_id: req.usuarioId,
+        material_id,
+        costo_anterior: material.costo_unitario,
+        costo_nuevo: Number(precio_unitario),
+        origen: 'compra'
+      });
+      if (eHist) throw new Error(eHist.message);
+    }
+
+    res.status(201).json({
+      ...compra,
+      mensaje: `Pedido registrado. Se espera que llegue el ${fechaEstimada}. El stock se sumará automáticamente ese día, o puedes marcarlo como "Llegó" antes si llega primero.`,
+      precio_diferente: precioDiferente,
+      sugerencia: precioDiferente
+        ? `Pagaste un precio distinto al costo registrado (${material.costo_unitario}). Si este es el nuevo precio normal, actualízalo en la pestaña Materiales.`
+        : null
+    });
+  } catch (err) { next(err); }
+});
+
+// POST /api/compras/:id/recibir — confirma la llegada manualmente (llegó antes de lo previsto)
+router.post('/:id/recibir', async (req, res, next) => {
+  try {
+    const compra = await recibirCompra(req.params.id, req.usuarioId);
+    res.json({ ...compra, mensaje: 'Llegada confirmada. El stock ya se sumó.' });
+  } catch (err) { next(err); }
+});
+
+// GET /api/compras/en-camino — pedidos hechos que aún no llegan
+router.get('/en-camino', async (req, res, next) => {
+  try {
+    await procesarComprasVencidas(req.usuarioId); // pone al día los que ya se vencieron
+    const { data, error } = await supabase
+      .from('compras')
+      .select('*, materiales(nombre, unidad)')
+      .eq('usuario_id', req.usuarioId)
+      .eq('estado', 'pendiente')
+      .order('fecha_estimada_llegada', { ascending: true });
+    if (error) throw new Error(error.message);
+    res.json(data);
+  } catch (err) { next(err); }
+});
+
+// GET /api/compras/historial?proveedor=...&desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+router.get('/historial', async (req, res, next) => {
+  try {
+    await procesarComprasVencidas(req.usuarioId);
+
+    let consulta = supabase
+      .from('compras')
+      .select('*, materiales(nombre, unidad)')
+      .eq('usuario_id', req.usuarioId)
+      .order('fecha', { ascending: false })
+      .limit(200);
+
+    if (req.query.proveedor) consulta = consulta.ilike('proveedor', `%${req.query.proveedor}%`);
+    if (req.query.desde) consulta = consulta.gte('fecha', req.query.desde);
+    if (req.query.hasta) consulta = consulta.lte('fecha', req.query.hasta + 'T23:59:59');
+
+    const { data, error } = await consulta;
+    if (error) throw new Error(error.message);
+    res.json(data);
+  } catch (err) { next(err); }
+});
+
+module.exports = router;
