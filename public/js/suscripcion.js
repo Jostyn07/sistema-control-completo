@@ -199,6 +199,11 @@ async function elegirPlan(planId) {
     brickTarjetaActual = await mp.bricks().create('cardPayment', 'brickTarjeta', {
       initialization: { amount: datos.monto },
       callbacks: {
+        onReady: () => {
+          // El Brick ya terminó de renderizar su formulario — no hay
+          // nada más que hacer aquí, pero Mercado Pago exige el
+          // callback igual, aunque quede vacío.
+        },
         onSubmit: (formularioTarjeta) => new Promise((resolve, reject) => {
           API.enviar('/api/suscripcion/procesar-pago', {
             plan_id: planId,
