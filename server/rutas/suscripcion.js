@@ -118,17 +118,14 @@ router.post('/iniciar-pago', async (req, res, next) => {
     const precioLista = Number(plan.precio_mensual);
     const monto = yaPagoAntes ? precioLista : Math.round(precioLista / 2);
 
-    // Deja la suscripción en "pendiente_pago" apuntando a este plan,
-    // así el webhook sabe qué activar cuando confirme el pago.
-    const { error: eUpsert } = await supabase
-      .from('suscripciones')
-      .upsert({
-        usuario_id: req.usuarioId,
-        plan_id: plan.id,
-        estado: 'pendiente_pago',
-        actualizado_en: new Date().toISOString()
-      });
-    if (eUpsert) throw new Error(eUpsert.message);
+    // A propósito, NO se toca la fila de suscripciones aquí. El webhook
+    // ya recibe el usuario y el plan directo de ePayco (extra1/extra2),
+    // así que no hace falta "avisarle" por adelantado escribiendo
+    // "pendiente_pago" — si lo hiciéramos, y la persona cierra el
+    // checkout sin pagar, se perdería el estado real que tenía antes
+    // (días de prueba restantes, o el plan cancelado que aún conserva
+    // vigencia). Solo el webhook, cuando el pago se confirma de
+    // verdad, actualiza esta fila.
 
     const { publicKey, modoPrueba } = obtenerCredenciales();
     const factura = `SUB-${req.usuarioId.slice(0, 8)}-${Date.now()}`;
