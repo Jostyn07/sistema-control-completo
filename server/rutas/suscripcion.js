@@ -11,7 +11,7 @@
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const { obtenerCredenciales, registrarMetodoPago } = require('../servicios/epayco');
-const { sincronizarEstadoSuscripcion, calcularBloqueo, tienePagoAceptadoPrevio } = require('../servicios/suscripcion');
+const { sincronizarEstadoSuscripcion, calcularBloqueo, tienePagoAceptadoPrevio, crearPruebaGratis } = require('../servicios/suscripcion');
 const router = express.Router();
 
 // GET /api/suscripcion/llave-publica-epayco — la Public Key es
@@ -36,7 +36,23 @@ router.get('/planes', async (req, res, next) => {
 // GET /api/suscripcion/mi-suscripcion
 router.get('/mi-suscripcion', async (req, res, next) => {
   try {
-    await sincronizarEstadoSuscripcion(req.usuarioId); // marca "vencida" si ya tocaba
+    let sub = await sincronizarEstadoSuscripcion(req.usuarioId); // marca "vencida" si ya tocaba
+
+    // Red de seguridad: si por cualquier motivo nunca se le creó la
+    // prueba (falla puntual en el registro, o entró por primera vez
+    // con Google, que ni siquiera pasa por /registro), se la damos
+    // aquí mismo — el primer momento en que la cuenta pregunta por
+    // su propio estado. Así no depende de un único punto de falla.
+    if (!sub) {
+      try {
+        await crearPruebaGratis(req.usuarioId);
+        sub = await sincronizarEstadoSuscripcion(req.usuarioId);
+      } catch (errRed) {
+        console.error('[mi-suscripcion] La red de seguridad tampoco pudo crear la prueba:', errRed.message);
+      }
+    }
+
+    if (!sub) return res.json({ estado: 'sin_suscripcion' });
 
     const { data, error } = await supabase
       .from('suscripciones')
@@ -47,8 +63,8 @@ router.get('/mi-suscripcion', async (req, res, next) => {
       .eq('usuario_id', req.usuarioId)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    const bloqueo = data ? calcularBloqueo(data) : { vencida: false, enGracia: false, bloqueada: false, diasGraciaRestantes: null };
-    res.json(data ? { ...data, tiene_metodo_pago: !!data.epayco_customer_id, ...bloqueo } : { estado: 'sin_suscripcion' });
+    const bloqueo = calcularBloqueo(data);
+    res.json({ ...data, tiene_metodo_pago: !!data.epayco_customer_id, ...bloqueo });
   } catch (err) { next(err); }
 });
 
