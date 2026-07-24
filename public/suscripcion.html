@@ -39,7 +39,22 @@
     </section>
   </main>
 
-  <script src="https://checkout.epayco.co/checkout.js"></script>
+  <!-- Modal de pago: aquí se monta el Brick de tarjeta de Mercado
+       Pago. Reemplaza el popup que abría antes ePayco.checkout — con
+       Bricks el formulario vive dentro de nuestra propia página. -->
+  <div class="modal" id="modalPago" hidden>
+    <div class="modal__contenido">
+      <h2>Completa tu pago</h2>
+      <p class="texto-secundario" id="modalPagoResumen"></p>
+      <div id="brickTarjeta"></div>
+      <p class="tabla__vacio" id="modalPagoError" hidden></p>
+      <div class="modal__acciones">
+        <button type="button" class="boton" onclick="cerrarModalPago()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/suscripcion.js"></script>

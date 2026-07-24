@@ -11,6 +11,7 @@
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const { obtenerCredenciales, registrarMetodoPago } = require('../servicios/epayco');
+const mercadopago = require('../servicios/mercadopago');
 const { sincronizarEstadoSuscripcion, calcularBloqueo, tienePagoAceptadoPrevio, crearPruebaGratis } = require('../servicios/suscripcion');
 const router = express.Router();
 
@@ -19,6 +20,14 @@ const router = express.Router();
 router.get('/llave-publica-epayco', async (req, res, next) => {
   try {
     const { publicKey } = obtenerCredenciales();
+    res.json({ public_key: publicKey });
+  } catch (err) { next(err); }
+});
+
+// GET /api/suscripcion/llave-publica-mercadopago
+router.get('/llave-publica-mercadopago', async (req, res, next) => {
+  try {
+    const { publicKey } = mercadopago.obtenerCredenciales();
     res.json({ public_key: publicKey });
   } catch (err) { next(err); }
 });
@@ -127,21 +136,94 @@ router.post('/iniciar-pago', async (req, res, next) => {
     // vigencia). Solo el webhook, cuando el pago se confirma de
     // verdad, actualiza esta fila.
 
-    const { publicKey, modoPrueba } = obtenerCredenciales();
+    const { publicKey } = mercadopago.obtenerCredenciales();
     const factura = `SUB-${req.usuarioId.slice(0, 8)}-${Date.now()}`;
 
     res.json({
       public_key: publicKey,
-      modo_prueba: modoPrueba,
       factura,
       descripcion: `Suscripción ${plan.nombre} — Sistema de Control`,
       monto,
       monto_original: precioLista,
       descuento_aplicado: !yaPagoAntes,
       moneda: 'cop',
-      extra1: req.usuarioId,
-      extra2: plan.id
+      correo: req.usuarioEmail,
+      plan_id: plan.id
     });
+  } catch (err) { next(err); }
+});
+
+// POST /api/suscripcion/procesar-pago — cuerpo: { plan_id, token,
+// payment_method_id, installments }
+// El "token" ya lo generó el Brick de Mercado Pago en el navegador
+// (nunca llega el número de tarjeta real al backend). El monto se
+// vuelve a calcular aquí mismo — nunca se confía en un monto que
+// mande el navegador — para que nadie pueda manipular el descuento
+// del 50% editando la petición.
+router.post('/procesar-pago', async (req, res, next) => {
+  try {
+    const { plan_id, token, payment_method_id, installments } = req.body;
+    if (!plan_id || !token || !payment_method_id)
+      return res.status(400).json({ error: 'Faltan datos del pago' });
+
+    const { data: plan, error: ePlan } = await supabase
+      .from('planes_suscripcion').select('*').eq('id', plan_id).eq('activo', true).single();
+    if (ePlan || !plan) return res.status(404).json({ error: 'Plan no encontrado' });
+
+    const yaPagoAntes = await tienePagoAceptadoPrevio(req.usuarioId);
+    const precioLista = Number(plan.precio_mensual);
+    const monto = yaPagoAntes ? precioLista : Math.round(precioLista / 2);
+    const factura = `SUB-${req.usuarioId.slice(0, 8)}-${Date.now()}`;
+
+    const pago = await mercadopago.crearPago({
+      token,
+      monto,
+      descripcion: `Suscripción ${plan.nombre} — Sistema de Control`,
+      correo: req.usuarioEmail,
+      factura,
+      paymentMethodId: payment_method_id,
+      installments: installments || 1,
+      externalReference: `${req.usuarioId}:${plan.id}`
+    });
+
+    // Registro de trazabilidad — mismo patrón que el webhook, con la
+    // misma llave (mp_payment_id) para que cuando el webhook llegue
+    // después no lo duplique (chequeo de idempotencia en webhooks.js).
+    const { data: yaExiste } = await supabase
+      .from('pagos_suscripcion').select('id').eq('mp_payment_id', String(pago.id)).maybeSingle();
+    if (!yaExiste) {
+      await supabase.from('pagos_suscripcion').insert({
+        usuario_id: req.usuarioId,
+        plan_id: plan.id,
+        mp_payment_id: String(pago.id),
+        monto,
+        estado: pago.status,
+        datos_crudos: pago
+      });
+    }
+
+    // Si Mercado Pago ya respondió "approved" en el momento (lo más
+    // común con tarjetas en Colombia), activamos de una vez — no hace
+    // falta esperar al webhook. Si quedó "in_process"/"pending", el
+    // webhook es quien la activará más adelante cuando se resuelva.
+    if (pago.status === 'approved') {
+      const ahora = new Date();
+      const vencimiento = new Date(ahora);
+      vencimiento.setDate(vencimiento.getDate() + 30);
+      const { error: eSusc } = await supabase
+        .from('suscripciones')
+        .upsert({
+          usuario_id: req.usuarioId,
+          plan_id: plan.id,
+          estado: 'activa',
+          fecha_inicio: ahora.toISOString(),
+          fecha_vencimiento: vencimiento.toISOString(),
+          actualizado_en: ahora.toISOString()
+        });
+      if (eSusc) throw new Error(eSusc.message);
+    }
+
+    res.json({ status: pago.status, status_detail: pago.status_detail, monto });
   } catch (err) { next(err); }
 });
 

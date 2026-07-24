@@ -163,37 +163,88 @@ async function cargarPlanes() {
   }
 }
 
+// ---- Pago con el Brick de tarjeta de Mercado Pago ----
+// Reemplaza el popup que abría antes ePayco.checkout.configure().
+// El SDK (mp) se crea una sola vez; el Brick sí hay que destruirlo
+// y volver a crearlo cada vez que se abre el modal, o Mercado Pago
+// termina montando formularios encima unos de otros.
+let clienteMercadoPago = null;
+let brickTarjetaActual = null;
+
+async function obtenerClienteMercadoPago() {
+  if (clienteMercadoPago) return clienteMercadoPago;
+  const { public_key: llavePublica } = await API.obtener('/api/suscripcion/llave-publica-mercadopago');
+  clienteMercadoPago = new MercadoPago(llavePublica, { locale: 'es-CO' });
+  return clienteMercadoPago;
+}
+
 async function elegirPlan(planId) {
   try {
     const datos = await API.enviar('/api/suscripcion/iniciar-pago', { plan_id: planId });
 
-    if (datos.descuento_aplicado) {
-      mostrarAviso(`Precio con 50% de descuento de tu primer mes: ${formatearPesos(datos.monto)} (normalmente ${formatearPesos(datos.monto_original)})`);
+    document.getElementById('modalPagoResumen').textContent = datos.descuento_aplicado
+      ? `${datos.descripcion} — ${formatearPesos(datos.monto)} con 50% de descuento tu primer mes (normalmente ${formatearPesos(datos.monto_original)})`
+      : `${datos.descripcion} — ${formatearPesos(datos.monto)}/mes`;
+    document.getElementById('modalPagoError').hidden = true;
+
+    const modal = document.getElementById('modalPago');
+    modal.hidden = false;
+
+    if (brickTarjetaActual) {
+      await brickTarjetaActual.unmount();
+      brickTarjetaActual = null;
     }
 
-    const handler = ePayco.checkout.configure({
-      key: datos.public_key,
-      test: datos.modo_prueba
-    });
-
-    handler.open({
-      name: datos.descripcion,
-      description: datos.descripcion,
-      invoice: datos.factura,
-      currency: datos.moneda,
-      amount: String(datos.monto),
-      tax_base: '0',
-      tax: '0',
-      country: 'co',
-      lang: 'es',
-      external: 'false',
-      confirmation: window.location.origin + '/api/webhooks/epayco',
-      response: window.location.origin + '/suscripcion-gracias.html',
-      extra1: datos.extra1,
-      extra2: datos.extra2
+    const mp = await obtenerClienteMercadoPago();
+    brickTarjetaActual = await mp.bricks().create('cardPayment', 'brickTarjeta', {
+      initialization: { amount: datos.monto },
+      callbacks: {
+        onSubmit: (formularioTarjeta) => new Promise((resolve, reject) => {
+          API.enviar('/api/suscripcion/procesar-pago', {
+            plan_id: planId,
+            token: formularioTarjeta.token,
+            payment_method_id: formularioTarjeta.payment_method_id,
+            installments: formularioTarjeta.installments
+          }).then((resultado) => {
+            manejarResultadoPago(resultado);
+            resolve();
+          }).catch((err) => {
+            mostrarErrorEnModal(err.message);
+            reject(err);
+          });
+        }),
+        onError: () => mostrarErrorEnModal('No se pudo validar la tarjeta. Revisa los datos e intenta de nuevo.')
+      }
     });
   } catch (err) {
     mostrarAviso(err.message, 'error');
+  }
+}
+
+function mostrarErrorEnModal(mensaje) {
+  const error = document.getElementById('modalPagoError');
+  error.textContent = mensaje;
+  error.hidden = false;
+}
+
+function manejarResultadoPago(resultado) {
+  if (resultado.status === 'approved') {
+    cerrarModalPago();
+    mostrarAviso('¡Pago aprobado! Tu suscripción ya está activa.');
+    cargarEstadoActual();
+  } else if (resultado.status === 'in_process' || resultado.status === 'pending') {
+    cerrarModalPago();
+    mostrarAviso('Tu pago está en proceso de confirmación. Te avisamos aquí en cuanto se apruebe.');
+  } else {
+    mostrarErrorEnModal('El pago fue rechazado. Intenta con otra tarjeta.');
+  }
+}
+
+async function cerrarModalPago() {
+  document.getElementById('modalPago').hidden = true;
+  if (brickTarjetaActual) {
+    await brickTarjetaActual.unmount();
+    brickTarjetaActual = null;
   }
 }
 
