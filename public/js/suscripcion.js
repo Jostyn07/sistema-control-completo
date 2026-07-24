@@ -111,7 +111,21 @@ async function cargarPlanes() {
 
     contenedor.innerHTML = `<div class="planes-comparacion">` + planes.map(p => {
       const destacado = p.id === idMasCaro;
-      const filas = [
+
+      // Lo que traen los dos planes por igual — se muestra primero para
+      // que Básico se vea como una herramienta completa, no recortada.
+      const filasComunes = [
+        'Materiales, productos e inventario en tiempo real',
+        'Compras con seguimiento de pedidos',
+        'Ventas con fecha de entrega y estados',
+        'Facturación electrónica / recibos',
+        'Finanzas: utilidad, punto de equilibrio y flujo de caja',
+        'Datos de tus clientes cifrados',
+        'Cuentas de usuario ilimitadas'
+      ];
+
+      // Lo que sí diferencia a los planes
+      const filasDiferenciadas = [
         { texto: p.limite_materiales != null ? `Hasta ${p.limite_materiales} materiales` : 'Materiales ilimitados', si: true },
         { texto: p.limite_productos != null ? `Hasta ${p.limite_productos} productos` : 'Productos ilimitados', si: true },
         { texto: p.limite_ventas_mes != null ? `Hasta ${p.limite_ventas_mes} ventas al mes` : 'Ventas ilimitadas', si: true },
@@ -121,6 +135,12 @@ async function cargarPlanes() {
         { texto: 'Valor del inventario', si: p.incluye_valor_inventario }
       ];
 
+      const filaHtml = (texto, si) => `
+            <li class="tarjeta-plan__fila${si ? '' : ' tarjeta-plan__fila--no'}">
+              <span class="tarjeta-plan__icono tarjeta-plan__icono--${si ? 'si' : 'no'}">${si ? '✓' : '–'}</span>
+              <span>${escaparHtml(texto)}</span>
+            </li>`;
+
       return `
       <article class="tarjeta-plan${destacado ? ' tarjeta-plan--destacado' : ''}">
         ${destacado ? '<span class="tarjeta-plan__badge">Recomendado</span>' : ''}
@@ -129,11 +149,11 @@ async function cargarPlanes() {
         <p class="tarjeta-plan__descuento">50% de descuento tu primer mes</p>
         <p class="tarjeta-plan__descripcion">${escaparHtml(p.descripcion || '')}</p>
         <ul class="tarjeta-plan__lista">
-          ${filas.map(f => `
-            <li class="tarjeta-plan__fila${f.si ? '' : ' tarjeta-plan__fila--no'}">
-              <span class="tarjeta-plan__icono tarjeta-plan__icono--${f.si ? 'si' : 'no'}">${f.si ? '✓' : '–'}</span>
-              <span>${escaparHtml(f.texto)}</span>
-            </li>`).join('')}
+          ${filasComunes.map(t => filaHtml(t, true)).join('')}
+        </ul>
+        <p class="tarjeta-plan__subtitulo">Según tu plan</p>
+        <ul class="tarjeta-plan__lista">
+          ${filasDiferenciadas.map(f => filaHtml(f.texto, f.si)).join('')}
         </ul>
         <button type="button" class="boton ${destacado ? 'boton--primario' : ''} boton--ancho" onclick="elegirPlan('${p.id}')">Elegir ${escaparHtml(p.nombre)}</button>
       </article>`;

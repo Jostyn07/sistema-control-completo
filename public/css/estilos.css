@@ -322,3 +322,9 @@ a:hover { color: var(--accent); }
   background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px;
   padding: 12px 18px; margin-bottom: 16px; font-size: 0.92rem;
 }
+
+/* ---- Suscripción: separador entre "incluido en todos" y "según el plan" ---- */
+.tarjeta-plan__subtitulo {
+  font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
+  color: var(--ink-tenue); margin: 4px 0 12px; padding-top: 14px; border-top: 1px solid var(--hairline);
+}
