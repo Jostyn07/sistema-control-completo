@@ -46,6 +46,7 @@ app.use('/api/inventario', require('./rutas/inventario'));
 app.use('/api/ventas', require('./rutas/ventas'));
 app.use('/api/compras', require('./rutas/compras'));
 app.use('/api/finanzas', require('./rutas/finanzas'));
+app.use('/api/dashboard', require('./rutas/dashboard'));
 app.use('/api/facturacion', require('./rutas/facturacion'));
 app.use('/api/configuracion', require('./rutas/configuracion'));
 app.use('/api/almacenamiento', require('./rutas/almacenamiento'));

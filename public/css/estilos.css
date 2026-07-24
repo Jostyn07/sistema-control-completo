@@ -100,6 +100,14 @@ a:hover { color: var(--accent); }
 .boton--primario:active { background: var(--accent-activo); }
 .boton--pequeno { padding: 4px 12px; font-size: 0.85rem; }
 .boton--peligro { color: var(--magenta-texto); border: none; }
+.boton--activo, .boton--activo:hover {
+  background: var(--accent); color: var(--bg); text-decoration: none;
+}
+
+/* ---- Selector global de período (Inicio) ---- */
+.selector-periodo {
+  display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 16px;
+}
 .boton--peligro:hover { background: rgba(214, 0, 108, 0.07); }
 .boton:disabled { opacity: 0.45; cursor: default; }
 

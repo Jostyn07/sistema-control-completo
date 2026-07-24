@@ -32,6 +32,24 @@
     <!-- Alertas: lo que requiere acción HOY -->
     <section class="seccion" id="seccionAlertas"></section>
 
+    <!-- Selector global de período: sincroniza los KPIs de Ventas de abajo.
+         Los indicadores financieros del mes (panel siguiente) siguen siendo
+         del mes en curso, ese bloque no depende de este selector. -->
+    <div class="selector-periodo" id="selectorPeriodo" role="group" aria-label="Período de análisis">
+      <button type="button" class="boton boton--pequeno" data-periodo="7d">7 días</button>
+      <button type="button" class="boton boton--pequeno" data-periodo="30d">30 días</button>
+      <button type="button" class="boton boton--pequeno" data-periodo="mes">Este mes</button>
+      <button type="button" class="boton boton--pequeno" data-periodo="3m">3 meses</button>
+      <button type="button" class="boton boton--pequeno" data-periodo="6m">6 meses</button>
+      <button type="button" class="boton boton--pequeno" data-periodo="1y">1 año</button>
+    </div>
+
+    <!-- KPIs de Ventas del período seleccionado, con comparación vs el
+         período anterior equivalente (puntos 2, 3 y 4 del plan) -->
+    <section class="panel-finanzas" id="panelVentasPeriodo">
+      <p class="tabla__vacio">Cargando…</p>
+    </section>
+
     <!-- Indicadores financieros del mes -->
     <section class="panel-finanzas" id="panelIndicadores">
       <p class="tabla__vacio">Cargando indicadores…</p>

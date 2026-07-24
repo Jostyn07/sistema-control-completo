@@ -11,6 +11,64 @@
 // ============================================================
 
 const SEGUNDOS_REFRESCO_INICIO = 30;
+const CLAVE_PERIODO_GUARDADO = 'inicio_periodo_seleccionado';
+
+// ---- Selector global de período ----
+// Único estado de período para todo Inicio: cuando cambia, se vuelve a
+// pedir el bloque de KPIs de Ventas (y, a futuro, cualquier otro bloque
+// que dependa del mismo rango — gráfico ventas/utilidad, rendimiento
+// por producto, etc., según se vayan agregando).
+let periodoActual = localStorage.getItem(CLAVE_PERIODO_GUARDADO) || '30d';
+
+function inicializarSelectorPeriodo() {
+  const contenedor = document.getElementById('selectorPeriodo');
+  if (!contenedor) return;
+
+  function marcarBotonActivo() {
+    contenedor.querySelectorAll('button').forEach(btn => {
+      btn.classList.toggle('boton--activo', btn.dataset.periodo === periodoActual);
+    });
+  }
+  marcarBotonActivo();
+
+  contenedor.addEventListener('click', (ev) => {
+    const boton = ev.target.closest('button[data-periodo]');
+    if (!boton || boton.dataset.periodo === periodoActual) return;
+    periodoActual = boton.dataset.periodo;
+    localStorage.setItem(CLAVE_PERIODO_GUARDADO, periodoActual);
+    marcarBotonActivo();
+    cargarVentasPeriodo();
+  });
+}
+
+// ---- KPIs de Ventas del período seleccionado, con comparación ----
+function pintarKpiConVariacion(valorTexto, variacion, etiqueta) {
+  const sinDatoPrevio = variacion.pct == null;
+  const color = sinDatoPrevio ? '' : (variacion.pct >= 0 ? 'indicador__valor--positivo' : 'indicador__valor--negativo');
+  const flecha = sinDatoPrevio ? '' : (variacion.pct >= 0 ? '▲ ' : '▼ ');
+  return `
+    <div class="indicador tarjeta">
+      <span class="campo__etiqueta">${etiqueta}</span>
+      <span class="indicador__valor">${valorTexto}</span>
+      <span class="texto-secundario ${color}">${flecha}${variacion.texto}</span>
+    </div>`;
+}
+
+async function cargarVentasPeriodo() {
+  const panel = document.getElementById('panelVentasPeriodo');
+  if (!panel) return;
+  panel.innerHTML = '<p class="tabla__vacio">Cargando…</p>';
+  try {
+    const r = await API.obtener(`/api/dashboard/ventas?periodo=${encodeURIComponent(periodoActual)}`);
+    panel.innerHTML =
+      pintarKpiConVariacion(formatearPesos(r.ventas.valor), r.ventas.variacion, 'Ventas del período') +
+      pintarKpiConVariacion(String(r.pedidos.valor), r.pedidos.variacion, 'Pedidos') +
+      pintarKpiConVariacion(formatearPesos(r.ticket_promedio.valor), r.ticket_promedio.variacion, 'Ticket promedio') +
+      pintarKpiConVariacion(r.margen_bruto_pct.valor != null ? `${r.margen_bruto_pct.valor}%` : '—', r.margen_bruto_pct.variacion, 'Margen bruto');
+  } catch (err) {
+    panel.innerHTML = `<p class="tabla__vacio">No se pudieron cargar los KPIs de ventas: ${escaparHtml(err.message)}</p>`;
+  }
+}
 
 // ---- Indicadores financieros del mes ----
 async function cargarIndicadores() {
@@ -243,7 +301,8 @@ async function refrescarInicio() {
     cargarResumenCompras(),
     cargarResumenCapacidad(),
     cargarResumenFacturacion(),
-    cargarResumenEntregas()
+    cargarResumenEntregas(),
+    cargarVentasPeriodo()
   ]);
   pintarAlertas({ rojosCompra: compras.rojos, sinStock, sinFacturar, entregasVencidas: entregas.vencidas });
   cargarEstadoSuscripcion();
@@ -259,6 +318,7 @@ function escaparHtml(texto) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  inicializarSelectorPeriodo();
   refrescarInicio();
   setInterval(refrescarInicio, SEGUNDOS_REFRESCO_INICIO * 1000);
   document.addEventListener('visibilitychange', () => {
