@@ -77,6 +77,66 @@ async function cargarVentasPeriodo() {
 }
 
 // ---- KPIs de Inventario (foto del momento, sin período) ----
+let chartInventarioEstado = null;
+
+function pintarDoughnutInventario(totalMateriales, stockBajo, agotados) {
+  const canvas = document.getElementById('graficoInventarioEstado');
+  const vacio = document.getElementById('graficoInventarioVacio');
+  if (!canvas) return;
+
+  if (totalMateriales === 0) {
+    canvas.hidden = true;
+    if (vacio) vacio.hidden = false;
+    return;
+  }
+  canvas.hidden = false;
+  if (vacio) vacio.hidden = true;
+
+  const normal = Math.max(0, totalMateriales - stockBajo - agotados);
+
+  // Chart.js va acumulando instancias fantasma sobre el mismo <canvas>
+  // si no se destruye la anterior antes de redibujar — mismo cuidado
+  // que con el gráfico de ventas/utilidad.
+  if (chartInventarioEstado) {
+    chartInventarioEstado.destroy();
+    chartInventarioEstado = null;
+  }
+
+  chartInventarioEstado = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: [`Normal (${normal})`, `Stock bajo (${stockBajo})`, `Agotado (${agotados})`],
+      datasets: [{
+        data: [normal, stockBajo, agotados],
+        backgroundColor: ['#15803d', '#c2410c', '#b91c1c'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+      },
+      // Total de materiales en el centro del doughnut (punto 9 del plan)
+      cutout: '68%'
+    },
+    plugins: [{
+      id: 'totalAlCentro',
+      afterDraw(chart) {
+        const { ctx, chartArea: { top, left, width, height } } = chart;
+        ctx.save();
+        ctx.font = 'bold 1.4rem serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(totalMateriales), left + width / 2, top + height / 2 - 8);
+        ctx.font = '0.75rem sans-serif';
+        ctx.fillText('materiales', left + width / 2, top + height / 2 + 14);
+        ctx.restore();
+      }
+    }]
+  });
+}
+
 async function cargarInventarioKpis() {
   const panel = document.getElementById('panelInventarioKpis');
   if (!panel) return { stockBajo: 0, agotados: 0 };
@@ -99,6 +159,7 @@ async function cargarInventarioKpis() {
         <span class="campo__etiqueta">Agotados</span>
         <span class="indicador__valor ${r.agotados > 0 ? 'indicador__valor--negativo' : ''}">${r.agotados}</span>
       </div>`;
+    pintarDoughnutInventario(r.total_materiales, r.stock_bajo, r.agotados);
     return { stockBajo: r.stock_bajo, agotados: r.agotados };
   } catch (err) {
     panel.innerHTML = `<p class="tabla__vacio">No se pudieron cargar los KPIs de inventario: ${escaparHtml(err.message)}</p>`;
