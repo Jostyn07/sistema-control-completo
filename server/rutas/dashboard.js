@@ -51,6 +51,12 @@ router.get('/ventas', async (req, res, next) => {
         dias: rango.dias,
         agrupacion: rango.agrupacion
       },
+      // Si el período anterior no tuvo ni un solo pedido, no hay con qué
+      // comparar de verdad — mostrar "+100%" o "nuevo" en cada tarjeta no
+      // aporta nada y además, con pocos datos, termina viéndose como una
+      // copia de "Indicadores del mes" de abajo. El frontend usa esta
+      // bandera para mostrar un estado vacío en su lugar.
+      comparable: anterior.pedidos > 0,
       ventas: {
         valor: Math.round(actual.ventasTotal * 100) / 100,
         variacion: variacion(actual.ventasTotal, anterior.ventasTotal)

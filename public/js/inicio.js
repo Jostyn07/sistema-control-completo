@@ -60,6 +60,12 @@ async function cargarVentasPeriodo() {
   panel.innerHTML = '<p class="tabla__vacio">Cargando…</p>';
   try {
     const r = await API.obtener(`/api/dashboard/ventas?periodo=${encodeURIComponent(periodoActual)}`);
+
+    if (!r.comparable) {
+      panel.innerHTML = `<p class="tabla__vacio">Aún no hay un período anterior completo para comparar en este rango — es muy pronto para ver variaciones aquí. Mientras tanto, los números en bruto ya están en "Indicadores del mes" más abajo.</p>`;
+      return;
+    }
+
     panel.innerHTML =
       pintarKpiConVariacion(formatearPesos(r.ventas.valor), r.ventas.variacion, 'Ventas del período') +
       pintarKpiConVariacion(String(r.pedidos.valor), r.pedidos.variacion, 'Pedidos') +
