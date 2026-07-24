@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Términos y Condiciones — Sistema de Control</title>
+  <link rel="stylesheet" href="css/estilos.css">
+  <style>
+    .doc-legal { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; line-height: 1.7; }
+    .doc-legal h1 { font-size: 1.8rem; margin-bottom: 4px; }
+    .doc-legal h2 { font-size: 1.15rem; margin-top: 36px; }
+    .doc-legal p, .doc-legal li { color: var(--ink-suave); }
+    .doc-legal .fecha-actualizacion { color: var(--ink-tenue); font-size: 0.85rem; margin-bottom: 32px; }
+  </style>
+</head>
+<body>
+  <nav class="navegacion">
+    <a href="./index.html" class="navegacion__enlace">Inicio</a>
+  </nav>
+  <main class="doc-legal">
+    <h1>Términos y Condiciones de Uso</h1>
+    <p class="fecha-actualizacion">Última actualización: 24 de julio de 2026</p>
+
+    <p>
+      Estos Términos y Condiciones ("Términos") rigen el uso del software "Sistema de Control"
+      (el "Servicio"), desarrollado y operado por <strong>Toolkap</strong> ("nosotros", "el Proveedor").
+      Al crear una cuenta o usar el Servicio, usted ("el Usuario") acepta estos Términos en su
+      totalidad. Si no está de acuerdo, no debe usar el Servicio.
+    </p>
+
+    <h2>1. Descripción del servicio</h2>
+    <p>
+      El Servicio es una herramienta de software como servicio (SaaS) para la gestión de
+      materiales, productos, inventario, compras, ventas, finanzas y facturación de pequeños
+      negocios de producción. Se ofrece por suscripción mensual, con distintos planes según
+      las funciones y límites de uso.
+    </p>
+
+    <h2>2. Cuenta de usuario</h2>
+    <p>
+      Para usar el Servicio debe crear una cuenta con un correo electrónico válido. Usted es
+      responsable de mantener la confidencialidad de su contraseña y de toda actividad que
+      ocurra bajo su cuenta. Debe ser mayor de edad, o representar legalmente a un negocio,
+      para crear una cuenta.
+    </p>
+
+    <h2>3. Período de prueba y suscripción</h2>
+    <p>
+      Se ofrece un período de prueba gratuito de 7 días desde el registro, sin necesidad de
+      método de pago. Al finalizar la prueba, el acceso a las funciones de creación y edición
+      se suspende (conservando el acceso de solo lectura a su información) hasta que elija y
+      pague un plan. Los pagos se procesan mensualmente a través de un proveedor de pagos
+      externo (ver sección 8). El primer mes de cualquier plan tiene un descuento del 50%
+      sobre el precio de lista.
+    </p>
+
+    <h2>4. Cancelación</h2>
+    <p>
+      Puede cancelar su suscripción en cualquier momento desde la sección "Suscripción" del
+      sistema. La cancelación no genera reembolsos por el período ya pagado; usted conserva
+      el acceso completo hasta la fecha de vencimiento de su período pagado actual, después
+      de lo cual el acceso pasa a modo de solo lectura.
+    </p>
+
+    <h2>5. Propiedad intelectual</h2>
+    <p>
+      El Servicio, su código fuente, diseño, marca, logotipos y toda la propiedad intelectual
+      relacionada son propiedad exclusiva de <strong>Toolkap</strong>. Estos Términos le
+      otorgan una licencia limitada, no exclusiva e intransferible para usar el Servicio
+      únicamente para los fines previstos, mientras su suscripción esté vigente. Esta licencia
+      no le transfiere ningún derecho de propiedad sobre el software.
+    </p>
+    <p>
+      La información que usted ingresa al sistema (sus materiales, productos, ventas, datos de
+      clientes, etc.) sigue siendo de su propiedad. Nosotros solo la almacenamos y procesamos
+      para prestarle el Servicio, según se describe en la Política de Privacidad.
+    </p>
+
+    <h2>6. Uso permitido</h2>
+    <p>Usted se compromete a no:</p>
+    <ul>
+      <li>Usar el Servicio para actividades ilegales o fraudulentas.</li>
+      <li>Intentar acceder a cuentas o datos de otros usuarios.</li>
+      <li>Realizar ingeniería inversa, copiar o revender el software.</li>
+      <li>Sobrecargar deliberadamente la infraestructura del Servicio.</li>
+    </ul>
+
+    <h2>7. Naturaleza de la herramienta — no es asesoría profesional</h2>
+    <p>
+      El Servicio es una herramienta de apoyo a la gestión de su negocio. Los cálculos
+      financieros (costos, márgenes, punto de equilibrio, flujo de caja) y los documentos de
+      facturación que genera <strong>no constituyen asesoría contable, tributaria o legal</strong>,
+      y no reemplazan a un contador o asesor tributario. Cuando su cuenta no tiene una
+      resolución de numeración de la DIAN configurada, los documentos generados son recibos
+      internos sin validez fiscal, y el sistema se lo indica claramente en cada caso. Usted es
+      responsable de verificar el cumplimiento de sus obligaciones tributarias con las
+      autoridades competentes.
+    </p>
+
+    <h2>8. Terceros involucrados en el Servicio</h2>
+    <p>
+      Para operar, el Servicio utiliza proveedores externos:
+    </p>
+    <ul>
+      <li><strong>Supabase</strong> — aloja la base de datos y gestiona la autenticación de usuarios.</li>
+      <li><strong>ePayco</strong> — procesa los pagos de suscripción. Nosotros nunca recibimos ni
+        almacenamos los números de tarjeta de crédito; esos datos los maneja ePayco directamente,
+        bajo su propia certificación de seguridad (PCI DSS).</li>
+      <li><strong>Vercel</strong> — aloja la aplicación web.</li>
+    </ul>
+
+    <h2>9. Disponibilidad del servicio</h2>
+    <p>
+      Nos esforzamos por mantener el Servicio disponible de forma continua, pero no
+      garantizamos un funcionamiento ininterrumpido o libre de errores. No somos responsables
+      por interrupciones causadas por fallas de nuestros proveedores externos (Supabase,
+      ePayco, Vercel) fuera de nuestro control razonable.
+    </p>
+
+    <h2>10. Límite de responsabilidad</h2>
+    <p>
+      En la máxima medida permitida por la ley, la responsabilidad total de Toolkap frente a
+      usted por cualquier reclamo relacionado con el Servicio se limita al monto que usted
+      haya pagado por la suscripción en los tres (3) meses anteriores al hecho que originó el
+      reclamo. No somos responsables por daños indirectos, lucro cesante, o pérdida de datos
+      resultante de un uso indebido del Servicio por parte del Usuario.
+    </p>
+
+    <h2>11. Modificaciones</h2>
+    <p>
+      Podemos actualizar estos Términos ocasionalmente. Los cambios importantes se
+      notificarán dentro del sistema. El uso continuado del Servicio después de una
+      actualización implica la aceptación de los nuevos Términos.
+    </p>
+
+    <h2>12. Ley aplicable</h2>
+    <p>
+      Estos Términos se rigen por las leyes de la República de Colombia. Cualquier disputa se
+      someterá a los jueces competentes de Colombia.
+    </p>
+
+    <h2>13. Contacto</h2>
+    <p>
+      Para preguntas sobre estos Términos, escriba a
+      <a href="mailto:toolkapcorp@gmail.com">toolkapcorp@gmail.com</a>.
+    </p>
+  </main>
+</body>
+</html>

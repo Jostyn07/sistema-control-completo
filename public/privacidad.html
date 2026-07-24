@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Privacidad — Sistema de Control</title>
+  <link rel="stylesheet" href="css/estilos.css">
+  <style>
+    .doc-legal { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; line-height: 1.7; }
+    .doc-legal h1 { font-size: 1.8rem; margin-bottom: 4px; }
+    .doc-legal h2 { font-size: 1.15rem; margin-top: 36px; }
+    .doc-legal p, .doc-legal li { color: var(--ink-suave); }
+    .doc-legal .fecha-actualizacion { color: var(--ink-tenue); font-size: 0.85rem; margin-bottom: 32px; }
+    .doc-legal .destacado { background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px; padding: 16px 18px; margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <nav class="navegacion">
+    <a href="./index.html" class="navegacion__enlace">Inicio</a>
+  </nav>
+  <main class="doc-legal">
+    <h1>Política de Privacidad y Tratamiento de Datos Personales</h1>
+    <p class="fecha-actualizacion">Última actualización: 24 de julio de 2026</p>
+
+    <p>
+      <strong>Toolkap</strong> ("nosotros"), como responsable del tratamiento de datos personales
+      del Sistema de Control (el "Servicio"), cumple con la Ley 1581 de 2012 y el Decreto 1377
+      de 2013 de Colombia sobre protección de datos personales. Esta política explica qué
+      información recolectamos, para qué la usamos, cómo la protegemos, y cuáles son sus
+      derechos.
+    </p>
+
+    <div class="destacado">
+      <strong>Resumen rápido:</strong> los datos sensibles (teléfono y cédula de sus clientes)
+      se guardan cifrados — ni siquiera nosotros podemos leerlos directamente desde la base de
+      datos. Ningún dato que usted ingrese se usa para entrenar modelos de inteligencia
+      artificial ni se comparte con terceros para fines distintos a prestarle el Servicio.
+    </div>
+
+    <h2>1. Qué información recolectamos</h2>
+    <p><strong>Datos de su cuenta:</strong></p>
+    <ul>
+      <li>Nombre y correo electrónico (al registrarse, o los que provea Google si inicia sesión así).</li>
+      <li>Contraseña (nunca la vemos en texto plano; Supabase la guarda con cifrado irreversible).</li>
+    </ul>
+    <p><strong>Datos de su negocio, que usted ingresa voluntariamente:</strong></p>
+    <ul>
+      <li>Materiales, productos, precios, costos, proveedores.</li>
+      <li>Ventas, incluyendo el nombre, teléfono y cédula de sus clientes (si usted decide registrarlos).</li>
+      <li>Información de facturación de su negocio (razón social, NIT, si aplica).</li>
+    </ul>
+    <p><strong>Datos de pago:</strong></p>
+    <ul>
+      <li>
+        Nosotros <strong>nunca</strong> recibimos ni almacenamos el número completo de su
+        tarjeta de crédito. Esa información la procesa directamente nuestro proveedor de
+        pagos, ePayco, bajo su propia certificación de seguridad (PCI DSS).
+      </li>
+    </ul>
+
+    <h2>2. Cifrado de datos sensibles</h2>
+    <p>
+      El teléfono y la cédula de sus clientes, si usted decide guardarlos, se cifran con el
+      algoritmo AES-256 antes de guardarse en la base de datos. Esto significa que, incluso si
+      alguien accediera directamente a la base de datos, esos campos se verían como texto
+      ilegible — solo nuestro sistema, con la llave de cifrado correcta, puede leerlos, y
+      únicamente para mostrárselos a usted dentro de su propia cuenta.
+    </p>
+
+    <h2>3. Para qué usamos su información</h2>
+    <ul>
+      <li>Prestarle el Servicio: guardar y mostrarle sus datos de negocio.</li>
+      <li>Procesar sus pagos de suscripción.</li>
+      <li>Comunicarnos con usted sobre su cuenta (confirmaciones, avisos de vencimiento).</li>
+      <li>Mejorar el Servicio (análisis agregado y anónimo de uso, nunca de contenido específico de su negocio).</li>
+    </ul>
+
+    <div class="destacado">
+      <strong>Lo que NO hacemos con su información:</strong>
+      <ul style="margin-bottom:0">
+        <li>No usamos los datos que usted ingresa para entrenar o alimentar modelos de inteligencia artificial.</li>
+        <li>No vendemos ni compartimos su información con terceros para fines de publicidad o comerciales ajenos al Servicio.</li>
+        <li>No accedemos al contenido de su negocio (ventas, clientes, precios) salvo cuando sea estrictamente necesario para brindarle soporte técnico, y solo con su conocimiento.</li>
+      </ul>
+    </div>
+
+    <h2>4. Con quién compartimos información</h2>
+    <p>
+      Solo con los proveedores de infraestructura necesarios para operar el Servicio, cada uno
+      bajo sus propias políticas de seguridad y privacidad:
+    </p>
+    <ul>
+      <li><strong>Supabase</strong> (alojamiento de base de datos y autenticación)</li>
+      <li><strong>ePayco</strong> (procesamiento de pagos)</li>
+      <li><strong>Vercel</strong> (alojamiento de la aplicación)</li>
+    </ul>
+    <p>
+      No compartimos su información con ningún otro tercero, salvo que la ley colombiana nos
+      obligue a hacerlo (por ejemplo, un requerimiento judicial válido).
+    </p>
+
+    <h2>5. Sus derechos (Derechos ARCO)</h2>
+    <p>Como titular de sus datos, usted tiene derecho a:</p>
+    <ul>
+      <li><strong>Acceder</strong> a sus datos personales que tenemos almacenados.</li>
+      <li><strong>Rectificar</strong> datos incorrectos o desactualizados.</li>
+      <li><strong>Cancelar/eliminar</strong> sus datos cuando ya no sean necesarios, salvo obligación legal de conservarlos.</li>
+      <li><strong>Oponerse</strong> al tratamiento de sus datos en los casos previstos por la ley.</li>
+      <li>Solicitar prueba de la autorización otorgada para el tratamiento de sus datos.</li>
+    </ul>
+    <p>
+      Para ejercer estos derechos, escriba a
+      <a href="mailto:toolkapcorp@gmail.com">toolkapcorp@gmail.com</a>. Responderemos su
+      solicitud dentro de los plazos que establece la ley colombiana (10 días hábiles para
+      consultas, 15 días hábiles para reclamos).
+    </p>
+
+    <h2>6. Retención de datos</h2>
+    <p>
+      Conservamos su información mientras su cuenta esté activa. Si cancela su cuenta o deja
+      de pagar la suscripción, sus datos se conservan por un período razonable en caso de que
+      desee reactivar el servicio, después del cual pueden ser eliminados permanentemente a su
+      solicitud.
+    </p>
+
+    <h2>7. Seguridad</h2>
+    <p>
+      Toda la comunicación con el Servicio viaja cifrada (HTTPS/TLS). Los datos en la base de
+      datos están protegidos con cifrado en reposo por parte de nuestro proveedor de
+      infraestructura, además del cifrado adicional que aplicamos nosotros mismos a los datos
+      sensibles descritos en la sección 2. El acceso a los datos de cada cuenta está aislado:
+      ningún usuario puede ver la información de otra cuenta.
+    </p>
+
+    <h2>8. Cookies y almacenamiento local</h2>
+    <p>
+      El Servicio no utiliza cookies de rastreo ni de publicidad. Usamos el almacenamiento
+      local de su navegador (localStorage) únicamente para mantener su sesión iniciada — esta
+      información nunca sale de su propio dispositivo hacia terceros de publicidad. Vea la
+      <a href="cookies.html">Política de Cookies</a> para más detalle.
+    </p>
+
+    <h2>9. Menores de edad</h2>
+    <p>
+      El Servicio está dirigido a personas mayores de edad que operan o representan un
+      negocio. No recolectamos intencionalmente información de menores de edad.
+    </p>
+
+    <h2>10. Cambios a esta política</h2>
+    <p>
+      Podemos actualizar esta política ocasionalmente. Los cambios importantes se notificarán
+      dentro del sistema antes de entrar en vigencia.
+    </p>
+
+    <h2>11. Contacto</h2>
+    <p>
+      Responsable del tratamiento: <strong>Toolkap</strong>.
+      Correo de contacto: <a href="mailto:toolkapcorp@gmail.com">toolkapcorp@gmail.com</a>.
+    </p>
+  </main>
+</body>
+</html>

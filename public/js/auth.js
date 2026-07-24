@@ -11,15 +11,9 @@ let clienteSupabasePublico = null;
 // aplica mientras la cuenta está en período de prueba y todavía no
 // tiene ninguna tarjeta guardada — nunca a cuentas ya activas.
 async function redirigirTrasLogin() {
-  try {
-    const r = await API.obtener('/api/suscripcion/mi-suscripcion');
-    if (r.estado === 'prueba' && !r.tiene_metodo_pago) {
-      window.location.href = '/agregar-metodo-pago.html';
-      return;
-    }
-  } catch (err) {
-    // si falla la consulta, no bloqueamos el ingreso por eso
-  }
+  // La prueba de 7 días corre libre, sin pedir método de pago por
+  // adelantado. Cuando la persona quiera pagar (durante la prueba o
+  // al vencer), lo hace desde Suscripción con el checkout normal.
   window.location.href = '/';
 }
 
@@ -88,6 +82,7 @@ function alternarModo(evento) {
   if (evento) evento.preventDefault();
   modoRegistro = !modoRegistro;
   document.getElementById('camposRegistro').hidden = !modoRegistro;
+  document.getElementById('campoAceptoTerminos').hidden = !modoRegistro;
   document.getElementById('tituloFormulario').textContent = modoRegistro ? 'Crear cuenta' : 'Iniciar sesión';
   document.getElementById('botonPrincipal').textContent = modoRegistro ? 'Crear cuenta' : 'Entrar';
   document.getElementById('textoAlternar').textContent = modoRegistro ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?';
@@ -107,6 +102,10 @@ async function enviarFormulario() {
     if (modoRegistro) {
       const nombre = document.getElementById('campoNombre').value.trim();
       if (!nombre) { mostrarAviso('Escribe tu nombre', 'error'); return; }
+      if (!document.getElementById('checkAceptoTerminos').checked) {
+        mostrarAviso('Debes aceptar los Términos y la Política de Privacidad para continuar', 'error');
+        return;
+      }
       await API.enviar('/api/auth/registro', { nombre, correo, contrasena });
       mostrarAviso('Cuenta creada, ahora inicia sesión');
       alternarModo();

@@ -27,6 +27,14 @@
         <input type="password" id="campoContrasena" placeholder="Mínimo 6 caracteres">
       </label>
 
+      <label class="campo" id="campoAceptoTerminos" hidden style="display:flex;align-items:flex-start;gap:8px;flex-direction:row">
+        <input type="checkbox" id="checkAceptoTerminos" style="margin-top:3px">
+        <span class="texto-secundario">
+          Acepto los <a href="terminos.html" target="_blank">Términos y Condiciones</a> y la
+          <a href="privacidad.html" target="_blank">Política de Privacidad</a>.
+        </span>
+      </label>
+
       <button type="button" class="boton boton--primario boton--ancho" id="botonPrincipal" onclick="enviarFormulario()">
         Entrar
       </button>
@@ -42,10 +50,19 @@
         </svg>
         Continuar con Google
       </button>
+      <p class="texto-secundario" style="text-align:center; font-size:0.78rem; margin:8px 0 0">
+        Al continuar con Google, aceptas los <a href="terminos.html" target="_blank">Términos</a>
+        y la <a href="privacidad.html" target="_blank">Política de Privacidad</a>.
+      </p>
 
       <p class="texto-secundario" style="text-align:center; margin-top:14px">
         <span id="textoAlternar">¿No tienes cuenta?</span>
         <a href="#" id="enlaceAlternar" onclick="alternarModo(event)">Crear una</a>
+      </p>
+      <p class="texto-secundario" style="text-align:center; margin-top:8px; font-size:0.78rem">
+        <a href="terminos.html" target="_blank">Términos</a> ·
+        <a href="privacidad.html" target="_blank">Privacidad</a> ·
+        <a href="cookies.html" target="_blank">Cookies</a>
       </p>
     </div>
   </main>
