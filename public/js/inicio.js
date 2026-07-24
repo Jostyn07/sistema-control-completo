@@ -76,6 +76,36 @@ async function cargarVentasPeriodo() {
   }
 }
 
+// ---- KPIs de Inventario (foto del momento, sin período) ----
+async function cargarInventarioKpis() {
+  const panel = document.getElementById('panelInventarioKpis');
+  if (!panel) return { stockBajo: 0, agotados: 0 };
+  try {
+    const r = await API.obtener('/api/dashboard/inventario');
+    panel.innerHTML = `
+      <div class="indicador tarjeta">
+        <span class="campo__etiqueta">Valor del inventario</span>
+        <span class="indicador__valor">${formatearPesos(r.valor_inventario)}</span>
+      </div>
+      <div class="indicador tarjeta">
+        <span class="campo__etiqueta">Materiales</span>
+        <span class="indicador__valor">${r.total_materiales}</span>
+      </div>
+      <div class="indicador tarjeta">
+        <span class="campo__etiqueta">Stock bajo</span>
+        <span class="indicador__valor ${r.stock_bajo > 0 ? 'indicador__valor--negativo' : ''}">${r.stock_bajo}</span>
+      </div>
+      <div class="indicador tarjeta">
+        <span class="campo__etiqueta">Agotados</span>
+        <span class="indicador__valor ${r.agotados > 0 ? 'indicador__valor--negativo' : ''}">${r.agotados}</span>
+      </div>`;
+    return { stockBajo: r.stock_bajo, agotados: r.agotados };
+  } catch (err) {
+    panel.innerHTML = `<p class="tabla__vacio">No se pudieron cargar los KPIs de inventario: ${escaparHtml(err.message)}</p>`;
+    return { stockBajo: 0, agotados: 0 };
+  }
+}
+
 // ---- Indicadores financieros del mes ----
 async function cargarIndicadores() {
   const panel = document.getElementById('panelIndicadores');
@@ -308,7 +338,8 @@ async function refrescarInicio() {
     cargarResumenCapacidad(),
     cargarResumenFacturacion(),
     cargarResumenEntregas(),
-    cargarVentasPeriodo()
+    cargarVentasPeriodo(),
+    cargarInventarioKpis()
   ]);
   pintarAlertas({ rojosCompra: compras.rojos, sinStock, sinFacturar, entregasVencidas: entregas.vencidas });
   cargarEstadoSuscripcion();
