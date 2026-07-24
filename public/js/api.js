@@ -8,6 +8,8 @@
 // se manda al login. Así nadie ve su sesión "cerrarse sola".
 // ============================================================
 const API = {
+  _renovacionEnCurso: null, // si ya hay una renovación en camino, todas las demás peticiones esperan ESA misma, en vez de intentar cada una la suya
+
   _encabezados() {
     const token = localStorage.getItem('token_sesion');
     const encabezados = { 'Content-Type': 'application/json' };
@@ -15,23 +17,39 @@ const API = {
     return encabezados;
   },
 
+  // Los tokens de Supabase expiran cada hora, y el "refresh token" se
+  // invalida apenas se usa una vez. Si dos peticiones vencen casi al
+  // mismo tiempo (típico al cambiar de página, que dispara varias a
+  // la vez) y cada una intenta renovar por su cuenta, la segunda usa
+  // un refresh token que la primera ya consumió, falla, y termina
+  // borrando la sesión que la primera acababa de renovar bien. Por
+  // eso aquí solo se dispara UNA renovación real a la vez — cualquier
+  // otra petición que la necesite espera esa misma promesa.
   async _renovarSesion() {
-    const refreshToken = localStorage.getItem('refresh_token_sesion');
-    if (!refreshToken) return false;
-    try {
-      const respuesta = await fetch('/api/auth/refrescar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken })
-      });
-      if (!respuesta.ok) return false;
-      const datos = await respuesta.json();
-      localStorage.setItem('token_sesion', datos.token);
-      localStorage.setItem('refresh_token_sesion', datos.refresh_token);
-      return true;
-    } catch {
-      return false;
-    }
+    if (this._renovacionEnCurso) return this._renovacionEnCurso;
+
+    this._renovacionEnCurso = (async () => {
+      const refreshToken = localStorage.getItem('refresh_token_sesion');
+      if (!refreshToken) return false;
+      try {
+        const respuesta = await fetch('/api/auth/refrescar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken })
+        });
+        if (!respuesta.ok) return false;
+        const datos = await respuesta.json();
+        localStorage.setItem('token_sesion', datos.token);
+        localStorage.setItem('refresh_token_sesion', datos.refresh_token);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        this._renovacionEnCurso = null; // libera el candado para la próxima vez que haga falta
+      }
+    })();
+
+    return this._renovacionEnCurso;
   },
 
   _cerrarSesionYRedirigir() {
