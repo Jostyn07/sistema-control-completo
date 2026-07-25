@@ -86,14 +86,14 @@ router.post('/ajuste', async (req, res, next) => {
       .from('materiales').select('id, stock_actual').eq('id', material_id).eq('usuario_id', req.usuarioId).single();
     if (eGet || !material) return res.status(404).json({ error: 'Material no encontrado' });
 
-    const { error: eAjuste } = await supabase.from('inventario_ajustes').insert({
+    const { data: ajusteCreado, error: eAjuste } = await supabase.from('inventario_ajustes').insert({
       usuario_id: req.usuarioId,
       material_id,
       stock_anterior: material.stock_actual,
       stock_nuevo: Number(cantidad_nueva),
       motivo: motivo.trim(),
       usuario: req.usuarioEmail || null
-    });
+    }).select().single();
     if (eAjuste) throw new Error(eAjuste.message);
 
     const { data: actualizado, error: eUpd } = await supabase
@@ -103,6 +103,19 @@ router.post('/ajuste', async (req, res, next) => {
       .eq('usuario_id', req.usuarioId)
       .select().single();
     if (eUpd) throw new Error(eUpd.message);
+
+    // Bitácora (Fase 2) — misma regla que venta/compra: si falla, el
+    // ajuste ya se aplicó igual, solo queda sin registrar en el historial.
+    const { error: eMov } = await supabase.from('inventario_movimientos').insert({
+      usuario_id: req.usuarioId,
+      material_id,
+      tipo: 'ajuste',
+      cantidad: Math.round((Number(cantidad_nueva) - Number(material.stock_actual)) * 100) / 100,
+      stock_anterior: Number(material.stock_actual),
+      stock_nuevo: Number(cantidad_nueva),
+      referencia_id: ajusteCreado.id
+    });
+    if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de ajuste:', eMov.message);
 
     res.json({ ajustado: true, stock_anterior: Number(material.stock_actual), stock_nuevo: Number(actualizado.stock_actual) });
   } catch (err) { next(err); }

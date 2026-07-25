@@ -95,4 +95,43 @@ function validarFirmaWebhook({ xSignature, xRequestId, dataId }) {
   return firmaCalculada === firmaRecibida;
 }
 
-module.exports = { obtenerCredenciales, crearPago, obtenerPago, validarFirmaWebhook };
+// Busca un cliente de Mercado Pago por correo; si no existe, lo crea.
+// Se usa para "guardar tarjeta" — Mercado Pago guarda las tarjetas
+// asociadas a un customer_id, no sueltas.
+async function obtenerOCrearCliente(correo) {
+  const { accessToken } = obtenerCredenciales();
+
+  const busqueda = await fetch(`${BASE_URL}/v1/customers/search?email=${encodeURIComponent(correo)}`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  const datosBusqueda = await busqueda.json();
+  if (busqueda.ok && datosBusqueda.results && datosBusqueda.results.length > 0) {
+    return datosBusqueda.results[0].id;
+  }
+
+  const creado = await fetch(`${BASE_URL}/v1/customers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+    body: JSON.stringify({ email: correo })
+  });
+  const datosCreado = await creado.json();
+  if (!creado.ok) throw new Error(datosCreado.message || 'No se pudo crear el cliente en Mercado Pago');
+  return datosCreado.id;
+}
+
+// Guarda una tarjeta (a partir del token que generó el navegador con
+// Secure Fields) en el customer dado, para poder cobrarla después sin
+// que el usuario tenga que volver a escribirla.
+async function guardarTarjeta(customerId, token) {
+  const { accessToken } = obtenerCredenciales();
+  const respuesta = await fetch(`${BASE_URL}/v1/customers/${customerId}/cards`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+    body: JSON.stringify({ token })
+  });
+  const datos = await respuesta.json();
+  if (!respuesta.ok) throw new Error(datos.message || 'No se pudo guardar la tarjeta');
+  return datos; // incluye id, last_four_digits, payment_method { id, name }
+}
+
+module.exports = { obtenerCredenciales, crearPago, obtenerPago, validarFirmaWebhook, obtenerOCrearCliente, guardarTarjeta };

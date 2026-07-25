@@ -12,6 +12,12 @@
 //                 Agotados). No toca servicios/inventario.js: reutiliza
 //                 obtenerInventarioMateriales() tal cual la usan hoy
 //                 Inventario y Compras, y solo agrega el conteo encima.
+// - GET /serie-ventas-utilidad  Serie temporal para el gráfico de
+//                 líneas, agrupada por día/semana/mes según el
+//                 tamaño del período (mismo periodo.js de siempre).
+// - GET /movimientos-inventario  Entradas vs Salidas (punto 13),
+//                 usando la bitácora inventario_movimientos. Acepta
+//                 ?material_id= opcional para ver un material puntual.
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
@@ -104,6 +110,120 @@ router.get('/inventario', async (req, res, next) => {
       total_materiales: materiales.length,
       stock_bajo: stockBajo.length,
       agotados: agotados.length
+    });
+  } catch (err) { next(err); }
+});
+
+// Arma los "cajones" de fecha (día/semana/mes) que va a tener el
+// gráfico, ANTES de mirar los datos — así un día/semana/mes sin
+// ventas aparece con 0, no como un hueco en la gráfica (mismo
+// principio del punto 17 del plan: nunca confundir "sin datos" con
+// "cero real" en silencio).
+function generarBuckets(desde, hasta, agrupacion) {
+  const buckets = [];
+  const formatoDia = { day: 'numeric', month: 'short' };
+
+  if (agrupacion === 'dia') {
+    const cursor = new Date(desde);
+    while (cursor <= hasta) {
+      const inicio = new Date(cursor); inicio.setHours(0, 0, 0, 0);
+      const fin = new Date(cursor); fin.setHours(23, 59, 59, 999);
+      buckets.push({ inicio, fin, etiqueta: inicio.toLocaleDateString('es-CO', formatoDia) });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+  } else if (agrupacion === 'semana') {
+    const cursor = new Date(desde); cursor.setHours(0, 0, 0, 0);
+    while (cursor <= hasta) {
+      const inicio = new Date(cursor);
+      let fin = new Date(cursor); fin.setDate(fin.getDate() + 6); fin.setHours(23, 59, 59, 999);
+      if (fin > hasta) fin = new Date(hasta);
+      buckets.push({ inicio, fin, etiqueta: `Sem. ${inicio.toLocaleDateString('es-CO', formatoDia)}` });
+      cursor.setDate(cursor.getDate() + 7);
+    }
+  } else { // mes
+    const cursor = new Date(desde.getFullYear(), desde.getMonth(), 1);
+    while (cursor <= hasta) {
+      const inicio = new Date(cursor);
+      const finMes = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0, 23, 59, 59, 999);
+      const fin = finMes > hasta ? new Date(hasta) : finMes;
+      buckets.push({ inicio, fin, etiqueta: inicio.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' }) });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+  }
+  return buckets;
+}
+
+// GET /api/dashboard/serie-ventas-utilidad?periodo=...
+router.get('/serie-ventas-utilidad', async (req, res, next) => {
+  try {
+    const rango = calcularRango(req.query);
+
+    const { data, error } = await supabase
+      .from('ventas')
+      .select('total, costo_total, fecha')
+      .eq('usuario_id', req.usuarioId)
+      .gte('fecha', rango.desde.toISOString())
+      .lte('fecha', rango.hasta.toISOString());
+    if (error) throw new Error(error.message);
+
+    const buckets = generarBuckets(rango.desde, rango.hasta, rango.agrupacion)
+      .map(b => ({ ...b, ventas: 0, utilidad: 0 }));
+
+    for (const v of (data || [])) {
+      const fecha = new Date(v.fecha);
+      const bucket = buckets.find(b => fecha >= b.inicio && fecha <= b.fin);
+      if (bucket) {
+        bucket.ventas += Number(v.total);
+        bucket.utilidad += Number(v.total) - Number(v.costo_total);
+      }
+    }
+
+    res.json({
+      agrupacion: rango.agrupacion,
+      puntos: buckets.map(b => ({
+        etiqueta: b.etiqueta,
+        ventas: Math.round(b.ventas * 100) / 100,
+        utilidad: Math.round(b.utilidad * 100) / 100
+      }))
+    });
+  } catch (err) { next(err); }
+});
+
+// GET /api/dashboard/movimientos-inventario?periodo=...&material_id=(opcional)
+router.get('/movimientos-inventario', async (req, res, next) => {
+  try {
+    const rango = calcularRango(req.query);
+
+    let consulta = supabase
+      .from('inventario_movimientos')
+      .select('tipo, cantidad, fecha')
+      .eq('usuario_id', req.usuarioId)
+      .gte('fecha', rango.desde.toISOString())
+      .lte('fecha', rango.hasta.toISOString());
+    if (req.query.material_id) consulta = consulta.eq('material_id', req.query.material_id);
+
+    const { data, error } = await consulta;
+    if (error) throw new Error(error.message);
+
+    const buckets = generarBuckets(rango.desde, rango.hasta, rango.agrupacion)
+      .map(b => ({ ...b, entradas: 0, salidas: 0 }));
+
+    for (const mov of (data || [])) {
+      const fecha = new Date(mov.fecha);
+      const bucket = buckets.find(b => fecha >= b.inicio && fecha <= b.fin);
+      if (!bucket) continue;
+      const cantidad = Number(mov.cantidad);
+      if (cantidad >= 0) bucket.entradas += cantidad;
+      else bucket.salidas += Math.abs(cantidad);
+    }
+
+    res.json({
+      agrupacion: rango.agrupacion,
+      puntos: buckets.map(b => ({
+        etiqueta: b.etiqueta,
+        entradas: Math.round(b.entradas * 100) / 100,
+        salidas: Math.round(b.salidas * 100) / 100
+      }))
     });
   } catch (err) { next(err); }
 });

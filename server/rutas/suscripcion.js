@@ -4,25 +4,15 @@
 //                         sus límites Y qué funciones incluyen)
 // - GET  /mi-suscripcion  estado actual del usuario (pone al día
 //                         el vencimiento antes de responder)
-// - POST /iniciar-pago    prepara los datos para abrir el checkout
-//                         de ePayco; aplica 50% de descuento si es
+// - POST /iniciar-pago    prepara los datos para el Brick de pago de
+//                         Mercado Pago; aplica 50% de descuento si es
 //                         el primer pago real del usuario
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
-const { obtenerCredenciales, registrarMetodoPago } = require('../servicios/epayco');
 const mercadopago = require('../servicios/mercadopago');
 const { sincronizarEstadoSuscripcion, calcularBloqueo, tienePagoAceptadoPrevio, crearPruebaGratis } = require('../servicios/suscripcion');
 const router = express.Router();
-
-// GET /api/suscripcion/llave-publica-epayco — la Public Key es
-// segura de exponer, pero solo se la damos a quien ya tiene sesión.
-router.get('/llave-publica-epayco', async (req, res, next) => {
-  try {
-    const { publicKey } = obtenerCredenciales();
-    res.json({ public_key: publicKey });
-  } catch (err) { next(err); }
-});
 
 // GET /api/suscripcion/llave-publica-mercadopago
 router.get('/llave-publica-mercadopago', async (req, res, next) => {
@@ -73,32 +63,30 @@ router.get('/mi-suscripcion', async (req, res, next) => {
       .maybeSingle();
     if (error) throw new Error(error.message);
     const bloqueo = calcularBloqueo(data);
-    res.json({ ...data, tiene_metodo_pago: !!data.epayco_customer_id, ...bloqueo });
+    // epayco_customer_id: alguien pudo haber guardado tarjeta antes de
+    // la migración a Mercado Pago — se sigue reconociendo para no
+    // pedirle que la guarde de nuevo si ya la tenía.
+    res.json({ ...data, tiene_metodo_pago: !!(data.mp_customer_id || data.epayco_customer_id), ...bloqueo });
   } catch (err) { next(err); }
 });
 
-// POST /api/suscripcion/agregar-metodo-pago — cuerpo: { token, nombre, apellido, telefono }
-// El "token" ya lo generó el navegador hablando directo con ePayco;
-// aquí NUNCA llega el número de tarjeta real.
+// POST /api/suscripcion/agregar-metodo-pago — cuerpo: { token }
+// El "token" ya lo generó el navegador con los Secure Fields de
+// Mercado Pago; aquí NUNCA llega el número de tarjeta real.
 router.post('/agregar-metodo-pago', async (req, res, next) => {
   try {
-    const { token, nombre, apellido, telefono } = req.body;
+    const { token } = req.body;
     if (!token) return res.status(400).json({ error: 'Falta el token de la tarjeta' });
-    if (!nombre || !nombre.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
 
-    const cliente = await registrarMetodoPago({
-      token, nombre: nombre.trim(), apellido: (apellido || '').trim(),
-      correo: req.usuarioEmail, telefono
-    });
-
-    const infoTarjeta = (cliente.data && cliente.data.franchise) ? cliente.data : (cliente.data || {});
+    const customerId = await mercadopago.obtenerOCrearCliente(req.usuarioEmail);
+    const tarjeta = await mercadopago.guardarTarjeta(customerId, token);
 
     const { error: eUpd } = await supabase
       .from('suscripciones')
       .update({
-        epayco_customer_id: cliente.data ? cliente.data.customerId || cliente.data.id_customer : null,
-        tarjeta_franquicia: infoTarjeta.franchise || null,
-        tarjeta_ultimos_4: infoTarjeta.mask ? String(infoTarjeta.mask).slice(-4) : null,
+        mp_customer_id: customerId,
+        tarjeta_franquicia: tarjeta.payment_method ? (tarjeta.payment_method.name || tarjeta.payment_method.id) : null,
+        tarjeta_ultimos_4: tarjeta.last_four_digits || null,
         actualizado_en: new Date().toISOString()
       })
       .eq('usuario_id', req.usuarioId);
@@ -110,8 +98,9 @@ router.post('/agregar-metodo-pago', async (req, res, next) => {
 
 // POST /api/suscripcion/iniciar-pago — cuerpo: { plan_id }
 // Devuelve los datos que el navegador necesita para abrir el
-// checkout de ePayco. No activa nada todavía: eso solo pasa
-// cuando llega y se valida el webhook de confirmación.
+// Brick de pago de Mercado Pago. No activa nada todavía: eso solo pasa
+// cuando el pago se confirma (síncrono en /procesar-pago, o por el
+// webhook si queda en proceso).
 router.post('/iniciar-pago', async (req, res, next) => {
   try {
     const { plan_id } = req.body;
@@ -128,8 +117,8 @@ router.post('/iniciar-pago', async (req, res, next) => {
     const monto = yaPagoAntes ? precioLista : Math.round(precioLista / 2);
 
     // A propósito, NO se toca la fila de suscripciones aquí. El webhook
-    // ya recibe el usuario y el plan directo de ePayco (extra1/extra2),
-    // así que no hace falta "avisarle" por adelantado escribiendo
+    // (o la confirmación síncrona de /procesar-pago) ya recibe el usuario
+    // y el plan directo en external_reference, así que no hace falta "avisarle" por adelantado escribiendo
     // "pendiente_pago" — si lo hiciéramos, y la persona cierra el
     // checkout sin pagar, se perdería el estado real que tenía antes
     // (días de prueba restantes, o el plan cancelado que aún conserva

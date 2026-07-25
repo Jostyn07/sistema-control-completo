@@ -5,6 +5,14 @@
 // - POST /                       registra la venta; descuenta materiales
 // - GET  /                       historial con filtros (desde, hasta, estado)
 // - PUT  /:id/estado             pendiente → en_produccion → listo → entregado
+// - PUT  /:id/pago                confirmar/desconfirmar pago — independiente
+//                                 del estado de entrega
+// - PUT  /:id                     editar datos de contacto/fecha (NUNCA
+//                                 productos/cantidades, para no arriesgar
+//                                 la consistencia del inventario)
+// - DELETE /:id                   elimina y revierte el stock consumido;
+//                                 bloqueada si existe cualquier factura
+//                                 asociada (incluso anulada)
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
@@ -145,13 +153,28 @@ router.post('/', async (req, res, next) => {
     if (eItems) throw new Error(eItems.message);
 
     for (const [materialId, { material, requerido }] of requeridoPorMaterial) {
-      const nuevoStock = Math.max(0, Math.round((Number(material.stock_actual) - requerido) * 100) / 100);
+      const stockAnterior = Number(material.stock_actual);
+      const nuevoStock = Math.max(0, Math.round((stockAnterior - requerido) * 100) / 100);
       const { error: eStock } = await supabase
         .from('materiales')
         .update({ stock_actual: nuevoStock, actualizado_en: new Date().toISOString() })
         .eq('id', materialId)
         .eq('usuario_id', req.usuarioId);
       if (eStock) throw new Error(eStock.message);
+
+      // Bitácora (Fase 2 del plan de dashboard) — si esto falla, no se
+      // revierte la venta ni el stock: la bitácora es "buena, no
+      // perfecta", como quedó documentado en el plan.
+      const { error: eMov } = await supabase.from('inventario_movimientos').insert({
+        usuario_id: req.usuarioId,
+        material_id: materialId,
+        tipo: 'venta',
+        cantidad: -requerido,
+        stock_anterior: stockAnterior,
+        stock_nuevo: nuevoStock,
+        referencia_id: venta.id
+      });
+      if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de venta:', eMov.message);
     }
 
     res.status(201).json({
@@ -213,6 +236,27 @@ router.put('/:id/estado', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// PUT /api/ventas/:id/pago — cuerpo: { pagado: boolean }
+// Independiente del estado de entrega — se puede marcar como pagado en
+// cualquier punto de la secuencia pendiente/en_produccion/listo/entregado.
+router.put('/:id/pago', async (req, res, next) => {
+  try {
+    const { pagado } = req.body;
+    if (typeof pagado !== 'boolean')
+      return res.status(400).json({ error: '"pagado" debe ser true o false' });
+
+    const { data, error } = await supabase
+      .from('ventas')
+      .update({ pagado, fecha_pago: pagado ? new Date().toISOString() : null })
+      .eq('id', req.params.id)
+      .eq('usuario_id', req.usuarioId)
+      .select().single();
+    if (error) throw new Error(error.message);
+    if (!data) return res.status(404).json({ error: 'Venta no encontrada' });
+    res.json(data);
+  } catch (err) { next(err); }
+});
+
 // PUT /api/ventas/:id/fecha-entrega — cuerpo: { fecha_entrega } (null para quitarla)
 router.put('/:id/fecha-entrega', async (req, res, next) => {
   try {
@@ -226,6 +270,130 @@ router.put('/:id/fecha-entrega', async (req, res, next) => {
     if (error) throw new Error(error.message);
     if (!data) return res.status(404).json({ error: 'Venta no encontrada' });
     res.json(data);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/ventas/:id — editar SOLO datos de contacto y fecha de entrega.
+// A propósito NO se pueden editar productos/cantidades acá: cambiar los
+// items de una venta ya registrada obligaría a recalcular y revertir
+// consumo de materiales de forma segura, que es justo lo que hace
+// DELETE + una venta nueva. Mantenerlos separados evita inconsistencias
+// silenciosas en el inventario.
+router.put('/:id', async (req, res, next) => {
+  try {
+    const { cliente, cliente_telefono, cliente_cedula, fecha_entrega } = req.body;
+
+    const cambios = {};
+    if (cliente !== undefined) cambios.cliente = (cliente || '').trim() || null;
+    if (cliente_telefono !== undefined) cambios.cliente_telefono_cifrado = cifrar(cliente_telefono);
+    if (cliente_cedula !== undefined) cambios.cliente_cedula_cifrada = cifrar(cliente_cedula);
+    if (fecha_entrega !== undefined) cambios.fecha_entrega = fecha_entrega || null;
+
+    if (Object.keys(cambios).length === 0)
+      return res.status(400).json({ error: 'No se mandó ningún campo para editar' });
+
+    const { data, error } = await supabase
+      .from('ventas')
+      .update(cambios)
+      .eq('id', req.params.id)
+      .eq('usuario_id', req.usuarioId)
+      .select().single();
+    if (error) throw new Error(error.message);
+    if (!data) return res.status(404).json({ error: 'Venta no encontrada' });
+
+    res.json({
+      ...data,
+      cliente_telefono: descifrar(data.cliente_telefono_cifrado),
+      cliente_cedula: descifrar(data.cliente_cedula_cifrada),
+      cliente_telefono_cifrado: undefined,
+      cliente_cedula_cifrada: undefined
+    });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/ventas/:id — cuerpo: { motivo }
+// Revierte el stock que la venta había consumido (recalculado con la
+// ficha técnica actual de cada producto — misma limitación que ya
+// existe hoy en Compras) y registra el reverso en inventario_ajustes
+// e inventario_movimientos. Bloqueada si la venta ya está facturada:
+// borrar una venta con factura generada es un problema legal, no solo
+// de inventario.
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { motivo } = req.body;
+    if (!motivo || !motivo.trim())
+      return res.status(400).json({ error: 'Escribe el motivo de la eliminación (para trazabilidad)' });
+
+    const { data: venta, error: eGet } = await supabase
+      .from('ventas').select('*, ventas_items(producto_id, cantidad)')
+      .eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+    if (eGet || !venta) return res.status(404).json({ error: 'Venta no encontrada' });
+
+    // OJO: se revisa si existe CUALQUIER factura (aunque esté anulada),
+    // no solo venta.facturada — porque la factura anulada NUNCA se borra
+    // (para no perder el consecutivo) y la base de datos sigue
+    // impidiendo el borrado mientras esa fila exista, sin importar su
+    // estado. Anular libera la venta para editarla o facturarla de
+    // nuevo, pero no para eliminarla.
+    const { data: facturasAsociadas, error: eFact } = await supabase
+      .from('facturas').select('id, numero, anulada').eq('venta_id', req.params.id);
+    if (eFact) throw new Error(eFact.message);
+    if (facturasAsociadas && facturasAsociadas.length > 0) {
+      const numeros = facturasAsociadas.map(f => f.numero || '(sin número)').join(', ');
+      return res.status(400).json({
+        error: `Esta venta tiene factura(s) asociada(s) (${numeros}) — no se puede eliminar, ni siquiera si están anuladas, para conservar el historial contable. Sí puedes seguir editando sus datos de contacto.`
+      });
+    }
+
+    const productoIds = (venta.ventas_items || []).map(i => i.producto_id);
+    const { data: fichas, error: eFichas } = await supabase
+      .from('productos_materiales')
+      .select('producto_id, material_id, cantidad, materiales(stock_actual)')
+      .in('producto_id', productoIds.length ? productoIds : ['00000000-0000-0000-0000-000000000000']);
+    if (eFichas) throw new Error(eFichas.message);
+
+    const requeridoPorMaterial = new Map();
+    for (const item of (venta.ventas_items || [])) {
+      const filasDelProducto = (fichas || []).filter(f => f.producto_id === item.producto_id);
+      for (const f of filasDelProducto) {
+        const previo = requeridoPorMaterial.get(f.material_id) || { stockActual: Number(f.materiales.stock_actual), requerido: 0 };
+        previo.requerido += Number(f.cantidad) * Number(item.cantidad);
+        requeridoPorMaterial.set(f.material_id, previo);
+      }
+    }
+
+    for (const [materialId, { stockActual, requerido }] of requeridoPorMaterial) {
+      const stockNuevo = Math.round((stockActual + requerido) * 100) / 100;
+      const { error: eStock } = await supabase
+        .from('materiales')
+        .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
+        .eq('id', materialId).eq('usuario_id', req.usuarioId);
+      if (eStock) throw new Error(eStock.message);
+
+      await supabase.from('inventario_ajustes').insert({
+        usuario_id: req.usuarioId,
+        material_id: materialId,
+        stock_anterior: stockActual,
+        stock_nuevo: stockNuevo,
+        motivo: `Venta eliminada (${venta.cliente || 'sin cliente'}): ${motivo.trim()}`,
+        usuario: req.usuarioEmail || null
+      });
+      await supabase.from('inventario_movimientos').insert({
+        usuario_id: req.usuarioId,
+        material_id: materialId,
+        tipo: 'ajuste',
+        cantidad: requerido,
+        stock_anterior: stockActual,
+        stock_nuevo: stockNuevo,
+        referencia_id: venta.id
+      });
+    }
+
+    const { error: eDel } = await supabase
+      .from('ventas').delete().eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+    if (eDel) throw new Error(eDel.message);
+
+    res.json({ eliminada: true, stock_revertido: requeridoPorMaterial.size > 0 });
   } catch (err) { next(err); }
 });
 

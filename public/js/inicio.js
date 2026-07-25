@@ -13,6 +13,19 @@
 const SEGUNDOS_REFRESCO_INICIO = 30;
 const CLAVE_PERIODO_GUARDADO = 'inicio_periodo_seleccionado';
 
+// Chart.js dibuja en <canvas> — un CSS no puede tocar esos colores.
+// Esta función es el equivalente para gráficos: mismo criterio de
+// "leer el tema activo", pero en JS, en el único lugar donde hace
+// falta (se llama cada vez que se crea o redibuja un gráfico, así
+// que si el usuario cambia de tema y la página recarga, ya toma la
+// paleta correcta desde el primer dibujo).
+function obtenerPaletaGraficos() {
+  const oscuro = document.documentElement.getAttribute('data-tema') === 'panel-oscuro';
+  return oscuro
+    ? { azul: '#4F62F7', azulFondo: 'rgba(79,98,247,0.12)', verde: '#22C55E', verdeFondo: 'rgba(34,197,94,0.12)', rojo: '#EF4444', naranja: '#F59E0B', texto: '#6B7086', borde: '#ECEDF3' }
+    : { azul: '#0088b0', azulFondo: 'rgba(0,136,176,0.1)', verde: '#15803d', verdeFondo: 'rgba(21,128,61,0.1)', rojo: '#b91c1c', naranja: '#c2410c', texto: '#605d5d', borde: 'rgba(32,30,29,0.16)' };
+}
+
 // ---- Selector global de período ----
 // Único estado de período para todo Inicio: cuando cambia, se vuelve a
 // pedir el bloque de KPIs de Ventas (y, a futuro, cualquier otro bloque
@@ -38,11 +51,31 @@ function inicializarSelectorPeriodo() {
     localStorage.setItem(CLAVE_PERIODO_GUARDADO, periodoActual);
     marcarBotonActivo();
     cargarVentasPeriodo();
+    cargarGraficoVentasUtilidad();
+    cargarRendimientoProductos();
+    cargarGraficoMovimientos();
   });
 }
 
+// Cuadrado de ícono de color para las tarjetas KPI — SOLO se agrega
+// en el tema oscuro (el tema claro no tiene hueco visual para esto
+// y no le tocamos el markup). Rota entre 4 colores de acento, mismo
+// criterio que el mockup: variedad visual, no un ícono "semántico"
+// distinto por cada métrica.
+const ICONOS_KPI = [
+  { color: 'azul', svg: '<path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>' },
+  { color: 'verde', svg: '<path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/>' },
+  { color: 'morado', svg: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>' },
+  { color: 'naranja', svg: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/>' }
+];
+function cajaIconoKpi(indice) {
+  if (document.documentElement.getAttribute('data-tema') !== 'panel-oscuro') return '';
+  const icono = ICONOS_KPI[indice % ICONOS_KPI.length];
+  return `<span class="indicador__icono indicador__icono--${icono.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icono.svg}</svg></span>`;
+}
+
 // ---- KPIs de Ventas del período seleccionado, con comparación ----
-function pintarKpiConVariacion(valorTexto, variacion, etiqueta) {
+function pintarKpiConVariacion(valorTexto, variacion, etiqueta, indice) {
   const sinDatoPrevio = variacion.pct == null;
   const color = sinDatoPrevio ? '' : (variacion.pct >= 0 ? 'indicador__valor--positivo' : 'indicador__valor--negativo');
   const flecha = sinDatoPrevio ? '' : (variacion.pct >= 0 ? '▲ ' : '▼ ');
@@ -51,6 +84,7 @@ function pintarKpiConVariacion(valorTexto, variacion, etiqueta) {
       <span class="campo__etiqueta">${etiqueta}</span>
       <span class="indicador__valor">${valorTexto}</span>
       <span class="texto-secundario ${color}">${flecha}${variacion.texto}</span>
+      ${cajaIconoKpi(indice)}
     </div>`;
 }
 
@@ -67,12 +101,209 @@ async function cargarVentasPeriodo() {
     }
 
     panel.innerHTML =
-      pintarKpiConVariacion(formatearPesos(r.ventas.valor), r.ventas.variacion, 'Ventas del período') +
-      pintarKpiConVariacion(String(r.pedidos.valor), r.pedidos.variacion, 'Pedidos') +
-      pintarKpiConVariacion(formatearPesos(r.ticket_promedio.valor), r.ticket_promedio.variacion, 'Ticket promedio') +
-      pintarKpiConVariacion(r.margen_bruto_pct.valor != null ? `${r.margen_bruto_pct.valor}%` : '—', r.margen_bruto_pct.variacion, 'Margen bruto');
+      pintarKpiConVariacion(formatearPesos(r.ventas.valor), r.ventas.variacion, 'Ventas del período', 0) +
+      pintarKpiConVariacion(String(r.pedidos.valor), r.pedidos.variacion, 'Pedidos', 1) +
+      pintarKpiConVariacion(formatearPesos(r.ticket_promedio.valor), r.ticket_promedio.variacion, 'Ticket promedio', 2) +
+      pintarKpiConVariacion(r.margen_bruto_pct.valor != null ? `${r.margen_bruto_pct.valor}%` : '—', r.margen_bruto_pct.variacion, 'Margen bruto', 3);
   } catch (err) {
     panel.innerHTML = `<p class="tabla__vacio">No se pudieron cargar los KPIs de ventas: ${escaparHtml(err.message)}</p>`;
+  }
+}
+
+// ---- Gráfico Ventas vs Utilidad (mismo período/agrupación de arriba) ----
+let chartVentasUtilidad = null;
+
+async function cargarGraficoVentasUtilidad() {
+  const canvas = document.getElementById('graficoVentasUtilidad');
+  const vacio = document.getElementById('graficoVentasUtilidadVacio');
+  if (!canvas) return;
+  try {
+    const r = await API.obtener(`/api/dashboard/serie-ventas-utilidad?periodo=${encodeURIComponent(periodoActual)}`);
+    const sinDatos = r.puntos.every(p => p.ventas === 0 && p.utilidad === 0);
+
+    if (sinDatos) {
+      canvas.hidden = true;
+      vacio.hidden = false;
+      if (chartVentasUtilidad) { chartVentasUtilidad.destroy(); chartVentasUtilidad = null; }
+      return;
+    }
+    canvas.hidden = false;
+    vacio.hidden = true;
+
+    // Mismo cuidado que con el doughnut de inventario: destruir la
+    // instancia anterior antes de redibujar, o Chart.js va montando
+    // gráficos encima de otros cada vez que cambia el período.
+    if (chartVentasUtilidad) {
+      chartVentasUtilidad.destroy();
+      chartVentasUtilidad = null;
+    }
+
+    chartVentasUtilidad = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: r.puntos.map(p => p.etiqueta),
+        datasets: [
+          { label: 'Ventas', data: r.puntos.map(p => p.ventas), borderColor: obtenerPaletaGraficos().azul, backgroundColor: obtenerPaletaGraficos().azulFondo, tension: 0.25, fill: true },
+          { label: 'Utilidad', data: r.puntos.map(p => p.utilidad), borderColor: obtenerPaletaGraficos().verde, backgroundColor: obtenerPaletaGraficos().verdeFondo, tension: 0.25, fill: true }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
+        scales: { y: { ticks: { callback: (v) => formatearPesos(v) } } }
+      }
+    });
+  } catch (err) {
+    canvas.hidden = true;
+    vacio.hidden = false;
+    vacio.textContent = `No se pudo cargar el gráfico: ${err.message}`;
+  }
+}
+
+// ---- Movimientos de inventario: Entradas vs Salidas (punto 13) ----
+let materialMovimientosActual = '';
+let chartMovimientosInventario = null;
+let selectorMaterialInicializado = false;
+
+async function inicializarSelectorMaterialMovimientos() {
+  const select = document.getElementById('selectorMaterialMovimientos');
+  if (!select || selectorMaterialInicializado) return;
+  selectorMaterialInicializado = true;
+  try {
+    const materiales = await API.obtener('/api/inventario/materiales');
+    for (const m of materiales) {
+      const opcion = document.createElement('option');
+      opcion.value = m.id;
+      opcion.textContent = m.nombre;
+      select.appendChild(opcion);
+    }
+  } catch (err) {
+    // Si esto falla, el selector simplemente se queda en "Todos los
+    // materiales" — no bloquea el resto del gráfico.
+  }
+  select.addEventListener('change', () => {
+    materialMovimientosActual = select.value;
+    cargarGraficoMovimientos();
+  });
+}
+
+async function cargarGraficoMovimientos() {
+  const canvas = document.getElementById('graficoMovimientosInventario');
+  const vacio = document.getElementById('graficoMovimientosInventarioVacio');
+  if (!canvas) return;
+  try {
+    const query = new URLSearchParams({ periodo: periodoActual });
+    if (materialMovimientosActual) query.set('material_id', materialMovimientosActual);
+    const r = await API.obtener(`/api/dashboard/movimientos-inventario?${query}`);
+    const sinDatos = r.puntos.every(p => p.entradas === 0 && p.salidas === 0);
+
+    if (sinDatos) {
+      canvas.hidden = true;
+      vacio.hidden = false;
+      if (chartMovimientosInventario) { chartMovimientosInventario.destroy(); chartMovimientosInventario = null; }
+      return;
+    }
+    canvas.hidden = false;
+    vacio.hidden = true;
+
+    if (chartMovimientosInventario) {
+      chartMovimientosInventario.destroy();
+      chartMovimientosInventario = null;
+    }
+
+    chartMovimientosInventario = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: r.puntos.map(p => p.etiqueta),
+        datasets: [
+          { label: 'Entradas', data: r.puntos.map(p => p.entradas), backgroundColor: obtenerPaletaGraficos().verde },
+          { label: 'Salidas', data: r.puntos.map(p => p.salidas), backgroundColor: obtenerPaletaGraficos().rojo }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+      }
+    });
+  } catch (err) {
+    canvas.hidden = true;
+    vacio.hidden = false;
+    vacio.textContent = `No se pudo cargar: ${err.message}`;
+  }
+}
+
+// ---- Rendimiento por producto (Top 10, mismo período de arriba) ----
+let metricaProductoActual = 'margen';
+let chartRendimientoProductos = null;
+
+function inicializarSelectorMetricaProducto() {
+  const contenedor = document.getElementById('selectorMetricaProducto');
+  if (!contenedor) return;
+
+  function marcarBotonActivo() {
+    contenedor.querySelectorAll('button').forEach(btn => {
+      btn.classList.toggle('boton--activo', btn.dataset.metrica === metricaProductoActual);
+    });
+  }
+  marcarBotonActivo();
+
+  contenedor.addEventListener('click', (ev) => {
+    const boton = ev.target.closest('button[data-metrica]');
+    if (!boton || boton.dataset.metrica === metricaProductoActual) return;
+    metricaProductoActual = boton.dataset.metrica;
+    marcarBotonActivo();
+    cargarRendimientoProductos();
+  });
+}
+
+const ETIQUETA_METRICA_PRODUCTO = { margen: 'Ganancia', ingresos: 'Ingresos', unidades: 'Unidades' };
+
+async function cargarRendimientoProductos() {
+  const canvas = document.getElementById('graficoRendimientoProductos');
+  const vacio = document.getElementById('graficoRendimientoProductosVacio');
+  if (!canvas) return;
+  try {
+    const lista = await API.obtener(
+      `/api/finanzas/rentabilidad-productos?periodo=${encodeURIComponent(periodoActual)}&orden=${metricaProductoActual}&limite=10`
+    );
+
+    if (!lista || lista.length === 0) {
+      canvas.hidden = true;
+      vacio.hidden = false;
+      if (chartRendimientoProductos) { chartRendimientoProductos.destroy(); chartRendimientoProductos = null; }
+      return;
+    }
+    canvas.hidden = false;
+    vacio.hidden = true;
+
+    if (chartRendimientoProductos) {
+      chartRendimientoProductos.destroy();
+      chartRendimientoProductos = null;
+    }
+
+    const esDinero = metricaProductoActual !== 'unidades';
+    chartRendimientoProductos = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: lista.map(p => p.nombre),
+        datasets: [{
+          label: ETIQUETA_METRICA_PRODUCTO[metricaProductoActual],
+          data: lista.map(p => p[metricaProductoActual]),
+          backgroundColor: obtenerPaletaGraficos().azul
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { ticks: { callback: (v) => esDinero ? formatearPesos(v) : v } } }
+      }
+    });
+  } catch (err) {
+    canvas.hidden = true;
+    vacio.hidden = false;
+    vacio.textContent = `No se pudo cargar: ${err.message}`;
   }
 }
 
@@ -108,7 +339,7 @@ function pintarDoughnutInventario(totalMateriales, stockBajo, agotados) {
       labels: [`Normal (${normal})`, `Stock bajo (${stockBajo})`, `Agotado (${agotados})`],
       datasets: [{
         data: [normal, stockBajo, agotados],
-        backgroundColor: ['#15803d', '#c2410c', '#b91c1c'],
+        backgroundColor: [obtenerPaletaGraficos().verde, obtenerPaletaGraficos().naranja, obtenerPaletaGraficos().rojo],
         borderWidth: 0
       }]
     },
@@ -146,18 +377,22 @@ async function cargarInventarioKpis() {
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Valor del inventario</span>
         <span class="indicador__valor">${formatearPesos(r.valor_inventario)}</span>
+        ${cajaIconoKpi(0)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Materiales</span>
         <span class="indicador__valor">${r.total_materiales}</span>
+        ${cajaIconoKpi(1)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Stock bajo</span>
         <span class="indicador__valor ${r.stock_bajo > 0 ? 'indicador__valor--negativo' : ''}">${r.stock_bajo}</span>
+        ${cajaIconoKpi(2)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Agotados</span>
         <span class="indicador__valor ${r.agotados > 0 ? 'indicador__valor--negativo' : ''}">${r.agotados}</span>
+        ${cajaIconoKpi(3)}
       </div>`;
     pintarDoughnutInventario(r.total_materiales, r.stock_bajo, r.agotados);
     return { stockBajo: r.stock_bajo, agotados: r.agotados };
@@ -190,20 +425,24 @@ async function cargarIndicadores() {
         <span class="campo__etiqueta">Ingresos del mes</span>
         <span class="indicador__valor">${formatearPesos(r.ingresos_mes)}</span>
         <span class="texto-secundario">${r.ventas_del_mes} venta(s)</span>
+        ${cajaIconoKpi(0)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Utilidad del mes</span>
         <span class="indicador__valor ${colorUtilidad}">${formatearPesos(r.utilidad_mes)}</span>
+        ${cajaIconoKpi(1)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Punto de equilibrio</span>
         <span class="indicador__valor">${equilibrio}</span>
         <span class="texto-secundario">${subEquilibrio}</span>
+        ${cajaIconoKpi(2)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">ROI acumulado</span>
         <span class="indicador__valor ${r.roi_acumulado != null && r.roi_acumulado < 0 ? 'indicador__valor--negativo' : ''}">${r.roi_acumulado != null ? r.roi_acumulado + '%' : '—'}</span>
         ${r.roi_acumulado == null ? `<span class="texto-secundario">${r.nota_roi || ''}</span>` : ''}
+        ${cajaIconoKpi(3)}
       </div>`;
     return r;
   } catch (err) {
@@ -220,7 +459,7 @@ async function cargarResumenPedidos() {
     const activos = ventas.filter(v => v.estado !== 'entregado');
     if (activos.length === 0) {
       contenedor.innerHTML = '<p class="texto-secundario">Sin pedidos pendientes de entregar.</p>';
-      return 0;
+      return { activos: 0, todas: ventas };
     }
     const porEstado = { pendiente: 0, en_produccion: 0, listo: 0 };
     for (const v of activos) porEstado[v.estado] = (porEstado[v.estado] || 0) + 1;
@@ -230,10 +469,10 @@ async function cargarResumenPedidos() {
       <p class="texto-secundario" style="margin:4px 0 0">
         ${porEstado.pendiente} pendiente(s) · ${porEstado.en_produccion} en producción · ${porEstado.listo} listo(s) para entregar
       </p>`;
-    return activos.length;
+    return { activos: activos.length, todas: ventas };
   } catch (err) {
     contenedor.innerHTML = `<p class="tabla__vacio">${escaparHtml(err.message)}</p>`;
-    return 0;
+    return { activos: 0, todas: [] };
   }
 }
 
@@ -334,28 +573,81 @@ async function cargarResumenEntregas() {
 }
 
 // ---- Alertas: lo que requiere acción hoy ----
+// Cada alerta trae su severidad para poder ordenarlas — antes se
+// pintaban siempre en el mismo orden fijo, sin importar cuál era
+// más urgente de verdad. "Crítico" bloquea o atrasa una operación
+// real (entregar, fabricar, comprar); "advertencia" es administrativo
+// y puede esperar un poco sin frenar nada.
 function pintarAlertas({ rojosCompra, sinStock, sinFacturar, entregasVencidas }) {
   const seccion = document.getElementById('seccionAlertas');
   const alertas = [];
 
   if (entregasVencidas > 0)
-    alertas.push({ texto: `${entregasVencidas} entrega(s) vencida(s), sin marcar como entregadas.`, enlace: '/ventas.html', accion: 'Ver ventas' });
-  if (rojosCompra > 0)
-    alertas.push({ texto: `${rojosCompra} material(es) en zona roja: hay que comprar ya para no frenar la producción.`, enlace: '/compras.html', accion: 'Ver compras' });
+    alertas.push({ texto: `${entregasVencidas} entrega(s) vencida(s), sin marcar como entregadas.`, enlace: '/ventas.html', accion: 'Ver ventas', severidad: 'critico', peso: 3 });
   if (sinStock > 0)
-    alertas.push({ texto: `${sinStock} producto(s) no se pueden fabricar con el stock actual.`, enlace: '/inventario.html', accion: 'Ver inventario' });
+    alertas.push({ texto: `${sinStock} producto(s) no se pueden fabricar con el stock actual.`, enlace: '/inventario.html', accion: 'Ver inventario', severidad: 'critico', peso: 3 });
+  if (rojosCompra > 0)
+    alertas.push({ texto: `${rojosCompra} material(es) en zona roja: hay que comprar ya para no frenar la producción.`, enlace: '/compras.html', accion: 'Ver compras', severidad: 'critico', peso: 2 });
   if (sinFacturar > 0)
-    alertas.push({ texto: `${sinFacturar} venta(s) sin factura generada.`, enlace: '/facturacion.html', accion: 'Facturar' });
+    alertas.push({ texto: `${sinFacturar} venta(s) sin factura generada.`, enlace: '/facturacion.html', accion: 'Facturar', severidad: 'advertencia', peso: 1 });
 
   if (alertas.length === 0) {
     seccion.innerHTML = '';
     return;
   }
+
+  alertas.sort((a, b) => b.peso - a.peso);
+
   seccion.innerHTML = alertas.map(a => `
-    <div class="alerta">
+    <div class="alerta alerta--${a.severidad}">
       <span>${a.texto}</span>
       <a href="${a.enlace}" class="boton boton--pequeno">${a.accion}</a>
     </div>`).join('');
+}
+
+// ---- Últimas ventas (punto 7 del plan) ----
+const ETIQUETA_ESTADO_VENTA = {
+  pendiente: 'Pendiente', en_produccion: 'En producción', listo: 'Listo', entregado: 'Entregado'
+};
+
+function pintarUltimasVentas(ventas) {
+  const contenedor = document.getElementById('resumenUltimasVentas');
+  if (!contenedor) return;
+  if (!ventas || ventas.length === 0) {
+    contenedor.innerHTML = '<p class="texto-secundario">Todavía no hay ventas registradas.</p>';
+    return;
+  }
+
+  // El backend ya las manda ordenadas por fecha descendente — solo
+  // recortamos a las últimas 5 para no convertir Inicio en otro
+  // módulo de Ventas (punto 7: "mantener edición y filtros fuera de Inicio").
+  const ultimas = ventas.slice(0, 5);
+
+  const filas = ultimas.map(v => {
+    const items = v.ventas_items || [];
+    const resumenProductos = items.length
+      ? items.map(it => `${it.cantidad}× ${it.productos?.nombre || 'producto'}`).join(', ')
+      : '—';
+    const ganancia = Number(v.total) - Number(v.costo_total);
+    const fechaTexto = new Date(v.fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+    return `
+      <tr>
+        <td>${escaparHtml(v.cliente || 'Sin nombre')}</td>
+        <td class="texto-secundario">${escaparHtml(resumenProductos)}</td>
+        <td>${fechaTexto}</td>
+        <td>${formatearPesos(v.total)}</td>
+        <td class="${ganancia >= 0 ? 'indicador__valor--positivo' : 'indicador__valor--negativo'}">${formatearPesos(ganancia)}</td>
+        <td>${ETIQUETA_ESTADO_VENTA[v.estado] || v.estado}</td>
+      </tr>`;
+  }).join('');
+
+  contenedor.innerHTML = `
+    <table class="tabla">
+      <thead>
+        <tr><th>Cliente</th><th>Producto</th><th>Fecha</th><th>Total</th><th>Ganancia</th><th>Estado</th></tr>
+      </thead>
+      <tbody>${filas}</tbody>
+    </table>`;
 }
 
 // ---- Orquestación ----
@@ -392,7 +684,7 @@ async function cargarEstadoSuscripcion() {
 }
 
 async function refrescarInicio() {
-  const [, , compras, sinStock, sinFacturar, entregas] = await Promise.all([
+  const [, pedidos, compras, sinStock, sinFacturar, entregas] = await Promise.all([
     cargarIndicadores(),
     cargarResumenPedidos(),
     cargarResumenCompras(),
@@ -400,9 +692,13 @@ async function refrescarInicio() {
     cargarResumenFacturacion(),
     cargarResumenEntregas(),
     cargarVentasPeriodo(),
+    cargarGraficoVentasUtilidad(),
+    cargarRendimientoProductos(),
+    cargarGraficoMovimientos(),
     cargarInventarioKpis()
   ]);
   pintarAlertas({ rojosCompra: compras.rojos, sinStock, sinFacturar, entregasVencidas: entregas.vencidas });
+  pintarUltimasVentas(pedidos.todas);
   cargarEstadoSuscripcion();
 
   document.getElementById('indicadorFecha').textContent =
@@ -417,6 +713,8 @@ function escaparHtml(texto) {
 
 document.addEventListener('DOMContentLoaded', () => {
   inicializarSelectorPeriodo();
+  inicializarSelectorMetricaProducto();
+  inicializarSelectorMaterialMovimientos();
   refrescarInicio();
   setInterval(refrescarInicio, SEGUNDOS_REFRESCO_INICIO * 1000);
   document.addEventListener('visibilitychange', () => {

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inicio — Sistema de Control</title>
   <link rel="stylesheet" href="css/estilos.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tema-panel-oscuro.css">
 </head>
 <body>
 
@@ -50,6 +54,41 @@
       <p class="tabla__vacio">Cargando…</p>
     </section>
 
+    <!-- Ventas vs Utilidad: mismo período y agrupación del selector de arriba -->
+    <section class="tarjeta">
+      <h2 style="margin:0 0 8px;font-size:1.05rem">Ventas vs Utilidad</h2>
+      <canvas id="graficoVentasUtilidad" height="90"></canvas>
+      <p class="tabla__vacio" id="graficoVentasUtilidadVacio" hidden>Sin ventas en este período.</p>
+    </section>
+
+    <!-- Rendimiento por producto: mismo período de arriba, con su propio
+         selector de métrica (Unidades | Ingresos | Ganancia) -->
+    <section class="tarjeta">
+      <div class="pagina__encabezado" style="margin-bottom:8px">
+        <h2 style="margin:0;font-size:1.05rem">Rendimiento por producto</h2>
+        <div class="selector-periodo" id="selectorMetricaProducto" role="group" aria-label="Métrica">
+          <button type="button" class="boton boton--pequeno" data-metrica="margen">Ganancia</button>
+          <button type="button" class="boton boton--pequeno" data-metrica="ingresos">Ingresos</button>
+          <button type="button" class="boton boton--pequeno" data-metrica="unidades">Unidades</button>
+        </div>
+      </div>
+      <canvas id="graficoRendimientoProductos" height="140"></canvas>
+      <p class="tabla__vacio" id="graficoRendimientoProductosVacio" hidden>Sin ventas en este período.</p>
+    </section>
+
+    <!-- Entradas vs Salidas de inventario (punto 13, Fase 2) — mismo
+         período de arriba, con selector de material opcional -->
+    <section class="tarjeta">
+      <div class="pagina__encabezado" style="margin-bottom:8px">
+        <h2 style="margin:0;font-size:1.05rem">Movimientos de inventario</h2>
+        <select id="selectorMaterialMovimientos" class="boton boton--pequeno">
+          <option value="">Todos los materiales</option>
+        </select>
+      </div>
+      <canvas id="graficoMovimientosInventario" height="110"></canvas>
+      <p class="tabla__vacio" id="graficoMovimientosInventarioVacio" hidden>Sin movimientos registrados en este período.</p>
+    </section>
+
     <!-- Indicadores financieros del mes -->
     <section class="panel-finanzas" id="panelIndicadores">
       <p class="tabla__vacio">Cargando indicadores…</p>
@@ -70,6 +109,15 @@
         <canvas id="graficoInventarioEstado"></canvas>
       </div>
       <p class="tabla__vacio" id="graficoInventarioVacio" hidden>Sin materiales registrados todavía.</p>
+    </section>
+
+    <!-- Últimas ventas -->
+    <section class="tarjeta seccion">
+      <div class="pagina__encabezado" style="margin-bottom:8px">
+        <h2 style="margin:0;font-size:1.05rem">Últimas ventas</h2>
+        <a href="ventas.html" class="boton boton--pequeno">Ver todas</a>
+      </div>
+      <div id="resumenUltimasVentas"><p class="tabla__vacio">Cargando…</p></div>
     </section>
 
     <div class="cuadricula-inicio">
@@ -122,6 +170,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/tema.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/inicio.js"></script>
   <script>

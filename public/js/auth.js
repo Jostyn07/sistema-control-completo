@@ -141,8 +141,10 @@ function mostrarUsuarioActual() {
 
   const contenedor = document.createElement('span');
   contenedor.className = 'navegacion__usuario';
+  const esOscuro = document.documentElement.getAttribute('data-tema') === 'panel-oscuro';
   contenedor.innerHTML = `
     <span class="texto-secundario">${escaparHtmlAuth(usuario.nombre || usuario.correo)}</span>
+    <button type="button" class="boton boton--pequeno" onclick="alternarTema()">${esOscuro ? '☀ Tema claro' : '🌙 Tema oscuro'}</button>
     <button type="button" class="boton boton--pequeno" onclick="cerrarSesion()">Cerrar sesión</button>
   `;
   nav.appendChild(contenedor);

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agrega un método de pago — Sistema de Control</title>
   <link rel="stylesheet" href="css/estilos.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tema-panel-oscuro.css">
 </head>
 <body>
   <main class="pagina-login">
@@ -18,35 +22,38 @@
 
       <form id="formTarjeta">
         <label class="campo">
-          <span class="campo__etiqueta">Nombre en la tarjeta *</span>
-          <input type="text" name="name" id="campoNombreTitular" required>
-        </label>
-        <label class="campo">
-          <span class="campo__etiqueta">Apellido *</span>
-          <input type="text" name="last-name" id="campoApellidoTitular" required>
+          <span class="campo__etiqueta">Nombre completo del titular *</span>
+          <input type="text" id="campoNombreTitular" required>
         </label>
         <label class="campo">
           <span class="campo__etiqueta">Número de tarjeta *</span>
-          <input type="text" name="number" id="campoNumeroTarjeta" inputmode="numeric" placeholder="0000 0000 0000 0000" required>
+          <div id="campoNumeroTarjeta" class="campo__tarjeta-segura"></div>
         </label>
         <div class="fila-campos">
           <label class="campo">
-            <span class="campo__etiqueta">Mes de vencimiento *</span>
-            <input type="text" name="exp-month" id="campoMesVencimiento" placeholder="MM" maxlength="2" required>
-          </label>
-          <label class="campo">
-            <span class="campo__etiqueta">Año de vencimiento *</span>
-            <input type="text" name="exp-year" id="campoAnioVencimiento" placeholder="AAAA" maxlength="4" required>
+            <span class="campo__etiqueta">Vencimiento (MM/AA) *</span>
+            <div id="campoVencimientoTarjeta" class="campo__tarjeta-segura"></div>
           </label>
           <label class="campo">
             <span class="campo__etiqueta">CVC *</span>
-            <input type="text" name="cvc" id="campoCVC" inputmode="numeric" maxlength="4" required>
+            <div id="campoCVCTarjeta" class="campo__tarjeta-segura"></div>
           </label>
         </div>
-        <label class="campo">
-          <span class="campo__etiqueta">Teléfono (opcional)</span>
-          <input type="tel" id="campoTelefonoTitular">
-        </label>
+        <div class="fila-campos">
+          <label class="campo">
+            <span class="campo__etiqueta">Tipo de documento *</span>
+            <select id="campoTipoDocumento" required>
+              <option value="CC">Cédula de ciudadanía</option>
+              <option value="CE">Cédula de extranjería</option>
+              <option value="NIT">NIT</option>
+              <option value="PP">Pasaporte</option>
+            </select>
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">Número de documento *</span>
+            <input type="text" inputmode="numeric" id="campoNumeroDocumento" required>
+          </label>
+        </div>
 
         <button type="submit" class="boton boton--primario boton--ancho" id="botonGuardarTarjeta">Guardar método de pago</button>
       </form>
@@ -56,9 +63,9 @@
     </div>
   </main>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-  <script src="https://checkout.epayco.co/epayco.min.js"></script>
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
   <script src="js/api.js"></script>
+  <script src="js/tema.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/agregar-metodo-pago.js"></script>
   <script>

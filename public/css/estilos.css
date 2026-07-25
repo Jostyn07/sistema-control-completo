@@ -22,6 +22,7 @@
   --accent-texto: #006786;
   --magenta: #d6006c;
   --magenta-texto: #aa0b56;
+  --advertencia: #c2410c;
   --radio: 2px;
   --sombra-lg: 0 12px 32px rgba(45, 43, 43, 0.22);
   --serif: "Source Serif 4", Georgia, serif;
@@ -124,6 +125,12 @@ a:hover { color: var(--accent); }
 }
 .campo input:focus, .campo select:focus, .campo textarea:focus {
   outline: none; border-bottom: 2px solid var(--accent); padding-bottom: 7px;
+}
+.campo__tarjeta-segura {
+  height: 38px; border-bottom: 1px solid var(--ink);
+}
+.campo__tarjeta-segura.campo__tarjeta-segura--activo {
+  border-bottom: 2px solid var(--accent);
 }
 
 /* ---- Modal: la única superficie elevada ---- */
@@ -242,6 +249,7 @@ a:hover { color: var(--accent); }
   content: ""; position: absolute; left: 0; top: 50%; margin-top: -4.5px;
   width: 9px; height: 9px; border-radius: 50%; background: var(--magenta);
 }
+.alerta--advertencia::before { background: var(--advertencia); }
 
 /* ---- Móvil: navegación y densidad ---- */
 @media (max-width: 640px) {

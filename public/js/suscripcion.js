@@ -3,9 +3,9 @@
 // Funciones:
 //   cargarEstadoActual()
 //   cargarPlanes()
-//   elegirPlan(planId)   → abre el checkout de ePayco
+//   elegirPlan(planId)   → abre el modal con el Brick de tarjeta
 // La activación real NUNCA pasa por aquí — solo por el webhook del
-// backend, que valida la firma de ePayco antes de activar nada.
+// backend, que valida la firma de Mercado Pago antes de activar nada.
 // ============================================================
 
 const ETIQUETA_ESTADO_SUSCRIPCION = {
@@ -164,7 +164,7 @@ async function cargarPlanes() {
 }
 
 // ---- Pago con el Brick de tarjeta de Mercado Pago ----
-// Reemplaza el popup que abría antes ePayco.checkout.configure().
+// Se muestra dentro de un modal en esta misma página.
 // El SDK (mp) se crea una sola vez; el Brick sí hay que destruirlo
 // y volver a crearlo cada vez que se abre el modal, o Mercado Pago
 // termina montando formularios encima unos de otros.
