@@ -11,7 +11,7 @@
     <div class="tarjeta tarjeta-login" style="text-align:center;max-width:440px">
       <h1 id="tituloGracias">Confirmando tu pago…</h1>
       <p class="texto-secundario" id="textoGracias">
-        Esto puede tardar unos segundos mientras ePayco nos confirma la transacción.
+        Esto puede tardar unos segundos mientras confirmamos la transacción.
       </p>
       <a href="suscripcion.html" class="boton boton--primario boton--ancho" style="margin-top:16px">Ir a mi suscripción</a>
     </div>
@@ -22,8 +22,9 @@
   <script>
     if (exigirSesion()) {
       // No confiamos en los parámetros de esta URL para activar nada — eso
-      // ya lo decidió el webhook de ePayco directo con el backend. Aquí
-      // solo consultamos el estado real para mostrarle algo útil al usuario.
+      // ya lo decide el webhook de Mercado Pago (o la confirmación síncrona
+      // de /procesar-pago) directo con el backend. Aquí solo consultamos el
+      // estado real para mostrarle algo útil al usuario.
       (async () => {
         try {
           const r = await API.obtener('/api/suscripcion/mi-suscripcion');

@@ -14,7 +14,7 @@ const rutasProductos = require('./rutas/productos');
 
 const app = express();
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // el webhook de ePayco manda los datos así, no en JSON
+app.use(express.urlencoded({ extended: true })); // por si algún formulario manda datos así, no en JSON
 
 // Archivos estáticos (HTML, CSS, JS del navegador)
 app.use(express.static(path.join(__dirname, '..', 'public')));
