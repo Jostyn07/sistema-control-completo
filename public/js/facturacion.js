@@ -156,7 +156,7 @@ async function cargarHistorialFacturas() {
 }
 
 async function anularFactura(id, numero) {
-  const motivo = prompt(`Vas a anular la factura ${numero || ''}. Esto no la borra (queda en el historial marcada como anulada) y libera la venta para poder editarla, eliminarla o facturarla de nuevo.\n\nEscribe el motivo:`);
+  const motivo = prompt(`Vas a anular la factura ${numero || ''}. Esto no la borra (queda en el historial marcada como anulada, para conservar la numeración) y libera la venta para poder editar sus datos o facturarla de nuevo — no para eliminarla, la venta sigue ligada a esta factura anulada.\n\nEscribe el motivo:`);
   if (motivo === null) return; // canceló
   if (!motivo.trim()) { mostrarAviso('Necesitas escribir un motivo', 'error'); return; }
 

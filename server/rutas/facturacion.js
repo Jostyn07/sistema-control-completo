@@ -140,8 +140,11 @@ router.post('/generar', async (req, res, next) => {
 // POST /api/facturacion/:id/anular — cuerpo: { motivo }
 // La factura NUNCA se borra (el consecutivo autorizado no se puede
 // reutilizar) — solo se marca como anulada. Libera la venta
-// (facturada: false) para que "Eliminar" en Ventas vuelva a estar
-// disponible, o para generar una factura nueva si hace falta corregir algo.
+// (facturada: false) para poder editarla o generar una factura nueva
+// si hace falta corregir algo. NO habilita eliminar la venta: mientras
+// esta factura (anulada o no) siga existiendo, la restricción de la
+// base de datos (facturas_venta_id_fkey) sigue impidiendo el borrado —
+// ver el guard equivalente en DELETE /api/ventas/:id.
 router.post('/:id/anular', async (req, res, next) => {
   try {
     const { motivo } = req.body;

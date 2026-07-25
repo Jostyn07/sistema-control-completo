@@ -11,7 +11,8 @@
 //                                 productos/cantidades, para no arriesgar
 //                                 la consistencia del inventario)
 // - DELETE /:id                   elimina y revierte el stock consumido;
-//                                 bloqueada si la venta ya está facturada
+//                                 bloqueada si existe cualquier factura
+//                                 asociada (incluso anulada)
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
@@ -327,8 +328,22 @@ router.delete('/:id', async (req, res, next) => {
       .from('ventas').select('*, ventas_items(producto_id, cantidad)')
       .eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
     if (eGet || !venta) return res.status(404).json({ error: 'Venta no encontrada' });
-    if (venta.facturada)
-      return res.status(400).json({ error: 'Esta venta ya tiene factura generada — no se puede eliminar. Si necesitas anularla, hazlo desde Facturación.' });
+
+    // OJO: se revisa si existe CUALQUIER factura (aunque esté anulada),
+    // no solo venta.facturada — porque la factura anulada NUNCA se borra
+    // (para no perder el consecutivo) y la base de datos sigue
+    // impidiendo el borrado mientras esa fila exista, sin importar su
+    // estado. Anular libera la venta para editarla o facturarla de
+    // nuevo, pero no para eliminarla.
+    const { data: facturasAsociadas, error: eFact } = await supabase
+      .from('facturas').select('id, numero, anulada').eq('venta_id', req.params.id);
+    if (eFact) throw new Error(eFact.message);
+    if (facturasAsociadas && facturasAsociadas.length > 0) {
+      const numeros = facturasAsociadas.map(f => f.numero || '(sin número)').join(', ');
+      return res.status(400).json({
+        error: `Esta venta tiene factura(s) asociada(s) (${numeros}) — no se puede eliminar, ni siquiera si están anuladas, para conservar el historial contable. Sí puedes seguir editando sus datos de contacto.`
+      });
+    }
 
     const productoIds = (venta.ventas_items || []).map(i => i.producto_id);
     const { data: fichas, error: eFichas } = await supabase
