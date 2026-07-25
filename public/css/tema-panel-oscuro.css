@@ -255,6 +255,21 @@
 [data-tema="panel-oscuro"] .indicador__valor--negativo { color: var(--panel-peligro); }
 [data-tema="panel-oscuro"] .indicador .texto-secundario { color: var(--panel-ink-suave); font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; }
 
+/* Cuadrado de ícono de color en la esquina de cada tarjeta KPI —
+   solo existe en el DOM cuando el tema oscuro está activo (lo agrega
+   inicio.js), pero el color/tamaño se define acá. */
+[data-tema="panel-oscuro"] .indicador { position: relative; padding-top: 44px; }
+[data-tema="panel-oscuro"] .indicador__icono {
+  position: absolute; top: 20px; left: 0;
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+[data-tema="panel-oscuro"] .indicador__icono svg { width: 20px; height: 20px; }
+[data-tema="panel-oscuro"] .indicador__icono--azul { background: rgba(79, 98, 247, 0.12); color: var(--panel-accent); }
+[data-tema="panel-oscuro"] .indicador__icono--verde { background: var(--panel-exito-fondo); color: var(--panel-exito); }
+[data-tema="panel-oscuro"] .indicador__icono--morado { background: rgba(139, 92, 246, 0.12); color: var(--panel-info); }
+[data-tema="panel-oscuro"] .indicador__icono--naranja { background: var(--panel-advertencia-fondo); color: var(--panel-advertencia); }
+
 /* ---- Finanzas: gráfico de barras CSS (el de Finanzas, no Chart.js) ---- */
 [data-tema="panel-oscuro"] .grafico { border-bottom: 1px solid var(--panel-borde); }
 [data-tema="panel-oscuro"] .grafico__barra { border-radius: 4px 4px 0 0; }
