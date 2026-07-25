@@ -256,7 +256,18 @@
 [data-tema="panel-oscuro"] .etiqueta-estado--entregado { background: var(--panel-borde); color: var(--panel-ink-suave); }
 
 /* ---- Finanzas / dashboard: indicadores (KPI) ---- */
-[data-tema="panel-oscuro"] .panel-finanzas .indicador { border-left: 1px solid var(--panel-borde); }
+/* En el tema claro, .indicador usa border-left como divisor entre
+   tarjetas "planas" pegadas, y le quita el padding izquierdo al
+   primer elemento de cada fila de 4 (border-left no aplica ahí).
+   En el tema oscuro cada .indicador YA es una tarjeta completa con
+   su propio borde en los 4 lados (viene de .tarjeta) — ese divisor
+   sobra, y el recorte de padding del primero de cada fila hay que
+   anularlo explícitamente o se hereda del tema claro sin querer. */
+[data-tema="panel-oscuro"] .panel-finanzas .indicador,
+[data-tema="panel-oscuro"] .panel-finanzas .indicador:nth-child(4n+1) {
+  border-left: none;
+  padding: 22px 24px;
+}
 [data-tema="panel-oscuro"] .indicador__valor { font-weight: 700; font-size: 1.9rem; color: var(--panel-ink); }
 [data-tema="panel-oscuro"] .indicador__valor--positivo { color: var(--panel-exito); }
 [data-tema="panel-oscuro"] .indicador__valor--negativo { color: var(--panel-peligro); }
@@ -339,5 +350,5 @@
 [data-tema="panel-oscuro"] .separador-login::after { background: var(--panel-borde); }
 
 @media (max-width: 640px) {
-  [data-tema="panel-oscuro"] .panel-finanzas .indicador { border-left: none; border-top: 1px solid var(--panel-borde); }
+  [data-tema="panel-oscuro"] .panel-finanzas .indicador { border-left: none; }
 }
