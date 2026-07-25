@@ -145,13 +145,28 @@ router.post('/', async (req, res, next) => {
     if (eItems) throw new Error(eItems.message);
 
     for (const [materialId, { material, requerido }] of requeridoPorMaterial) {
-      const nuevoStock = Math.max(0, Math.round((Number(material.stock_actual) - requerido) * 100) / 100);
+      const stockAnterior = Number(material.stock_actual);
+      const nuevoStock = Math.max(0, Math.round((stockAnterior - requerido) * 100) / 100);
       const { error: eStock } = await supabase
         .from('materiales')
         .update({ stock_actual: nuevoStock, actualizado_en: new Date().toISOString() })
         .eq('id', materialId)
         .eq('usuario_id', req.usuarioId);
       if (eStock) throw new Error(eStock.message);
+
+      // Bitácora (Fase 2 del plan de dashboard) — si esto falla, no se
+      // revierte la venta ni el stock: la bitácora es "buena, no
+      // perfecta", como quedó documentado en el plan.
+      const { error: eMov } = await supabase.from('inventario_movimientos').insert({
+        usuario_id: req.usuarioId,
+        material_id: materialId,
+        tipo: 'venta',
+        cantidad: -requerido,
+        stock_anterior: stockAnterior,
+        stock_nuevo: nuevoStock,
+        referencia_id: venta.id
+      });
+      if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de venta:', eMov.message);
     }
 
     res.status(201).json({

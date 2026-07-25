@@ -15,6 +15,9 @@
 // - GET /serie-ventas-utilidad  Serie temporal para el gráfico de
 //                 líneas, agrupada por día/semana/mes según el
 //                 tamaño del período (mismo periodo.js de siempre).
+// - GET /movimientos-inventario  Entradas vs Salidas (punto 13),
+//                 usando la bitácora inventario_movimientos. Acepta
+//                 ?material_id= opcional para ver un material puntual.
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
@@ -181,6 +184,45 @@ router.get('/serie-ventas-utilidad', async (req, res, next) => {
         etiqueta: b.etiqueta,
         ventas: Math.round(b.ventas * 100) / 100,
         utilidad: Math.round(b.utilidad * 100) / 100
+      }))
+    });
+  } catch (err) { next(err); }
+});
+
+// GET /api/dashboard/movimientos-inventario?periodo=...&material_id=(opcional)
+router.get('/movimientos-inventario', async (req, res, next) => {
+  try {
+    const rango = calcularRango(req.query);
+
+    let consulta = supabase
+      .from('inventario_movimientos')
+      .select('tipo, cantidad, fecha')
+      .eq('usuario_id', req.usuarioId)
+      .gte('fecha', rango.desde.toISOString())
+      .lte('fecha', rango.hasta.toISOString());
+    if (req.query.material_id) consulta = consulta.eq('material_id', req.query.material_id);
+
+    const { data, error } = await consulta;
+    if (error) throw new Error(error.message);
+
+    const buckets = generarBuckets(rango.desde, rango.hasta, rango.agrupacion)
+      .map(b => ({ ...b, entradas: 0, salidas: 0 }));
+
+    for (const mov of (data || [])) {
+      const fecha = new Date(mov.fecha);
+      const bucket = buckets.find(b => fecha >= b.inicio && fecha <= b.fin);
+      if (!bucket) continue;
+      const cantidad = Number(mov.cantidad);
+      if (cantidad >= 0) bucket.entradas += cantidad;
+      else bucket.salidas += Math.abs(cantidad);
+    }
+
+    res.json({
+      agrupacion: rango.agrupacion,
+      puntos: buckets.map(b => ({
+        etiqueta: b.etiqueta,
+        entradas: Math.round(b.entradas * 100) / 100,
+        salidas: Math.round(b.salidas * 100) / 100
       }))
     });
   } catch (err) { next(err); }

@@ -40,6 +40,7 @@ function inicializarSelectorPeriodo() {
     cargarVentasPeriodo();
     cargarGraficoVentasUtilidad();
     cargarRendimientoProductos();
+    cargarGraficoMovimientos();
   });
 }
 
@@ -126,6 +127,78 @@ async function cargarGraficoVentasUtilidad() {
     canvas.hidden = true;
     vacio.hidden = false;
     vacio.textContent = `No se pudo cargar el gráfico: ${err.message}`;
+  }
+}
+
+// ---- Movimientos de inventario: Entradas vs Salidas (punto 13) ----
+let materialMovimientosActual = '';
+let chartMovimientosInventario = null;
+let selectorMaterialInicializado = false;
+
+async function inicializarSelectorMaterialMovimientos() {
+  const select = document.getElementById('selectorMaterialMovimientos');
+  if (!select || selectorMaterialInicializado) return;
+  selectorMaterialInicializado = true;
+  try {
+    const materiales = await API.obtener('/api/inventario/materiales');
+    for (const m of materiales) {
+      const opcion = document.createElement('option');
+      opcion.value = m.id;
+      opcion.textContent = m.nombre;
+      select.appendChild(opcion);
+    }
+  } catch (err) {
+    // Si esto falla, el selector simplemente se queda en "Todos los
+    // materiales" — no bloquea el resto del gráfico.
+  }
+  select.addEventListener('change', () => {
+    materialMovimientosActual = select.value;
+    cargarGraficoMovimientos();
+  });
+}
+
+async function cargarGraficoMovimientos() {
+  const canvas = document.getElementById('graficoMovimientosInventario');
+  const vacio = document.getElementById('graficoMovimientosInventarioVacio');
+  if (!canvas) return;
+  try {
+    const query = new URLSearchParams({ periodo: periodoActual });
+    if (materialMovimientosActual) query.set('material_id', materialMovimientosActual);
+    const r = await API.obtener(`/api/dashboard/movimientos-inventario?${query}`);
+    const sinDatos = r.puntos.every(p => p.entradas === 0 && p.salidas === 0);
+
+    if (sinDatos) {
+      canvas.hidden = true;
+      vacio.hidden = false;
+      if (chartMovimientosInventario) { chartMovimientosInventario.destroy(); chartMovimientosInventario = null; }
+      return;
+    }
+    canvas.hidden = false;
+    vacio.hidden = true;
+
+    if (chartMovimientosInventario) {
+      chartMovimientosInventario.destroy();
+      chartMovimientosInventario = null;
+    }
+
+    chartMovimientosInventario = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: r.puntos.map(p => p.etiqueta),
+        datasets: [
+          { label: 'Entradas', data: r.puntos.map(p => p.entradas), backgroundColor: '#15803d' },
+          { label: 'Salidas', data: r.puntos.map(p => p.salidas), backgroundColor: '#b91c1c' }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+      }
+    });
+  } catch (err) {
+    canvas.hidden = true;
+    vacio.hidden = false;
+    vacio.textContent = `No se pudo cargar: ${err.message}`;
   }
 }
 
@@ -582,6 +655,7 @@ async function refrescarInicio() {
     cargarVentasPeriodo(),
     cargarGraficoVentasUtilidad(),
     cargarRendimientoProductos(),
+    cargarGraficoMovimientos(),
     cargarInventarioKpis()
   ]);
   pintarAlertas({ rojosCompra: compras.rojos, sinStock, sinFacturar, entregasVencidas: entregas.vencidas });
@@ -601,6 +675,7 @@ function escaparHtml(texto) {
 document.addEventListener('DOMContentLoaded', () => {
   inicializarSelectorPeriodo();
   inicializarSelectorMetricaProducto();
+  inicializarSelectorMaterialMovimientos();
   refrescarInicio();
   setInterval(refrescarInicio, SEGUNDOS_REFRESCO_INICIO * 1000);
   document.addEventListener('visibilitychange', () => {

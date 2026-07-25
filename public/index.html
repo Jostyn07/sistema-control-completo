@@ -72,6 +72,19 @@
       <p class="tabla__vacio" id="graficoRendimientoProductosVacio" hidden>Sin ventas en este período.</p>
     </section>
 
+    <!-- Entradas vs Salidas de inventario (punto 13, Fase 2) — mismo
+         período de arriba, con selector de material opcional -->
+    <section class="tarjeta">
+      <div class="pagina__encabezado" style="margin-bottom:8px">
+        <h2 style="margin:0;font-size:1.05rem">Movimientos de inventario</h2>
+        <select id="selectorMaterialMovimientos" class="boton boton--pequeno">
+          <option value="">Todos los materiales</option>
+        </select>
+      </div>
+      <canvas id="graficoMovimientosInventario" height="110"></canvas>
+      <p class="tabla__vacio" id="graficoMovimientosInventarioVacio" hidden>Sin movimientos registrados en este período.</p>
+    </section>
+
     <!-- Indicadores financieros del mes -->
     <section class="panel-finanzas" id="panelIndicadores">
       <p class="tabla__vacio">Cargando indicadores…</p>

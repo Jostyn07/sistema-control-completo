@@ -60,13 +60,27 @@ async function recibirCompra(compraId, usuarioId) {
     .from('materiales').select('stock_actual').eq('id', reclamada.material_id).eq('usuario_id', usuarioId).single();
   if (eMat || !material) throw new Error('El material de esta compra ya no existe');
 
-  const nuevoStock = Math.round((Number(material.stock_actual) + Number(reclamada.cantidad)) * 100) / 100;
+  const stockAnterior = Number(material.stock_actual);
+  const nuevoStock = Math.round((stockAnterior + Number(reclamada.cantidad)) * 100) / 100;
   const { error: eStock } = await supabase
     .from('materiales')
     .update({ stock_actual: nuevoStock, actualizado_en: new Date().toISOString() })
     .eq('id', reclamada.material_id)
     .eq('usuario_id', usuarioId);
   if (eStock) throw new Error(eStock.message);
+
+  // Bitácora (Fase 2) — misma regla: si falla, no se revierte la
+  // recepción de la compra, solo queda sin registrar en el historial.
+  const { error: eMov } = await supabase.from('inventario_movimientos').insert({
+    usuario_id: usuarioId,
+    material_id: reclamada.material_id,
+    tipo: 'compra',
+    cantidad: Number(reclamada.cantidad),
+    stock_anterior: stockAnterior,
+    stock_nuevo: nuevoStock,
+    referencia_id: reclamada.id
+  });
+  if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de compra:', eMov.message);
 
   return reclamada;
 }
