@@ -31,10 +31,10 @@
       <h2>Pedidos</h2>
       <table class="tabla">
         <thead>
-          <tr><th>Fecha</th><th>Cliente</th><th>Entrega</th><th>Productos</th><th>Total</th><th>Estado</th><th></th></tr>
+          <tr><th>Fecha</th><th>Cliente</th><th>Entrega</th><th>Productos</th><th>Total</th><th>Estado</th><th>Pago</th><th></th><th></th></tr>
         </thead>
         <tbody id="cuerpoPedidos">
-          <tr><td colspan="7" class="tabla__vacio">Cargando pedidos…</td></tr>
+          <tr><td colspan="9" class="tabla__vacio">Cargando pedidos…</td></tr>
         </tbody>
       </table>
     </section>
@@ -65,10 +65,10 @@
       </div>
       <table class="tabla">
         <thead>
-          <tr><th>Fecha</th><th>Cliente</th><th>Contacto</th><th>Entrega</th><th>Productos</th><th>Total</th><th>Costo</th><th>Ganancia</th><th>Estado</th></tr>
+          <tr><th>Fecha</th><th>Cliente</th><th>Contacto</th><th>Entrega</th><th>Productos</th><th>Total</th><th>Costo</th><th>Ganancia</th><th>Estado</th><th>Pago</th><th></th></tr>
         </thead>
         <tbody id="cuerpoHistorial">
-          <tr><td colspan="9" class="tabla__vacio">Cargando historial…</td></tr>
+          <tr><td colspan="11" class="tabla__vacio">Cargando historial…</td></tr>
         </tbody>
       </table>
     </section>
@@ -136,6 +136,35 @@
         <div class="modal__acciones">
           <button type="button" class="boton" onclick="cerrarFechaEntrega()">Cancelar</button>
           <button type="button" class="boton boton--primario" onclick="guardarFechaEntrega()">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Editar venta: solo datos de contacto/fecha, nunca productos -->
+    <div class="modal" id="modalEditarVenta" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2>Editar venta</h2>
+        <p class="texto-secundario">Solo puedes editar los datos de contacto y la fecha de entrega. Para cambiar los productos, elimina esta venta y registra una nueva.</p>
+        <input type="hidden" id="campoEditarVentaId">
+        <label class="campo">
+          <span class="campo__etiqueta">Cliente</span>
+          <input type="text" id="campoEditarCliente">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Teléfono</span>
+          <input type="tel" id="campoEditarTelefono">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Cédula</span>
+          <input type="text" id="campoEditarCedula">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Fecha de entrega</span>
+          <input type="date" id="campoEditarFechaEntrega">
+        </label>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarEditarVenta()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="guardarEdicionVenta()">Guardar</button>
         </div>
       </div>
     </div>

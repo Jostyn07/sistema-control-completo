@@ -148,6 +148,78 @@ async function registrarVenta(forzar = false) {
   }
 }
 
+// ---- Pago (independiente del estado de entrega) ----
+function celdaPago(venta) {
+  if (venta.pagado) {
+    return `<span class="indicador__valor--positivo">✓ Pagado</span> <button type="button" class="boton boton--pequeno" onclick="confirmarPago('${venta.id}', false)">Deshacer</button>`;
+  }
+  return `<button type="button" class="boton boton--pequeno" onclick="confirmarPago('${venta.id}', true)">Confirmar pago</button>`;
+}
+
+async function confirmarPago(id, pagado) {
+  try {
+    await API.actualizar(`/api/ventas/${id}/pago`, { pagado });
+    mostrarAviso(pagado ? 'Pago confirmado' : 'Pago revertido');
+    cargarPedidos();
+    cargarHistorialVentas();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
+// ---- Editar / Eliminar ----
+function accionesVenta(venta) {
+  return `
+    <button type="button" class="boton boton--pequeno" onclick='abrirEditarVenta(${JSON.stringify(venta).replace(/'/g, "&#39;")})'>Editar</button>
+    <button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarVenta('${venta.id}', '${escaparHtml(venta.cliente || 'sin cliente')}')">Eliminar</button>`;
+}
+
+function abrirEditarVenta(venta) {
+  document.getElementById('campoEditarVentaId').value = venta.id;
+  document.getElementById('campoEditarCliente').value = venta.cliente || '';
+  document.getElementById('campoEditarTelefono').value = venta.cliente_telefono || '';
+  document.getElementById('campoEditarCedula').value = venta.cliente_cedula || '';
+  document.getElementById('campoEditarFechaEntrega').value = venta.fecha_entrega || '';
+  document.getElementById('modalEditarVenta').hidden = false;
+}
+
+function cerrarEditarVenta() {
+  document.getElementById('modalEditarVenta').hidden = true;
+}
+
+async function guardarEdicionVenta() {
+  const id = document.getElementById('campoEditarVentaId').value;
+  try {
+    await API.actualizar(`/api/ventas/${id}`, {
+      cliente: document.getElementById('campoEditarCliente').value,
+      cliente_telefono: document.getElementById('campoEditarTelefono').value,
+      cliente_cedula: document.getElementById('campoEditarCedula').value,
+      fecha_entrega: document.getElementById('campoEditarFechaEntrega').value
+    });
+    mostrarAviso('Venta actualizada');
+    cerrarEditarVenta();
+    cargarPedidos();
+    cargarHistorialVentas();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
+async function eliminarVenta(id, nombreCliente) {
+  const motivo = prompt(`Vas a eliminar la venta de "${nombreCliente}". El stock consumido se devuelve automáticamente.\n\nEscribe el motivo:`);
+  if (motivo === null) return; // canceló
+  if (!motivo.trim()) { mostrarAviso('Necesitas escribir un motivo', 'error'); return; }
+
+  try {
+    await API.eliminar(`/api/ventas/${id}`, { motivo });
+    mostrarAviso('Venta eliminada y stock revertido');
+    cargarPedidos();
+    cargarHistorialVentas();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
 // ---- 2. Pedidos con estado ----
 async function cargarPedidos() {
   const cuerpo = document.getElementById('cuerpoPedidos');
@@ -156,7 +228,7 @@ async function cargarPedidos() {
     const pedidosActivos = ventas.filter(v => v.estado !== 'entregado');
 
     if (pedidosActivos.length === 0) {
-      cuerpo.innerHTML = '<tr><td colspan="7" class="tabla__vacio">No hay pedidos activos. Los entregados quedan en el historial.</td></tr>';
+      cuerpo.innerHTML = '<tr><td colspan="9" class="tabla__vacio">No hay pedidos activos. Los entregados quedan en el historial.</td></tr>';
       return;
     }
 
@@ -170,11 +242,13 @@ async function cargarPedidos() {
         <td>${resumenProductos(v)}</td>
         <td>${formatearPesos(v.total)}</td>
         <td><span class="etiqueta-estado etiqueta-estado--${v.estado}">${ETIQUETA_ESTADO[v.estado]}</span></td>
+        <td>${celdaPago(v)}</td>
         <td>${siguiente ? `<button type="button" class="boton boton--pequeno" onclick="cambiarEstadoPedido('${v.id}', '${siguiente}')">Pasar a ${ETIQUETA_ESTADO[siguiente].toLowerCase()}</button>` : ''}</td>
+        <td>${accionesVenta(v)}</td>
       </tr>`;
     }).join('');
   } catch (err) {
-    cuerpo.innerHTML = `<tr><td colspan="7" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
+    cuerpo.innerHTML = `<tr><td colspan="9" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -243,7 +317,7 @@ async function cargarHistorialVentas() {
   try {
     const ventas = await API.obtener('/api/ventas' + (filtros.toString() ? '?' + filtros.toString() : ''));
     if (ventas.length === 0) {
-      cuerpo.innerHTML = '<tr><td colspan="9" class="tabla__vacio">No hay ventas con esos filtros.</td></tr>';
+      cuerpo.innerHTML = '<tr><td colspan="11" class="tabla__vacio">No hay ventas con esos filtros.</td></tr>';
       return;
     }
     cuerpo.innerHTML = ventas.map(v => `
@@ -257,9 +331,11 @@ async function cargarHistorialVentas() {
         <td>${formatearPesos(v.costo_total)}</td>
         <td>${formatearPesos(v.total - v.costo_total)}</td>
         <td><span class="etiqueta-estado etiqueta-estado--${v.estado}">${ETIQUETA_ESTADO[v.estado]}</span></td>
+        <td>${celdaPago(v)}</td>
+        <td>${accionesVenta(v)}</td>
       </tr>`).join('');
   } catch (err) {
-    cuerpo.innerHTML = `<tr><td colspan="7" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
+    cuerpo.innerHTML = `<tr><td colspan="11" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
   }
 }
 
