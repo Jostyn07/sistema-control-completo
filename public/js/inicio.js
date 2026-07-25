@@ -39,6 +39,7 @@ function inicializarSelectorPeriodo() {
     marcarBotonActivo();
     cargarVentasPeriodo();
     cargarGraficoVentasUtilidad();
+    cargarRendimientoProductos();
   });
 }
 
@@ -125,6 +126,80 @@ async function cargarGraficoVentasUtilidad() {
     canvas.hidden = true;
     vacio.hidden = false;
     vacio.textContent = `No se pudo cargar el gráfico: ${err.message}`;
+  }
+}
+
+// ---- Rendimiento por producto (Top 10, mismo período de arriba) ----
+let metricaProductoActual = 'margen';
+let chartRendimientoProductos = null;
+
+function inicializarSelectorMetricaProducto() {
+  const contenedor = document.getElementById('selectorMetricaProducto');
+  if (!contenedor) return;
+
+  function marcarBotonActivo() {
+    contenedor.querySelectorAll('button').forEach(btn => {
+      btn.classList.toggle('boton--activo', btn.dataset.metrica === metricaProductoActual);
+    });
+  }
+  marcarBotonActivo();
+
+  contenedor.addEventListener('click', (ev) => {
+    const boton = ev.target.closest('button[data-metrica]');
+    if (!boton || boton.dataset.metrica === metricaProductoActual) return;
+    metricaProductoActual = boton.dataset.metrica;
+    marcarBotonActivo();
+    cargarRendimientoProductos();
+  });
+}
+
+const ETIQUETA_METRICA_PRODUCTO = { margen: 'Ganancia', ingresos: 'Ingresos', unidades: 'Unidades' };
+
+async function cargarRendimientoProductos() {
+  const canvas = document.getElementById('graficoRendimientoProductos');
+  const vacio = document.getElementById('graficoRendimientoProductosVacio');
+  if (!canvas) return;
+  try {
+    const lista = await API.obtener(
+      `/api/finanzas/rentabilidad-productos?periodo=${encodeURIComponent(periodoActual)}&orden=${metricaProductoActual}&limite=10`
+    );
+
+    if (!lista || lista.length === 0) {
+      canvas.hidden = true;
+      vacio.hidden = false;
+      if (chartRendimientoProductos) { chartRendimientoProductos.destroy(); chartRendimientoProductos = null; }
+      return;
+    }
+    canvas.hidden = false;
+    vacio.hidden = true;
+
+    if (chartRendimientoProductos) {
+      chartRendimientoProductos.destroy();
+      chartRendimientoProductos = null;
+    }
+
+    const esDinero = metricaProductoActual !== 'unidades';
+    chartRendimientoProductos = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: lista.map(p => p.nombre),
+        datasets: [{
+          label: ETIQUETA_METRICA_PRODUCTO[metricaProductoActual],
+          data: lista.map(p => p[metricaProductoActual]),
+          backgroundColor: '#0088b0'
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { ticks: { callback: (v) => esDinero ? formatearPesos(v) : v } } }
+      }
+    });
+  } catch (err) {
+    canvas.hidden = true;
+    vacio.hidden = false;
+    vacio.textContent = `No se pudo cargar: ${err.message}`;
   }
 }
 
@@ -506,6 +581,7 @@ async function refrescarInicio() {
     cargarResumenEntregas(),
     cargarVentasPeriodo(),
     cargarGraficoVentasUtilidad(),
+    cargarRendimientoProductos(),
     cargarInventarioKpis()
   ]);
   pintarAlertas({ rojosCompra: compras.rojos, sinStock, sinFacturar, entregasVencidas: entregas.vencidas });
@@ -524,6 +600,7 @@ function escaparHtml(texto) {
 
 document.addEventListener('DOMContentLoaded', () => {
   inicializarSelectorPeriodo();
+  inicializarSelectorMetricaProducto();
   refrescarInicio();
   setInterval(refrescarInicio, SEGUNDOS_REFRESCO_INICIO * 1000);
   document.addEventListener('visibilitychange', () => {

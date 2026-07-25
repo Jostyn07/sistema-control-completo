@@ -57,6 +57,21 @@
       <p class="tabla__vacio" id="graficoVentasUtilidadVacio" hidden>Sin ventas en este período.</p>
     </section>
 
+    <!-- Rendimiento por producto: mismo período de arriba, con su propio
+         selector de métrica (Unidades | Ingresos | Ganancia) -->
+    <section class="tarjeta">
+      <div class="pagina__encabezado" style="margin-bottom:8px">
+        <h2 style="margin:0;font-size:1.05rem">Rendimiento por producto</h2>
+        <div class="selector-periodo" id="selectorMetricaProducto" role="group" aria-label="Métrica">
+          <button type="button" class="boton boton--pequeno" data-metrica="margen">Ganancia</button>
+          <button type="button" class="boton boton--pequeno" data-metrica="ingresos">Ingresos</button>
+          <button type="button" class="boton boton--pequeno" data-metrica="unidades">Unidades</button>
+        </div>
+      </div>
+      <canvas id="graficoRendimientoProductos" height="140"></canvas>
+      <p class="tabla__vacio" id="graficoRendimientoProductosVacio" hidden>Sin ventas en este período.</p>
+    </section>
+
     <!-- Indicadores financieros del mes -->
     <section class="panel-finanzas" id="panelIndicadores">
       <p class="tabla__vacio">Cargando indicadores…</p>

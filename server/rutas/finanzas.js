@@ -4,6 +4,7 @@
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
+const { calcularRango } = require('../servicios/periodo');
 const router = express.Router();
 
 function inicioDeMes(fecha) {
@@ -283,19 +284,37 @@ router.get('/historico-mensual', async (req, res, next) => {
 });
 
 // GET /api/finanzas/rentabilidad-productos — margen de cada producto,
-// con lo REALMENTE vendido este mes (no el margen teórico de la ficha
-// técnica). Ordenado de mayor a menor margen, para ver de un vistazo
-// qué productos sostienen el negocio y cuáles no dejan nada.
+// con lo REALMENTE vendido (no el margen teórico de la ficha técnica).
+//
+// Parámetros opcionales (los usa el dashboard de Inicio; Finanzas sigue
+// llamando esta ruta SIN ningún parámetro, así que su comportamiento
+// no cambió ni un poco):
+//   ?periodo=7d|30d|mes|3m|6m|1y  (o &desde=&hasta=) — si no se manda
+//     ninguno, se mantiene el comportamiento original exacto: mes en
+//     curso hasta ahora, sin límite superior de fecha.
+//   ?orden=margen|unidades|ingresos — default: margen (como siempre)
+//   ?limite=N — Top N productos. Sin este parámetro, devuelve todos
+//     (igual que siempre le ha devuelto a Finanzas).
 router.get('/rentabilidad-productos', async (req, res, next) => {
   try {
-    const ahora = new Date();
-    const desdeMes = inicioDeMes(ahora).toISOString();
+    let desde, hasta;
+    if (req.query.periodo || req.query.desde) {
+      const rango = calcularRango(req.query);
+      desde = rango.desde.toISOString();
+      hasta = rango.hasta.toISOString();
+    } else {
+      desde = inicioDeMes(new Date()).toISOString();
+      hasta = null;
+    }
 
-    const { data: items, error } = await supabase
+    let consulta = supabase
       .from('ventas_items')
       .select('cantidad, precio_unitario, costo_unitario, producto_id, productos(nombre), ventas!inner(fecha, usuario_id)')
       .eq('ventas.usuario_id', req.usuarioId)
-      .gte('ventas.fecha', desdeMes);
+      .gte('ventas.fecha', desde);
+    if (hasta) consulta = consulta.lte('ventas.fecha', hasta);
+
+    const { data: items, error } = await consulta;
     if (error) throw new Error(error.message);
 
     const porProducto = new Map();
@@ -314,7 +333,7 @@ router.get('/rentabilidad-productos', async (req, res, next) => {
 
     const margenTotal = [...porProducto.values()].reduce((s, p) => s + (p.ingresos - p.costo), 0);
 
-    const lista = [...porProducto.values()].map(p => {
+    let lista = [...porProducto.values()].map(p => {
       const margen = Math.round((p.ingresos - p.costo) * 100) / 100;
       return {
         producto_id: p.producto_id,
@@ -326,7 +345,14 @@ router.get('/rentabilidad-productos', async (req, res, next) => {
         margen_pct: p.ingresos > 0 ? Math.round((margen / p.ingresos) * 1000) / 10 : 0,
         porcentaje_del_margen_total: margenTotal > 0 ? Math.round((margen / margenTotal) * 1000) / 10 : 0
       };
-    }).sort((a, b) => b.margen - a.margen);
+    });
+
+    const CAMPOS_ORDEN = { margen: 'margen', unidades: 'unidades', ingresos: 'ingresos' };
+    const campoOrden = CAMPOS_ORDEN[req.query.orden] || 'margen';
+    lista.sort((a, b) => b[campoOrden] - a[campoOrden]);
+
+    const limite = Number(req.query.limite);
+    if (limite > 0) lista = lista.slice(0, limite);
 
     res.json(lista);
   } catch (err) { next(err); }
