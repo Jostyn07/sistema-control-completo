@@ -143,12 +143,30 @@ async function cargarHistorialFacturas() {
         <td>${formatearFecha(f.fecha)}</td>
         <td>${escaparHtml(f.ventas ? (f.ventas.cliente || 'Consumidor final') : '—')}</td>
         <td>${f.ventas ? formatearPesos(f.ventas.total) : '—'}</td>
-        <td>${f.estado === 'recibo_interno' ? 'Recibo interno' : f.estado === 'generada_interna' ? 'Generada (sin validar DIAN)' : escaparHtml(f.estado)}</td>
+        <td>${f.anulada ? '<span class="indicador__valor--negativo">Anulada</span>' : (f.estado === 'recibo_interno' ? 'Recibo interno' : f.estado === 'generada_interna' ? 'Generada (sin validar DIAN)' : escaparHtml(f.estado))}</td>
         <td>${f.cufe ? escaparHtml(f.cufe.slice(0, 12)) + '…' : 'Pendiente'}</td>
-        <td><button type="button" class="boton boton--pequeno" onclick="verFactura('${f.id}')">Ver / Imprimir</button></td>
+        <td>
+          <button type="button" class="boton boton--pequeno" onclick="verFactura('${f.id}')">Ver / Imprimir</button>
+          ${f.anulada ? '' : `<button type="button" class="boton boton--pequeno boton--peligro" onclick="anularFactura('${f.id}', '${escaparHtml(f.numero || '')}')">Anular</button>`}
+        </td>
       </tr>`).join('');
   } catch (err) {
     cuerpo.innerHTML = `<tr><td colspan="7" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function anularFactura(id, numero) {
+  const motivo = prompt(`Vas a anular la factura ${numero || ''}. Esto no la borra (queda en el historial marcada como anulada) y libera la venta para poder editarla, eliminarla o facturarla de nuevo.\n\nEscribe el motivo:`);
+  if (motivo === null) return; // canceló
+  if (!motivo.trim()) { mostrarAviso('Necesitas escribir un motivo', 'error'); return; }
+
+  try {
+    await API.enviar(`/api/facturacion/${id}/anular`, { motivo });
+    mostrarAviso('Factura anulada');
+    cargarVentasFacturables();
+    cargarHistorialFacturas();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
   }
 }
 
@@ -168,6 +186,7 @@ async function verFactura(facturaId) {
 
     contenido.innerHTML = `
       <div class="factura" id="areaImprimible">
+        ${factura.anulada ? `<p class="indicador__valor--negativo" style="text-align:center;border:2px solid currentColor;padding:6px;margin:0 0 12px;font-weight:700">ANULADA — ${escaparHtml(factura.motivo_anulacion || '')} (${formatearFecha(factura.fecha_anulacion)})</p>` : ''}
         <header class="factura__encabezado">
           <div>
             <h2 style="margin:0">${escaparHtml(config ? config.razon_social : '')}</h2>

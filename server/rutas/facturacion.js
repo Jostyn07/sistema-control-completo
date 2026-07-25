@@ -137,6 +137,37 @@ router.post('/generar', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/facturacion/:id/anular — cuerpo: { motivo }
+// La factura NUNCA se borra (el consecutivo autorizado no se puede
+// reutilizar) — solo se marca como anulada. Libera la venta
+// (facturada: false) para que "Eliminar" en Ventas vuelva a estar
+// disponible, o para generar una factura nueva si hace falta corregir algo.
+router.post('/:id/anular', async (req, res, next) => {
+  try {
+    const { motivo } = req.body;
+    if (!motivo || !motivo.trim())
+      return res.status(400).json({ error: 'Escribe el motivo de la anulación (para trazabilidad)' });
+
+    const { data: factura, error: eGet } = await supabase
+      .from('facturas').select('*').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+    if (eGet || !factura) return res.status(404).json({ error: 'Factura no encontrada' });
+    if (factura.anulada) return res.status(400).json({ error: 'Esta factura ya está anulada' });
+
+    const { data: actualizada, error: eUpd } = await supabase
+      .from('facturas')
+      .update({ anulada: true, motivo_anulacion: motivo.trim(), fecha_anulacion: new Date().toISOString() })
+      .eq('id', req.params.id).eq('usuario_id', req.usuarioId)
+      .select().single();
+    if (eUpd) throw new Error(eUpd.message);
+
+    const { error: eVenta } = await supabase
+      .from('ventas').update({ facturada: false }).eq('id', factura.venta_id).eq('usuario_id', req.usuarioId);
+    if (eVenta) throw new Error(eVenta.message);
+
+    res.json(actualizada);
+  } catch (err) { next(err); }
+});
+
 // GET /api/facturacion/historial
 router.get('/historial', async (req, res, next) => {
   try {
