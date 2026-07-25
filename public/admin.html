@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/tema-panel-oscuro.css">
 </head>
-<body>
+<body style="visibility:hidden">
 
   <nav class="navegacion">
     <a href="./index.html" class="navegacion__enlace">Volver al sistema</a>
@@ -51,7 +51,21 @@
   <script src="js/auth.js"></script>
   <script src="js/admin.js"></script>
   <script>
-    if (exigirSesion()) { mostrarUsuarioActual(); }
+    // El body arranca oculto (visibility:hidden en el <body>) — solo se
+    // muestra si de verdad sos el admin. Para cualquier otra persona,
+    // esto redirige antes de que llegue a ver el título ni la
+    // estructura de la página: no hay "no tienes acceso", no hay nada.
+    (async () => {
+      if (!exigirSesion()) return; // ya redirige solo a login si no hay sesión
+      try {
+        await API.obtener('/api/admin/verificar');
+        document.body.style.visibility = 'visible';
+        mostrarUsuarioActual();
+        iniciarPanelAdmin();
+      } catch (err) {
+        window.location.replace('/index.html');
+      }
+    })();
   </script>
 </body>
 </html>

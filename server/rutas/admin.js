@@ -20,6 +20,11 @@ const supabase = require('../supabase/cliente');
 const { calcularRango } = require('../servicios/periodo');
 const router = express.Router();
 
+// GET /api/admin/verificar — solo confirma acceso, sin traer datos.
+// admin.js la llama primero, antes de pintar cualquier cosa, para
+// poder redirigir de inmediato si la sesión no es la tuya.
+router.get('/verificar', (req, res) => res.json({ ok: true }));
+
 // GET /api/admin/metricas?periodo=7d|30d|mes|3m|6m|1y
 router.get('/metricas', async (req, res, next) => {
   try {

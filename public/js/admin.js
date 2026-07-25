@@ -106,8 +106,8 @@ async function cargarClientes() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function iniciarPanelAdmin() {
   inicializarSelectorPeriodoAdmin();
   cargarMetricas();
   cargarClientes();
-});
+}
