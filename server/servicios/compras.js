@@ -20,33 +20,55 @@ function calcularFechaEstimada(tiempoEntregaDias) {
 // Confirma la llegada de UNA compra puntual: la marca "recibida" y
 // suma su cantidad al stock del material. Se usa tanto para el botón
 // manual "Marcar como llegada" como desde el proceso automático.
+//
+// IMPORTANTE — esto se llama desde varias rutas distintas, y ahora
+// Inicio dispara varias de esas rutas EN PARALELO (Promise.all). Si
+// dos peticiones llegan casi al mismo tiempo para la misma compra
+// vencida, un simple "SELECT para ver el estado, luego UPDATE" deja
+// una ventana donde ambas leen "pendiente" antes de que cualquiera
+// alcance a guardar "recibida" — y las dos suman el stock (bug real
+// que se reportó: el inventario quedaba con el doble de lo comprado).
+//
+// La forma correcta es reclamar la compra con un solo UPDATE
+// condicionado a `estado = 'pendiente'`: Postgres solo deja que UNA
+// de las peticiones concurrentes gane esa condición — la otra no
+// actualiza ninguna fila y se detiene ahí, sin duplicar nada.
 async function recibirCompra(compraId, usuarioId) {
-  const { data: compra, error: eGet } = await supabase
-    .from('compras').select('*').eq('id', compraId).eq('usuario_id', usuarioId).single();
-  if (eGet || !compra) throw new Error('Compra no encontrada');
-  if (compra.estado === 'recibida') return compra; // ya estaba recibida, no duplicar
-
-  const { data: material, error: eMat } = await supabase
-    .from('materiales').select('stock_actual').eq('id', compra.material_id).eq('usuario_id', usuarioId).single();
-  if (eMat || !material) throw new Error('El material de esta compra ya no existe');
-
-  const nuevoStock = Math.round((Number(material.stock_actual) + Number(compra.cantidad)) * 100) / 100;
-  const { error: eStock } = await supabase
-    .from('materiales')
-    .update({ stock_actual: nuevoStock, actualizado_en: new Date().toISOString() })
-    .eq('id', compra.material_id)
-    .eq('usuario_id', usuarioId);
-  if (eStock) throw new Error(eStock.message);
-
-  const { data: actualizada, error: eUpd } = await supabase
+  const { data: reclamada, error: eReclamo } = await supabase
     .from('compras')
     .update({ estado: 'recibida', fecha_llegada: new Date().toISOString() })
     .eq('id', compraId)
     .eq('usuario_id', usuarioId)
-    .select().single();
-  if (eUpd) throw new Error(eUpd.message);
+    .eq('estado', 'pendiente')
+    .select()
+    .maybeSingle();
+  if (eReclamo) throw new Error(eReclamo.message);
 
-  return actualizada;
+  if (!reclamada) {
+    // No se pudo reclamar: o el id no existe, o ya estaba recibida de
+    // antes, o la ganó otra petición concurrente hace un instante.
+    // Solo el primer caso es un error real — los otros dos significan
+    // que el stock de esta compra ya se sumó (o se está sumando en la
+    // otra llamada), y no hay nada más que hacer aquí.
+    const { data: actual } = await supabase
+      .from('compras').select('*').eq('id', compraId).eq('usuario_id', usuarioId).maybeSingle();
+    if (!actual) throw new Error('Compra no encontrada');
+    return actual;
+  }
+
+  const { data: material, error: eMat } = await supabase
+    .from('materiales').select('stock_actual').eq('id', reclamada.material_id).eq('usuario_id', usuarioId).single();
+  if (eMat || !material) throw new Error('El material de esta compra ya no existe');
+
+  const nuevoStock = Math.round((Number(material.stock_actual) + Number(reclamada.cantidad)) * 100) / 100;
+  const { error: eStock } = await supabase
+    .from('materiales')
+    .update({ stock_actual: nuevoStock, actualizado_en: new Date().toISOString() })
+    .eq('id', reclamada.material_id)
+    .eq('usuario_id', usuarioId);
+  if (eStock) throw new Error(eStock.message);
+
+  return reclamada;
 }
 
 // Revisa todas las compras pendientes de un usuario cuya fecha estimada

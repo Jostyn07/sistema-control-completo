@@ -38,6 +38,7 @@ function inicializarSelectorPeriodo() {
     localStorage.setItem(CLAVE_PERIODO_GUARDADO, periodoActual);
     marcarBotonActivo();
     cargarVentasPeriodo();
+    cargarGraficoVentasUtilidad();
   });
 }
 
@@ -73,6 +74,57 @@ async function cargarVentasPeriodo() {
       pintarKpiConVariacion(r.margen_bruto_pct.valor != null ? `${r.margen_bruto_pct.valor}%` : '—', r.margen_bruto_pct.variacion, 'Margen bruto');
   } catch (err) {
     panel.innerHTML = `<p class="tabla__vacio">No se pudieron cargar los KPIs de ventas: ${escaparHtml(err.message)}</p>`;
+  }
+}
+
+// ---- Gráfico Ventas vs Utilidad (mismo período/agrupación de arriba) ----
+let chartVentasUtilidad = null;
+
+async function cargarGraficoVentasUtilidad() {
+  const canvas = document.getElementById('graficoVentasUtilidad');
+  const vacio = document.getElementById('graficoVentasUtilidadVacio');
+  if (!canvas) return;
+  try {
+    const r = await API.obtener(`/api/dashboard/serie-ventas-utilidad?periodo=${encodeURIComponent(periodoActual)}`);
+    const sinDatos = r.puntos.every(p => p.ventas === 0 && p.utilidad === 0);
+
+    if (sinDatos) {
+      canvas.hidden = true;
+      vacio.hidden = false;
+      if (chartVentasUtilidad) { chartVentasUtilidad.destroy(); chartVentasUtilidad = null; }
+      return;
+    }
+    canvas.hidden = false;
+    vacio.hidden = true;
+
+    // Mismo cuidado que con el doughnut de inventario: destruir la
+    // instancia anterior antes de redibujar, o Chart.js va montando
+    // gráficos encima de otros cada vez que cambia el período.
+    if (chartVentasUtilidad) {
+      chartVentasUtilidad.destroy();
+      chartVentasUtilidad = null;
+    }
+
+    chartVentasUtilidad = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels: r.puntos.map(p => p.etiqueta),
+        datasets: [
+          { label: 'Ventas', data: r.puntos.map(p => p.ventas), borderColor: '#0088b0', backgroundColor: 'rgba(0,136,176,0.1)', tension: 0.25, fill: true },
+          { label: 'Utilidad', data: r.puntos.map(p => p.utilidad), borderColor: '#15803d', backgroundColor: 'rgba(21,128,61,0.1)', tension: 0.25, fill: true }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
+        scales: { y: { ticks: { callback: (v) => formatearPesos(v) } } }
+      }
+    });
+  } catch (err) {
+    canvas.hidden = true;
+    vacio.hidden = false;
+    vacio.textContent = `No se pudo cargar el gráfico: ${err.message}`;
   }
 }
 
@@ -453,6 +505,7 @@ async function refrescarInicio() {
     cargarResumenFacturacion(),
     cargarResumenEntregas(),
     cargarVentasPeriodo(),
+    cargarGraficoVentasUtilidad(),
     cargarInventarioKpis()
   ]);
   pintarAlertas({ rojosCompra: compras.rojos, sinStock, sinFacturar, entregasVencidas: entregas.vencidas });
