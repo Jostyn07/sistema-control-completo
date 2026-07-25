@@ -84,6 +84,8 @@
 }
 [data-tema="panel-oscuro"] body.con-barra-lateral .pagina {
   margin-left: 240px;
+  margin-right: 0;
+  max-width: none;
   padding: 32px clamp(20px, 4vw, 48px);
 }
 
@@ -258,9 +260,9 @@
 /* Cuadrado de ícono de color en la esquina de cada tarjeta KPI —
    solo existe en el DOM cuando el tema oscuro está activo (lo agrega
    inicio.js), pero el color/tamaño se define acá. */
-[data-tema="panel-oscuro"] .indicador { position: relative; padding-top: 44px; }
+[data-tema="panel-oscuro"] .indicador { position: relative; padding-top: 62px; }
 [data-tema="panel-oscuro"] .indicador__icono {
-  position: absolute; top: 20px; left: 0;
+  position: absolute; top: 18px; left: 0;
   width: 38px; height: 38px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
 }
