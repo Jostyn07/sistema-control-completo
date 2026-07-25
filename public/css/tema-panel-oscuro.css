@@ -261,19 +261,18 @@
    solo existe en el DOM cuando el tema oscuro está activo (lo agrega
    inicio.js), pero el color/tamaño se define acá. */
 [data-tema="panel-oscuro"] .indicador {
-  position: relative;
-  justify-content: center; /* centra el bloque de texto verticalmente,
-    útil cuando una tarjeta de la misma fila tiene más líneas que otra
-    y el grid las estira a la misma altura */
+  justify-content: center; /* centra TODO el bloque (ícono + texto) como
+    una unidad — útil cuando una tarjeta de la misma fila tiene más
+    líneas que otra y el grid las estira a la misma altura */
 }
-/* El padding de arriba SOLO se reserva cuando la tarjeta trae el
-   cuadrado de ícono (las de Inicio) — Finanzas, Análisis de clientes,
-   etc. no lo tienen y no deben perder ese espacio en blanco. */
-[data-tema="panel-oscuro"] .indicador:has(.indicador__icono) { padding-top: 62px; }
+/* El ícono es un elemento normal del flex (no posición absoluta): así
+   se mueve y centra junto con el texto en vez de quedar "flotando"
+   fijo cuando el contenido de al lado es más largo o más corto. En
+   el HTML va al final del div — column-reverse lo muestra primero. */
 [data-tema="panel-oscuro"] .indicador__icono {
-  position: absolute; top: 18px; left: 0;
   width: 38px; height: 38px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
+  margin-bottom: 6px; /* espacio extra hacia el texto de abajo */
 }
 [data-tema="panel-oscuro"] .indicador__icono svg { width: 20px; height: 20px; }
 [data-tema="panel-oscuro"] .indicador__icono--azul { background: rgba(79, 98, 247, 0.12); color: var(--panel-accent); }

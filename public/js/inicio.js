@@ -81,10 +81,10 @@ function pintarKpiConVariacion(valorTexto, variacion, etiqueta, indice) {
   const flecha = sinDatoPrevio ? '' : (variacion.pct >= 0 ? '▲ ' : '▼ ');
   return `
     <div class="indicador tarjeta">
-      ${cajaIconoKpi(indice)}
       <span class="campo__etiqueta">${etiqueta}</span>
       <span class="indicador__valor">${valorTexto}</span>
       <span class="texto-secundario ${color}">${flecha}${variacion.texto}</span>
+      ${cajaIconoKpi(indice)}
     </div>`;
 }
 
@@ -375,24 +375,24 @@ async function cargarInventarioKpis() {
     const r = await API.obtener('/api/dashboard/inventario');
     panel.innerHTML = `
       <div class="indicador tarjeta">
-        ${cajaIconoKpi(0)}
         <span class="campo__etiqueta">Valor del inventario</span>
         <span class="indicador__valor">${formatearPesos(r.valor_inventario)}</span>
+        ${cajaIconoKpi(0)}
       </div>
       <div class="indicador tarjeta">
-        ${cajaIconoKpi(1)}
         <span class="campo__etiqueta">Materiales</span>
         <span class="indicador__valor">${r.total_materiales}</span>
+        ${cajaIconoKpi(1)}
       </div>
       <div class="indicador tarjeta">
-        ${cajaIconoKpi(2)}
         <span class="campo__etiqueta">Stock bajo</span>
         <span class="indicador__valor ${r.stock_bajo > 0 ? 'indicador__valor--negativo' : ''}">${r.stock_bajo}</span>
+        ${cajaIconoKpi(2)}
       </div>
       <div class="indicador tarjeta">
-        ${cajaIconoKpi(3)}
         <span class="campo__etiqueta">Agotados</span>
         <span class="indicador__valor ${r.agotados > 0 ? 'indicador__valor--negativo' : ''}">${r.agotados}</span>
+        ${cajaIconoKpi(3)}
       </div>`;
     pintarDoughnutInventario(r.total_materiales, r.stock_bajo, r.agotados);
     return { stockBajo: r.stock_bajo, agotados: r.agotados };
@@ -422,27 +422,27 @@ async function cargarIndicadores() {
 
     panel.innerHTML = `
       <div class="indicador tarjeta">
-        ${cajaIconoKpi(0)}
         <span class="campo__etiqueta">Ingresos del mes</span>
         <span class="indicador__valor">${formatearPesos(r.ingresos_mes)}</span>
         <span class="texto-secundario">${r.ventas_del_mes} venta(s)</span>
+        ${cajaIconoKpi(0)}
       </div>
       <div class="indicador tarjeta">
-        ${cajaIconoKpi(1)}
         <span class="campo__etiqueta">Utilidad del mes</span>
         <span class="indicador__valor ${colorUtilidad}">${formatearPesos(r.utilidad_mes)}</span>
+        ${cajaIconoKpi(1)}
       </div>
       <div class="indicador tarjeta">
-        ${cajaIconoKpi(2)}
         <span class="campo__etiqueta">Punto de equilibrio</span>
         <span class="indicador__valor">${equilibrio}</span>
         <span class="texto-secundario">${subEquilibrio}</span>
+        ${cajaIconoKpi(2)}
       </div>
       <div class="indicador tarjeta">
-        ${cajaIconoKpi(3)}
         <span class="campo__etiqueta">ROI acumulado</span>
         <span class="indicador__valor ${r.roi_acumulado != null && r.roi_acumulado < 0 ? 'indicador__valor--negativo' : ''}">${r.roi_acumulado != null ? r.roi_acumulado + '%' : '—'}</span>
         ${r.roi_acumulado == null ? `<span class="texto-secundario">${r.nota_roi || ''}</span>` : ''}
+        ${cajaIconoKpi(3)}
       </div>`;
     return r;
   } catch (err) {
