@@ -1,0 +1,306 @@
+/* ============================================================
+   tema-panel-oscuro.css — Tema alternativo "Panel Oscuro"
+   No reemplaza estilos.css: convive con él.
+   Se activa agregando data-tema="panel-oscuro" al <html> — lo hace
+   tema.js automáticamente según lo que haya guardado en localStorage.
+
+   La fuente Manrope se carga con un <link> en el <head> de cada
+   página (junto al de estilos.css), NO con @import aquí — @import
+   bloquea el primer render mientras descarga, un <link> no.
+   Agregar en <head>:
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="css/tema-panel-oscuro.css">
+   Y antes de </body>, junto a los demás scripts (api.js, auth.js):
+     <script src="js/tema.js"></script>
+   ============================================================ */
+
+[data-tema="panel-oscuro"] {
+  --panel-sidebar-bg: #0B1120;
+  --panel-sidebar-activo-bg: rgba(79, 98, 247, 0.18);
+  --panel-sidebar-texto: #AEB4C4;
+  --panel-sidebar-texto-activo: #FFFFFF;
+  --panel-sidebar-seccion: #5C6478;
+  --panel-sidebar-hairline: rgba(255, 255, 255, 0.06);
+
+  --panel-bg: #F4F5FA;
+  --panel-tarjeta-bg: #FFFFFF;
+  --panel-ink: #161A2E;
+  --panel-ink-suave: #6B7086;
+  --panel-borde: #ECEDF3;
+  --panel-sombra: 0 2px 8px rgba(20, 20, 50, 0.06);
+  --panel-radio: 14px;
+  --panel-radio-chico: 8px;
+
+  --panel-accent: #4F62F7;
+  --panel-accent-hover: #3D4EE0;
+  --panel-exito: #22C55E;
+  --panel-exito-fondo: #E7F9EE;
+  --panel-advertencia: #F59E0B;
+  --panel-advertencia-fondo: #FEF3E2;
+  --panel-peligro: #EF4444;
+  --panel-peligro-fondo: #FDECEC;
+  --panel-info: #8B5CF6;
+
+  font-family: "Manrope", -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--panel-bg);
+  color: var(--panel-ink);
+}
+
+[data-tema="panel-oscuro"] h1,
+[data-tema="panel-oscuro"] h2,
+[data-tema="panel-oscuro"] h3,
+[data-tema="panel-oscuro"] h4 { font-weight: 600; }
+
+[data-tema="panel-oscuro"] a { color: var(--panel-accent); text-decoration: none; }
+[data-tema="panel-oscuro"] a:hover { color: var(--panel-accent-hover); text-decoration: underline; }
+[data-tema="panel-oscuro"] ::selection { background: rgba(79, 98, 247, 0.2); }
+[data-tema="panel-oscuro"] :focus-visible { outline: 2px solid var(--panel-accent); outline-offset: 2px; }
+
+/* ============================================================
+   BARRA LATERAL REAL — construida por tema.js a partir de los
+   mismos enlaces de .navegacion. Mientras exista de verdad
+   (body.con-barra-lateral), se oculta la barra horizontal de
+   siempre. Si por lo que sea tema.js no llega a construirla, la
+   barra horizontal se queda visible — nunca se oculta "a ciegas".
+   ============================================================ */
+.barra-lateral {
+  display: none; /* solo aparece si el body trae la clase de abajo */
+}
+[data-tema="panel-oscuro"] body.con-barra-lateral .barra-lateral {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: 240px;
+  background: var(--panel-sidebar-bg);
+  padding: 20px 14px;
+  overflow-y: auto;
+  z-index: 40;
+}
+[data-tema="panel-oscuro"] body.con-barra-lateral .navegacion {
+  display: none;
+}
+[data-tema="panel-oscuro"] body.con-barra-lateral .pagina {
+  margin-left: 240px;
+  padding: 32px clamp(20px, 4vw, 48px);
+}
+
+.barra-lateral__marca {
+  display: flex; align-items: center; gap: 10px;
+  color: #fff; font-weight: 700; font-size: 15px; line-height: 1.2;
+  padding: 6px 10px 20px;
+}
+.barra-lateral__marca small { color: var(--panel-sidebar-texto); font-weight: 500; font-size: 11px; letter-spacing: 0.06em; }
+.barra-lateral__logo {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: linear-gradient(135deg, var(--panel-accent), #8B93FF);
+  display: inline-block; flex-shrink: 0;
+}
+
+.barra-lateral__seccion {
+  color: var(--panel-sidebar-seccion);
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 16px 10px 6px;
+}
+
+.barra-lateral__enlace {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; margin: 2px 0;
+  border-radius: var(--panel-radio-chico);
+  color: var(--panel-sidebar-texto);
+  font-size: 14px; font-weight: 500;
+  text-decoration: none;
+}
+.barra-lateral__enlace svg { width: 18px; height: 18px; flex-shrink: 0; }
+.barra-lateral__enlace:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--panel-sidebar-texto-activo);
+  text-decoration: none;
+}
+.barra-lateral__enlace--activo,
+.barra-lateral__enlace--activo:hover {
+  background: var(--panel-sidebar-activo-bg);
+  color: var(--panel-sidebar-texto-activo);
+  font-weight: 600;
+}
+
+.barra-lateral__pie {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--panel-sidebar-hairline);
+  display: flex; flex-direction: column; gap: 8px;
+}
+/* El bloque .navegacion__usuario que arma auth.js termina viviendo
+   acá dentro — se reestiliza para verse como parte de la sidebar,
+   no como la barra horizontal original. */
+.barra-lateral__pie .navegacion__usuario {
+  display: flex; flex-direction: column; gap: 6px; align-items: stretch;
+}
+.barra-lateral__pie .texto-secundario { color: var(--panel-sidebar-texto); font-size: 13px; padding: 0 10px; }
+.barra-lateral__pie .boton {
+  color: var(--panel-sidebar-texto); border: 1px solid var(--panel-sidebar-hairline);
+  text-align: left; text-decoration: none;
+}
+.barra-lateral__pie .boton:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+
+@media (max-width: 900px) {
+  [data-tema="panel-oscuro"] body.con-barra-lateral .barra-lateral { display: none; }
+  [data-tema="panel-oscuro"] body.con-barra-lateral .navegacion { display: flex; }
+  [data-tema="panel-oscuro"] body.con-barra-lateral .pagina { margin-left: 0; }
+}
+
+/* ---- Página / tarjetas ---- */
+[data-tema="panel-oscuro"] .pagina { background: var(--panel-bg); }
+[data-tema="panel-oscuro"] .pagina__encabezado h1 { color: var(--panel-ink); font-size: 2rem; }
+[data-tema="panel-oscuro"] .pagina__encabezado h2 { color: var(--panel-ink-suave); font-weight: 400; }
+
+[data-tema="panel-oscuro"] .tarjeta {
+  background: var(--panel-tarjeta-bg);
+  border: 1px solid var(--panel-borde);
+  border-top: 1px solid var(--panel-borde);
+  border-radius: var(--panel-radio);
+  box-shadow: var(--panel-sombra);
+  padding: 22px 24px;
+}
+[data-tema="panel-oscuro"] .tarjeta h2,
+[data-tema="panel-oscuro"] .tarjeta h3 { font-size: 17px; font-weight: 600; color: var(--panel-ink); }
+
+[data-tema="panel-oscuro"] .cuadricula-inicio { gap: 20px; }
+
+/* ---- Tabla ---- */
+[data-tema="panel-oscuro"] .tabla th {
+  color: var(--panel-ink-suave);
+  border-bottom: 1px solid var(--panel-borde);
+  font-weight: 500; letter-spacing: 0.04em;
+}
+[data-tema="panel-oscuro"] .tabla td { border-bottom: 1px solid var(--panel-borde); color: var(--panel-ink); font-size: 14px; }
+[data-tema="panel-oscuro"] .tabla__vacio { color: var(--panel-ink-suave); font-style: normal; }
+
+/* ---- Botones ---- */
+[data-tema="panel-oscuro"] .boton {
+  font-family: "Manrope", sans-serif; font-weight: 600;
+  border-radius: var(--panel-radio-chico);
+  color: var(--panel-accent); text-decoration: none;
+  border: 1px solid transparent;
+}
+[data-tema="panel-oscuro"] .boton:hover { background: rgba(79, 98, 247, 0.08); }
+[data-tema="panel-oscuro"] .boton--primario { background: var(--panel-accent); color: #fff; border: none; }
+[data-tema="panel-oscuro"] .boton--primario:hover { background: var(--panel-accent-hover); }
+[data-tema="panel-oscuro"] .boton--primario:active { background: var(--panel-accent-hover); }
+[data-tema="panel-oscuro"] .boton--peligro { color: var(--panel-peligro); }
+[data-tema="panel-oscuro"] .boton--peligro:hover { background: var(--panel-peligro-fondo); }
+[data-tema="panel-oscuro"] .boton--activo,
+[data-tema="panel-oscuro"] .boton--activo:hover { background: var(--panel-accent); color: #fff; }
+[data-tema="panel-oscuro"] .boton--google { background: #fff; border: 1px solid var(--panel-borde); color: var(--panel-ink); }
+
+/* ---- Campos: con borde real (no subrayado) ---- */
+[data-tema="panel-oscuro"] .campo__etiqueta { color: var(--panel-ink-suave); text-transform: none; letter-spacing: 0; font-weight: 500; }
+[data-tema="panel-oscuro"] .campo input,
+[data-tema="panel-oscuro"] .campo select,
+[data-tema="panel-oscuro"] .campo textarea,
+[data-tema="panel-oscuro"] .agregar-material select {
+  font-family: "Manrope", sans-serif; color: var(--panel-ink);
+  background: var(--panel-tarjeta-bg);
+  border: 1px solid var(--panel-borde);
+  border-radius: var(--panel-radio-chico);
+  padding: 9px 12px;
+}
+[data-tema="panel-oscuro"] .campo input:focus,
+[data-tema="panel-oscuro"] .campo select:focus,
+[data-tema="panel-oscuro"] .campo textarea:focus {
+  border: 1px solid var(--panel-accent); padding: 9px 12px;
+  box-shadow: 0 0 0 3px rgba(79, 98, 247, 0.12);
+}
+[data-tema="panel-oscuro"] .campo__tarjeta-segura { border: 1px solid var(--panel-borde); border-radius: var(--panel-radio-chico); height: auto; padding: 9px 12px; }
+[data-tema="panel-oscuro"] .campo__tarjeta-segura.campo__tarjeta-segura--activo { border-color: var(--panel-accent); }
+
+/* ---- Modal ---- */
+[data-tema="panel-oscuro"] .modal { background: rgba(22, 26, 46, 0.5); }
+[data-tema="panel-oscuro"] .modal__contenido { background: var(--panel-tarjeta-bg); border-radius: var(--panel-radio); border-top: none; box-shadow: 0 20px 48px rgba(20, 20, 50, 0.18); }
+
+[data-tema="panel-oscuro"] .aviso { background: var(--panel-ink); color: #fff; border-radius: var(--panel-radio-chico); font-style: normal; }
+[data-tema="panel-oscuro"] .aviso--error { background: var(--panel-peligro); }
+
+/* ---- Productos ---- */
+[data-tema="panel-oscuro"] .tarjeta-producto { background: var(--panel-tarjeta-bg); border: 1px solid var(--panel-borde); border-radius: var(--panel-radio); box-shadow: var(--panel-sombra); padding-bottom: 0; overflow: hidden; }
+[data-tema="panel-oscuro"] .tarjeta-producto__foto { background-color: var(--panel-bg); filter: none; }
+[data-tema="panel-oscuro"] .tarjeta-producto__foto--vacia { background: var(--panel-bg); color: var(--panel-ink-suave); }
+[data-tema="panel-oscuro"] .tarjeta-producto__cuerpo { padding: 14px 16px 16px; }
+[data-tema="panel-oscuro"] .tarjeta-producto__margen { color: var(--panel-exito); font-style: normal; }
+[data-tema="panel-oscuro"] .tarjeta-producto__margen--negativo { color: var(--panel-peligro); }
+
+[data-tema="panel-oscuro"] .tarjeta--resumen { border-top: 1px solid var(--panel-borde); }
+
+/* ---- Inventario ---- */
+[data-tema="panel-oscuro"] .texto-secundario { color: var(--panel-ink-suave); font-style: normal; }
+[data-tema="panel-oscuro"] .semaforo--verde { background: var(--panel-exito); }
+[data-tema="panel-oscuro"] .semaforo--amarillo { background: var(--panel-advertencia); }
+[data-tema="panel-oscuro"] .semaforo--rojo { background: var(--panel-peligro); }
+[data-tema="panel-oscuro"] .capacidad__numero { font-weight: 700; }
+[data-tema="panel-oscuro"] .capacidad__numero--cero { color: var(--panel-peligro); }
+
+/* ---- Ventas: estados como píldoras ---- */
+[data-tema="panel-oscuro"] .etiqueta-estado { font-style: normal; font-weight: 600; font-size: 0.8rem; padding: 4px 10px; border-radius: 999px; }
+[data-tema="panel-oscuro"] .etiqueta-estado--pendiente { background: var(--panel-advertencia-fondo); color: var(--panel-advertencia); }
+[data-tema="panel-oscuro"] .etiqueta-estado--en_produccion { background: rgba(79, 98, 247, 0.12); color: var(--panel-accent); }
+[data-tema="panel-oscuro"] .etiqueta-estado--listo { background: var(--panel-exito-fondo); color: var(--panel-exito); font-weight: 600; }
+[data-tema="panel-oscuro"] .etiqueta-estado--entregado { background: var(--panel-borde); color: var(--panel-ink-suave); }
+
+/* ---- Finanzas / dashboard: indicadores (KPI) ---- */
+[data-tema="panel-oscuro"] .panel-finanzas .indicador { border-left: 1px solid var(--panel-borde); }
+[data-tema="panel-oscuro"] .indicador__valor { font-weight: 700; font-size: 1.9rem; color: var(--panel-ink); }
+[data-tema="panel-oscuro"] .indicador__valor--positivo { color: var(--panel-exito); }
+[data-tema="panel-oscuro"] .indicador__valor--negativo { color: var(--panel-peligro); }
+[data-tema="panel-oscuro"] .indicador .texto-secundario { color: var(--panel-ink-suave); font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+
+/* ---- Finanzas: gráfico de barras CSS (el de Finanzas, no Chart.js) ---- */
+[data-tema="panel-oscuro"] .grafico { border-bottom: 1px solid var(--panel-borde); }
+[data-tema="panel-oscuro"] .grafico__barra { border-radius: 4px 4px 0 0; }
+[data-tema="panel-oscuro"] .grafico__barra--ingresos { background: var(--panel-accent); }
+[data-tema="panel-oscuro"] .grafico__barra--costos { background: var(--panel-info); }
+[data-tema="panel-oscuro"] .grafico__etiqueta { color: var(--panel-ink-suave); }
+[data-tema="panel-oscuro"] .grafico__leyenda { font-style: normal; color: var(--panel-ink-suave); }
+[data-tema="panel-oscuro"] .grafico__muestra { border-radius: 999px; }
+[data-tema="panel-oscuro"] .grafico__muestra--ingresos { background: var(--panel-accent); }
+[data-tema="panel-oscuro"] .grafico__muestra--costos { background: var(--panel-info); }
+
+/* ---- Facturación ---- */
+[data-tema="panel-oscuro"] .factura__encabezado { border-bottom: 1px solid var(--panel-borde); }
+
+/* ---- Dashboard / alertas ---- */
+[data-tema="panel-oscuro"] .numero-resumen { font-weight: 700; color: var(--panel-ink); }
+[data-tema="panel-oscuro"] .alerta::before { background: var(--panel-peligro); }
+[data-tema="panel-oscuro"] .alerta--advertencia::before { background: var(--panel-advertencia); }
+
+/* ---- Selector de período / métrica (dashboard) ---- */
+[data-tema="panel-oscuro"] .selector-periodo .boton { border: 1px solid var(--panel-borde); }
+[data-tema="panel-oscuro"] .boton--activo { border-color: var(--panel-accent); }
+
+/* ---- Barra de progreso ---- */
+[data-tema="panel-oscuro"] .barra-progreso { background: var(--panel-borde); }
+[data-tema="panel-oscuro"] .barra-progreso__relleno { background: var(--panel-accent); }
+
+/* ---- Suscripción: planes ---- */
+[data-tema="panel-oscuro"] .tarjeta-plan { background: var(--panel-tarjeta-bg); border: 1px solid var(--panel-borde); border-radius: var(--panel-radio); box-shadow: var(--panel-sombra); }
+[data-tema="panel-oscuro"] .tarjeta-plan--destacado { border: 2px solid var(--panel-accent); }
+[data-tema="panel-oscuro"] .tarjeta-plan__badge { background: var(--panel-accent); }
+[data-tema="panel-oscuro"] .tarjeta-plan__precio span { color: var(--panel-ink-suave); }
+[data-tema="panel-oscuro"] .tarjeta-plan__descuento { color: var(--panel-exito); }
+[data-tema="panel-oscuro"] .tarjeta-plan__descripcion { color: var(--panel-ink-suave); }
+[data-tema="panel-oscuro"] .tarjeta-plan__fila--no { color: var(--panel-ink-suave); }
+[data-tema="panel-oscuro"] .tarjeta-plan__icono--si { background: var(--panel-exito-fondo); color: var(--panel-exito); }
+[data-tema="panel-oscuro"] .tarjeta-plan__icono--no { background: var(--panel-borde); color: var(--panel-ink-suave); }
+[data-tema="panel-oscuro"] .banner-suscripcion,
+[data-tema="panel-oscuro"] .tarjeta-plan__subtitulo { border-color: var(--panel-borde); color: var(--panel-ink-suave); }
+
+/* ---- Login (sin sidebar, la página no tiene .navegacion) ---- */
+[data-tema="panel-oscuro"] .tarjeta-login { background: var(--panel-tarjeta-bg); border-radius: var(--panel-radio); box-shadow: var(--panel-sombra); padding: 30px; }
+[data-tema="panel-oscuro"] .separador-login { color: var(--panel-ink-suave); }
+[data-tema="panel-oscuro"] .separador-login::before,
+[data-tema="panel-oscuro"] .separador-login::after { background: var(--panel-borde); }
+
+@media (max-width: 640px) {
+  [data-tema="panel-oscuro"] .panel-finanzas .indicador { border-left: none; border-top: 1px solid var(--panel-borde); }
+}

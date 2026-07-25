@@ -13,6 +13,19 @@
 const SEGUNDOS_REFRESCO_INICIO = 30;
 const CLAVE_PERIODO_GUARDADO = 'inicio_periodo_seleccionado';
 
+// Chart.js dibuja en <canvas> — un CSS no puede tocar esos colores.
+// Esta función es el equivalente para gráficos: mismo criterio de
+// "leer el tema activo", pero en JS, en el único lugar donde hace
+// falta (se llama cada vez que se crea o redibuja un gráfico, así
+// que si el usuario cambia de tema y la página recarga, ya toma la
+// paleta correcta desde el primer dibujo).
+function obtenerPaletaGraficos() {
+  const oscuro = document.documentElement.getAttribute('data-tema') === 'panel-oscuro';
+  return oscuro
+    ? { azul: '#4F62F7', azulFondo: 'rgba(79,98,247,0.12)', verde: '#22C55E', verdeFondo: 'rgba(34,197,94,0.12)', rojo: '#EF4444', naranja: '#F59E0B', texto: '#6B7086', borde: '#ECEDF3' }
+    : { azul: '#0088b0', azulFondo: 'rgba(0,136,176,0.1)', verde: '#15803d', verdeFondo: 'rgba(21,128,61,0.1)', rojo: '#b91c1c', naranja: '#c2410c', texto: '#605d5d', borde: 'rgba(32,30,29,0.16)' };
+}
+
 // ---- Selector global de período ----
 // Único estado de período para todo Inicio: cuando cambia, se vuelve a
 // pedir el bloque de KPIs de Ventas (y, a futuro, cualquier otro bloque
@@ -112,8 +125,8 @@ async function cargarGraficoVentasUtilidad() {
       data: {
         labels: r.puntos.map(p => p.etiqueta),
         datasets: [
-          { label: 'Ventas', data: r.puntos.map(p => p.ventas), borderColor: '#0088b0', backgroundColor: 'rgba(0,136,176,0.1)', tension: 0.25, fill: true },
-          { label: 'Utilidad', data: r.puntos.map(p => p.utilidad), borderColor: '#15803d', backgroundColor: 'rgba(21,128,61,0.1)', tension: 0.25, fill: true }
+          { label: 'Ventas', data: r.puntos.map(p => p.ventas), borderColor: obtenerPaletaGraficos().azul, backgroundColor: obtenerPaletaGraficos().azulFondo, tension: 0.25, fill: true },
+          { label: 'Utilidad', data: r.puntos.map(p => p.utilidad), borderColor: obtenerPaletaGraficos().verde, backgroundColor: obtenerPaletaGraficos().verdeFondo, tension: 0.25, fill: true }
         ]
       },
       options: {
@@ -186,8 +199,8 @@ async function cargarGraficoMovimientos() {
       data: {
         labels: r.puntos.map(p => p.etiqueta),
         datasets: [
-          { label: 'Entradas', data: r.puntos.map(p => p.entradas), backgroundColor: '#15803d' },
-          { label: 'Salidas', data: r.puntos.map(p => p.salidas), backgroundColor: '#b91c1c' }
+          { label: 'Entradas', data: r.puntos.map(p => p.entradas), backgroundColor: obtenerPaletaGraficos().verde },
+          { label: 'Salidas', data: r.puntos.map(p => p.salidas), backgroundColor: obtenerPaletaGraficos().rojo }
         ]
       },
       options: {
@@ -259,7 +272,7 @@ async function cargarRendimientoProductos() {
         datasets: [{
           label: ETIQUETA_METRICA_PRODUCTO[metricaProductoActual],
           data: lista.map(p => p[metricaProductoActual]),
-          backgroundColor: '#0088b0'
+          backgroundColor: obtenerPaletaGraficos().azul
         }]
       },
       options: {
@@ -308,7 +321,7 @@ function pintarDoughnutInventario(totalMateriales, stockBajo, agotados) {
       labels: [`Normal (${normal})`, `Stock bajo (${stockBajo})`, `Agotado (${agotados})`],
       datasets: [{
         data: [normal, stockBajo, agotados],
-        backgroundColor: ['#15803d', '#c2410c', '#b91c1c'],
+        backgroundColor: [obtenerPaletaGraficos().verde, obtenerPaletaGraficos().naranja, obtenerPaletaGraficos().rojo],
         borderWidth: 0
       }]
     },
