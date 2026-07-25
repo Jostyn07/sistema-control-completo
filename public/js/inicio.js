@@ -220,7 +220,7 @@ async function cargarResumenPedidos() {
     const activos = ventas.filter(v => v.estado !== 'entregado');
     if (activos.length === 0) {
       contenedor.innerHTML = '<p class="texto-secundario">Sin pedidos pendientes de entregar.</p>';
-      return 0;
+      return { activos: 0, todas: ventas };
     }
     const porEstado = { pendiente: 0, en_produccion: 0, listo: 0 };
     for (const v of activos) porEstado[v.estado] = (porEstado[v.estado] || 0) + 1;
@@ -230,10 +230,10 @@ async function cargarResumenPedidos() {
       <p class="texto-secundario" style="margin:4px 0 0">
         ${porEstado.pendiente} pendiente(s) · ${porEstado.en_produccion} en producción · ${porEstado.listo} listo(s) para entregar
       </p>`;
-    return activos.length;
+    return { activos: activos.length, todas: ventas };
   } catch (err) {
     contenedor.innerHTML = `<p class="tabla__vacio">${escaparHtml(err.message)}</p>`;
-    return 0;
+    return { activos: 0, todas: [] };
   }
 }
 
@@ -358,6 +358,51 @@ function pintarAlertas({ rojosCompra, sinStock, sinFacturar, entregasVencidas })
     </div>`).join('');
 }
 
+// ---- Últimas ventas (punto 7 del plan) ----
+const ETIQUETA_ESTADO_VENTA = {
+  pendiente: 'Pendiente', en_produccion: 'En producción', listo: 'Listo', entregado: 'Entregado'
+};
+
+function pintarUltimasVentas(ventas) {
+  const contenedor = document.getElementById('resumenUltimasVentas');
+  if (!contenedor) return;
+  if (!ventas || ventas.length === 0) {
+    contenedor.innerHTML = '<p class="texto-secundario">Todavía no hay ventas registradas.</p>';
+    return;
+  }
+
+  // El backend ya las manda ordenadas por fecha descendente — solo
+  // recortamos a las últimas 5 para no convertir Inicio en otro
+  // módulo de Ventas (punto 7: "mantener edición y filtros fuera de Inicio").
+  const ultimas = ventas.slice(0, 5);
+
+  const filas = ultimas.map(v => {
+    const items = v.ventas_items || [];
+    const resumenProductos = items.length
+      ? items.map(it => `${it.cantidad}× ${it.productos?.nombre || 'producto'}`).join(', ')
+      : '—';
+    const ganancia = Number(v.total) - Number(v.costo_total);
+    const fechaTexto = new Date(v.fecha).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+    return `
+      <tr>
+        <td>${escaparHtml(v.cliente || 'Sin nombre')}</td>
+        <td class="texto-secundario">${escaparHtml(resumenProductos)}</td>
+        <td>${fechaTexto}</td>
+        <td>${formatearPesos(v.total)}</td>
+        <td class="${ganancia >= 0 ? 'indicador__valor--positivo' : 'indicador__valor--negativo'}">${formatearPesos(ganancia)}</td>
+        <td>${ETIQUETA_ESTADO_VENTA[v.estado] || v.estado}</td>
+      </tr>`;
+  }).join('');
+
+  contenedor.innerHTML = `
+    <table class="tabla">
+      <thead>
+        <tr><th>Cliente</th><th>Producto</th><th>Fecha</th><th>Total</th><th>Ganancia</th><th>Estado</th></tr>
+      </thead>
+      <tbody>${filas}</tbody>
+    </table>`;
+}
+
 // ---- Orquestación ----
 // ---- Estado de la suscripción: siempre visible, no como alerta ----
 async function cargarEstadoSuscripcion() {
@@ -392,7 +437,7 @@ async function cargarEstadoSuscripcion() {
 }
 
 async function refrescarInicio() {
-  const [, , compras, sinStock, sinFacturar, entregas] = await Promise.all([
+  const [, pedidos, compras, sinStock, sinFacturar, entregas] = await Promise.all([
     cargarIndicadores(),
     cargarResumenPedidos(),
     cargarResumenCompras(),
@@ -403,6 +448,7 @@ async function refrescarInicio() {
     cargarInventarioKpis()
   ]);
   pintarAlertas({ rojosCompra: compras.rojos, sinStock, sinFacturar, entregasVencidas: entregas.vencidas });
+  pintarUltimasVentas(pedidos.todas);
   cargarEstadoSuscripcion();
 
   document.getElementById('indicadorFecha').textContent =
