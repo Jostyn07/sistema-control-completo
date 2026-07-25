@@ -334,25 +334,33 @@ async function cargarResumenEntregas() {
 }
 
 // ---- Alertas: lo que requiere acción hoy ----
+// Cada alerta trae su severidad para poder ordenarlas — antes se
+// pintaban siempre en el mismo orden fijo, sin importar cuál era
+// más urgente de verdad. "Crítico" bloquea o atrasa una operación
+// real (entregar, fabricar, comprar); "advertencia" es administrativo
+// y puede esperar un poco sin frenar nada.
 function pintarAlertas({ rojosCompra, sinStock, sinFacturar, entregasVencidas }) {
   const seccion = document.getElementById('seccionAlertas');
   const alertas = [];
 
   if (entregasVencidas > 0)
-    alertas.push({ texto: `${entregasVencidas} entrega(s) vencida(s), sin marcar como entregadas.`, enlace: '/ventas.html', accion: 'Ver ventas' });
-  if (rojosCompra > 0)
-    alertas.push({ texto: `${rojosCompra} material(es) en zona roja: hay que comprar ya para no frenar la producción.`, enlace: '/compras.html', accion: 'Ver compras' });
+    alertas.push({ texto: `${entregasVencidas} entrega(s) vencida(s), sin marcar como entregadas.`, enlace: '/ventas.html', accion: 'Ver ventas', severidad: 'critico', peso: 3 });
   if (sinStock > 0)
-    alertas.push({ texto: `${sinStock} producto(s) no se pueden fabricar con el stock actual.`, enlace: '/inventario.html', accion: 'Ver inventario' });
+    alertas.push({ texto: `${sinStock} producto(s) no se pueden fabricar con el stock actual.`, enlace: '/inventario.html', accion: 'Ver inventario', severidad: 'critico', peso: 3 });
+  if (rojosCompra > 0)
+    alertas.push({ texto: `${rojosCompra} material(es) en zona roja: hay que comprar ya para no frenar la producción.`, enlace: '/compras.html', accion: 'Ver compras', severidad: 'critico', peso: 2 });
   if (sinFacturar > 0)
-    alertas.push({ texto: `${sinFacturar} venta(s) sin factura generada.`, enlace: '/facturacion.html', accion: 'Facturar' });
+    alertas.push({ texto: `${sinFacturar} venta(s) sin factura generada.`, enlace: '/facturacion.html', accion: 'Facturar', severidad: 'advertencia', peso: 1 });
 
   if (alertas.length === 0) {
     seccion.innerHTML = '';
     return;
   }
+
+  alertas.sort((a, b) => b.peso - a.peso);
+
   seccion.innerHTML = alertas.map(a => `
-    <div class="alerta">
+    <div class="alerta alerta--${a.severidad}">
       <span>${a.texto}</span>
       <a href="${a.enlace}" class="boton boton--pequeno">${a.accion}</a>
     </div>`).join('');
