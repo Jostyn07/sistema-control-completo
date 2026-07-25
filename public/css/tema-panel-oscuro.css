@@ -82,6 +82,11 @@
 [data-tema="panel-oscuro"] body.con-barra-lateral .navegacion {
   display: none;
 }
+[data-tema="panel-oscuro"] body.con-barra-lateral {
+  overflow-x: hidden; /* red de seguridad: si algo se desborda, que se
+    recorte esa pieza — nunca que la página entera scrollee hacia los
+    lados y descuadre todo lo demás */
+}
 [data-tema="panel-oscuro"] body.con-barra-lateral .pagina {
   margin-left: 240px;
   margin-right: 0;
@@ -261,10 +266,17 @@
    solo existe en el DOM cuando el tema oscuro está activo (lo agrega
    inicio.js), pero el color/tamaño se define acá. */
 [data-tema="panel-oscuro"] .indicador {
+  min-width: 0; /* deja que la tarjeta se encoja por debajo del ancho
+    de su propio número — sin esto, un grid de 4 columnas fijas puede
+    desbordar TODA la página en pantallas angostas, en vez de que cada
+    tarjeta simplemente se vea más apretada */
   justify-content: center; /* centra TODO el bloque (ícono + texto) como
     una unidad — útil cuando una tarjeta de la misma fila tiene más
     líneas que otra y el grid las estira a la misma altura */
 }
+[data-tema="panel-oscuro"] .indicador__valor { overflow-wrap: break-word; }
+[data-tema="panel-oscuro"] .panel-finanzas,
+[data-tema="panel-oscuro"] .cuadricula-inicio { min-width: 0; }
 /* El ícono es un elemento normal del flex (no posición absoluta): así
    se mueve y centra junto con el texto en vez de quedar "flotando"
    fijo cuando el contenido de al lado es más largo o más corto. En
