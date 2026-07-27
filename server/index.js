@@ -8,6 +8,7 @@ const path = require('path');
 
 const requiereAutenticacion = require('./middleware/auth');
 const requiereSuscripcionActiva = require('./middleware/suscripcion');
+const exigirAdmin = require('./middleware/admin');
 const rutasAuth = require('./rutas/auth');
 const rutasMateriales = require('./rutas/materiales');
 const rutasProductos = require('./rutas/productos');
@@ -34,6 +35,11 @@ app.use('/api', requiereAutenticacion);
 // ---- Suscripción va ANTES del bloqueo por vencimiento: aunque la
 // cuenta esté vencida, la persona siempre debe poder pagar/renovar.
 app.use('/api/suscripcion', require('./rutas/suscripcion'));
+
+// ---- Admin: mira TODA la base de suscriptores, no un solo tenant —
+// no depende de tu propio estado de suscripción, por eso va antes
+// del bloqueo por vencimiento.
+app.use('/api/admin', exigirAdmin, require('./rutas/admin'));
 
 // ---- De aquí en adelante, si la suscripción está vencida más allá
 // del período de gracia, se bloquea crear/editar (nunca lectura).
