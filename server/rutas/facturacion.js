@@ -171,6 +171,30 @@ router.post('/:id/anular', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// DELETE /api/facturacion/:id — borra la factura DE VERDAD (no la
+// marca, la quita). Solo se permite si ya estaba anulada — nunca se
+// puede saltar directo de "generada" a "borrada" sin pasar por anular
+// primero. Deja un hueco en la numeración del consecutivo: aceptable
+// mientras estés en "Modo interno" (sin CUFE real ante la DIAN), pero
+// en cuanto conectes el proveedor tecnológico esto deja de ser
+// recomendable — un hueco en un consecutivo YA validado ante la DIAN
+// es un problema real, no solo estético.
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { data: factura, error: eGet } = await supabase
+      .from('facturas').select('id, anulada').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+    if (eGet || !factura) return res.status(404).json({ error: 'Factura no encontrada' });
+    if (!factura.anulada)
+      return res.status(400).json({ error: 'Primero tienes que anularla — no se puede borrar una factura activa directamente.' });
+
+    const { error: eDel } = await supabase
+      .from('facturas').delete().eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+    if (eDel) throw new Error(eDel.message);
+
+    res.json({ eliminada: true });
+  } catch (err) { next(err); }
+});
+
 // GET /api/facturacion/historial
 router.get('/historial', async (req, res, next) => {
   try {

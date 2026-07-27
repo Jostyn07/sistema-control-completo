@@ -147,7 +147,9 @@ async function cargarHistorialFacturas() {
         <td>${f.cufe ? escaparHtml(f.cufe.slice(0, 12)) + '…' : 'Pendiente'}</td>
         <td>
           <button type="button" class="boton boton--pequeno" onclick="verFactura('${f.id}')">Ver / Imprimir</button>
-          ${f.anulada ? '' : `<button type="button" class="boton boton--pequeno boton--peligro" onclick="anularFactura('${f.id}', '${escaparHtml(f.numero || '')}')">Anular</button>`}
+          ${f.anulada
+            ? `<button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarFactura('${f.id}', '${escaparHtml(f.numero || '')}')">Eliminar</button>`
+            : `<button type="button" class="boton boton--pequeno boton--peligro" onclick="anularFactura('${f.id}', '${escaparHtml(f.numero || '')}')">Anular</button>`}
         </td>
       </tr>`).join('');
   } catch (err) {
@@ -164,6 +166,19 @@ async function anularFactura(id, numero) {
     await API.enviar(`/api/facturacion/${id}/anular`, { motivo });
     mostrarAviso('Factura anulada');
     cargarVentasFacturables();
+    cargarHistorialFacturas();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
+async function eliminarFactura(id, numero) {
+  const confirmar = confirm(`Vas a borrar DEFINITIVAMENTE la factura anulada ${numero || ''}. Esto deja un hueco en la numeración del consecutivo — aceptable en Modo interno, pero evítalo si ya validas ante la DIAN.\n\n¿Continuar?`);
+  if (!confirmar) return;
+
+  try {
+    await API.eliminar(`/api/facturacion/${id}`);
+    mostrarAviso('Factura eliminada');
     cargarHistorialFacturas();
   } catch (err) {
     mostrarAviso(err.message, 'error');
