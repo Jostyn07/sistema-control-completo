@@ -205,7 +205,7 @@ function buscarMateriales() {
   pintarListaMateriales(filtrados);
 }
 
-function normaliarTexto(texto) {
+function normalizarTexto (texto) {
   return (texto ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
