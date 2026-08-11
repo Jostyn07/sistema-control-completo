@@ -36,6 +36,10 @@
     <!-- 1. Vista por material (semáforo) -->
     <section class="tarjeta seccion">
       <h2>Por material</h2>
+      <label class="campo" style="max-width:320px">
+        <span class="campo__etiqueta">Buscar</span>
+        <input type="text" id="buscadorInventario" placeholder="Nombre o proveedor…" oninput="buscarInventario()">
+      </label>
       <table class="tabla">
         <thead>
           <tr>

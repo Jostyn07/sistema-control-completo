@@ -1,19 +1,3 @@
-// ============================================================
-// inventario.js — pestaña Inventario en Tiempo Real
-// Funciones (según estructura funcional):
-//   cargarInventarioPorMaterial()
-//   cargarCapacidadPorProducto()
-//   registrarAjusteManual(materialId, cantidadNueva, motivo)
-//   refrescarInventario()
-//
-// Nota sobre "tiempo real": como el navegador nunca habla con
-// Supabase directamente (regla de arquitectura del proyecto), la
-// vista se refresca sola cada 15 segundos y también al volver a
-// la pestaña del navegador. Si más adelante se quiere el push
-// instantáneo de Supabase Realtime, habría que exponer una anon
-// key con política de solo-lectura — decisión aparte de seguridad.
-// ============================================================
-
 const SEGUNDOS_REFRESCO = 15;
 let inventarioEnMemoria = [];
 let temporizadorRefresco = null;
@@ -23,29 +7,53 @@ async function cargarInventarioPorMaterial() {
   const cuerpo = document.getElementById('cuerpoInventarioMateriales');
   try {
     inventarioEnMemoria = await API.obtener('/api/inventario/materiales');
-
-    if (inventarioEnMemoria.length === 0) {
-      cuerpo.innerHTML = '<tr><td colspan="7" class="tabla__vacio">No hay materiales registrados todavía. Créalos en la pestaña Materiales.</td></tr>';
-      return;
-    }
-
-    // Rojo primero, luego amarillo, luego verde (lo urgente arriba)
-    const orden = { rojo: 0, amarillo: 1, verde: 2 };
-    const ordenados = [...inventarioEnMemoria].sort((a, b) => orden[a.estado] - orden[b.estado]);
-
-    cuerpo.innerHTML = ordenados.map(m => `
-      <tr>
-        <td><span class="semaforo semaforo--${m.estado}" title="${textoEstado(m.estado)}"></span></td>
-        <td>${escaparHtml(m.nombre)}</td>
-        <td>${m.stock_actual} ${escaparHtml(m.unidad)}</td>
-        <td>${m.punto_reorden}</td>
-        <td>${m.consumo_diario_promedio > 0 ? m.consumo_diario_promedio + '/día' : 'Sin ventas aún'}</td>
-        <td>${escaparHtml(m.proveedor)}</td>
-        <td><button type="button" class="boton boton--pequeno" onclick="abrirAjuste('${m.id}')">Ajustar</button></td>
-      </tr>`).join('');
+    buscarInventario(); // pinta respetando el texto de búsqueda si había uno
   } catch (err) {
     cuerpo.innerHTML = `<tr><td colspan="7" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
   }
+}
+
+function pintarInventarioPorMaterial(lista) {
+  const cuerpo = document.getElementById('cuerpoInventarioMateriales');
+
+  if (inventarioEnMemoria.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="7" class="tabla__vacio">No hay materiales registrados todavía. Créalos en la pestaña Materiales.</td></tr>';
+    return;
+  }
+  if (lista.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="7" class="tabla__vacio">Ningún material coincide con la búsqueda.</td></tr>';
+    return;
+  }
+
+  // Rojo primero, luego amarillo, luego verde (lo urgente arriba)
+  const orden = { rojo: 0, amarillo: 1, verde: 2 };
+  const ordenados = [...lista].sort((a, b) => orden[a.estado] - orden[b.estado]);
+
+  cuerpo.innerHTML = ordenados.map(m => `
+    <tr>
+      <td><span class="semaforo semaforo--${m.estado}" title="${textoEstado(m.estado)}"></span></td>
+      <td>${escaparHtml(m.nombre)}</td>
+      <td>${m.stock_actual} ${escaparHtml(m.unidad)}</td>
+      <td>${m.punto_reorden}</td>
+      <td>${m.consumo_diario_promedio > 0 ? m.consumo_diario_promedio + '/día' : 'Sin ventas aún'}</td>
+      <td>${escaparHtml(m.proveedor)}</td>
+      <td><button type="button" class="boton boton--pequeno" onclick="abrirAjuste('${m.id}')">Ajustar</button></td>
+    </tr>`).join('');
+}
+
+// ---- Búsqueda (instantánea, en memoria) ----
+function buscarInventario() {
+  const texto = normalizarTexto(document.getElementById('buscadorInventario').value);
+  if (!texto) { pintarInventarioPorMaterial(inventarioEnMemoria); return; }
+
+  const filtrados = inventarioEnMemoria.filter(m =>
+    normalizarTexto(m.nombre).includes(texto) ||
+    normalizarTexto(m.proveedor).includes(texto));
+  pintarInventarioPorMaterial(filtrados);
+}
+
+function normalizarTexto(texto) {
+  return (texto ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
 function textoEstado(estado) {

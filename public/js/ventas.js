@@ -1,15 +1,7 @@
-// ============================================================
-// ventas.js — pestaña Ventas
-// Funciones (según estructura funcional):
-//   cargarProductosParaVenta()
-//   calcularTotalVenta(items)
-//   registrarVenta(datosVenta)
-//   cambiarEstadoPedido(id, nuevoEstado)
-//   cargarHistorialVentas(filtros)
-// ============================================================
-
 let productosParaVenta = [];
 let itemsVentaEnEdicion = []; // [{ producto_id, nombre, precio, cantidad, fabricables }]
+let pedidosEnMemoria = [];
+let historialEnMemoria = [];
 
 const ETIQUETA_ESTADO = {
   pendiente: 'Pendiente',
@@ -225,31 +217,40 @@ async function cargarPedidos() {
   const cuerpo = document.getElementById('cuerpoPedidos');
   try {
     const ventas = await API.obtener('/api/ventas');
-    const pedidosActivos = ventas.filter(v => v.estado !== 'entregado');
-
-    if (pedidosActivos.length === 0) {
-      cuerpo.innerHTML = '<tr><td colspan="9" class="tabla__vacio">No hay pedidos activos. Los entregados quedan en el historial.</td></tr>';
-      return;
-    }
-
-    cuerpo.innerHTML = pedidosActivos.map(v => {
-      const siguiente = SIGUIENTE_ESTADO[v.estado];
-      return `
-      <tr>
-        <td>${formatearFecha(v.fecha)}</td>
-        <td>${escaparHtml(v.cliente || '—')}</td>
-        <td>${celdaFechaEntrega(v)}</td>
-        <td>${resumenProductos(v)}</td>
-        <td>${formatearPesos(v.total)}</td>
-        <td><span class="etiqueta-estado etiqueta-estado--${v.estado}">${ETIQUETA_ESTADO[v.estado]}</span></td>
-        <td>${celdaPago(v)}</td>
-        <td>${siguiente ? `<button type="button" class="boton boton--pequeno" onclick="cambiarEstadoPedido('${v.id}', '${siguiente}')">Pasar a ${ETIQUETA_ESTADO[siguiente].toLowerCase()}</button>` : ''}</td>
-        <td>${accionesVenta(v)}</td>
-      </tr>`;
-    }).join('');
+    pedidosEnMemoria = ventas.filter(v => v.estado !== 'entregado');
+    buscarVentas(); // pinta respetando el texto de búsqueda si había uno
   } catch (err) {
     cuerpo.innerHTML = `<tr><td colspan="9" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
   }
+}
+
+function pintarPedidos(lista) {
+  const cuerpo = document.getElementById('cuerpoPedidos');
+
+  if (pedidosEnMemoria.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="9" class="tabla__vacio">No hay pedidos activos. Los entregados quedan en el historial.</td></tr>';
+    return;
+  }
+  if (lista.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="9" class="tabla__vacio">Ningún pedido coincide con la búsqueda.</td></tr>';
+    return;
+  }
+
+  cuerpo.innerHTML = lista.map(v => {
+    const siguiente = SIGUIENTE_ESTADO[v.estado];
+    return `
+    <tr>
+      <td>${formatearFecha(v.fecha)}</td>
+      <td>${escaparHtml(v.cliente || '—')}</td>
+      <td>${celdaFechaEntrega(v)}</td>
+      <td>${resumenProductos(v)}</td>
+      <td>${formatearPesos(v.total)}</td>
+      <td><span class="etiqueta-estado etiqueta-estado--${v.estado}">${ETIQUETA_ESTADO[v.estado]}</span></td>
+      <td>${celdaPago(v)}</td>
+      <td>${siguiente ? `<button type="button" class="boton boton--pequeno" onclick="cambiarEstadoPedido('${v.id}', '${siguiente}')">Pasar a ${ETIQUETA_ESTADO[siguiente].toLowerCase()}</button>` : ''}</td>
+      <td>${accionesVenta(v)}</td>
+    </tr>`;
+  }).join('');
 }
 
 function celdaFechaEntrega(venta) {
@@ -315,28 +316,61 @@ async function cargarHistorialVentas() {
   if (estado) filtros.set('estado', estado);
 
   try {
-    const ventas = await API.obtener('/api/ventas' + (filtros.toString() ? '?' + filtros.toString() : ''));
-    if (ventas.length === 0) {
-      cuerpo.innerHTML = '<tr><td colspan="11" class="tabla__vacio">No hay ventas con esos filtros.</td></tr>';
-      return;
-    }
-    cuerpo.innerHTML = ventas.map(v => `
-      <tr>
-        <td>${formatearFecha(v.fecha)}</td>
-        <td>${escaparHtml(v.cliente || '—')}</td>
-        <td>${contactoCliente(v)}</td>
-        <td>${v.fecha_entrega ? formatearFechaCortaVenta(v.fecha_entrega) : '—'}</td>
-        <td>${resumenProductos(v)}</td>
-        <td>${formatearPesos(v.total)}</td>
-        <td>${formatearPesos(v.costo_total)}</td>
-        <td>${formatearPesos(v.total - v.costo_total)}</td>
-        <td><span class="etiqueta-estado etiqueta-estado--${v.estado}">${ETIQUETA_ESTADO[v.estado]}</span></td>
-        <td>${celdaPago(v)}</td>
-        <td>${accionesVenta(v)}</td>
-      </tr>`).join('');
+    historialEnMemoria = await API.obtener('/api/ventas' + (filtros.toString() ? '?' + filtros.toString() : ''));
+    buscarVentas(); // pinta respetando el texto de búsqueda si había uno
   } catch (err) {
     cuerpo.innerHTML = `<tr><td colspan="11" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
   }
+}
+
+function pintarHistorial(lista) {
+  const cuerpo = document.getElementById('cuerpoHistorial');
+
+  if (historialEnMemoria.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="11" class="tabla__vacio">No hay ventas con esos filtros.</td></tr>';
+    return;
+  }
+  if (lista.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="11" class="tabla__vacio">Ninguna venta coincide con la búsqueda.</td></tr>';
+    return;
+  }
+
+  cuerpo.innerHTML = lista.map(v => `
+    <tr>
+      <td>${formatearFecha(v.fecha)}</td>
+      <td>${escaparHtml(v.cliente || '—')}</td>
+      <td>${contactoCliente(v)}</td>
+      <td>${v.fecha_entrega ? formatearFechaCortaVenta(v.fecha_entrega) : '—'}</td>
+      <td>${resumenProductos(v)}</td>
+      <td>${formatearPesos(v.total)}</td>
+      <td>${formatearPesos(v.costo_total)}</td>
+      <td>${formatearPesos(v.total - v.costo_total)}</td>
+      <td><span class="etiqueta-estado etiqueta-estado--${v.estado}">${ETIQUETA_ESTADO[v.estado]}</span></td>
+      <td>${celdaPago(v)}</td>
+      <td>${accionesVenta(v)}</td>
+    </tr>`).join('');
+}
+
+// ---- Búsqueda (instantánea, en memoria; filtra pedidos e historial a la vez) ----
+function buscarVentas() {
+  const texto = normalizarTexto(document.getElementById('buscadorVentas').value);
+
+  if (!texto) {
+    pintarPedidos(pedidosEnMemoria);
+    pintarHistorial(historialEnMemoria);
+    return;
+  }
+
+  const coincide = v =>
+    normalizarTexto(v.cliente).includes(texto) ||
+    (v.ventas_items || []).some(i => normalizarTexto(i.productos ? i.productos.nombre : '').includes(texto));
+
+  pintarPedidos(pedidosEnMemoria.filter(coincide));
+  pintarHistorial(historialEnMemoria.filter(coincide));
+}
+
+function normalizarTexto(texto) {
+  return (texto ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
 // ---- Utilidades ----

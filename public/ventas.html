@@ -30,6 +30,11 @@
       <button type="button" class="boton boton--primario" onclick="abrirNuevaVenta()">Nueva venta</button>
     </header>
 
+    <label class="campo" style="max-width:320px">
+      <span class="campo__etiqueta">Buscar</span>
+      <input type="text" id="buscadorVentas" placeholder="Cliente o producto…" oninput="buscarVentas()">
+    </label>
+
     <!-- 2. Pedidos con estado -->
     <section class="tarjeta seccion">
       <h2>Pedidos</h2>
