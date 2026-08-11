@@ -200,7 +200,7 @@ function buscarMateriales() {
   if (!texto) { pintarListaMateriales(materialesEnMemoria); return; }
 
   const filtrados = materialesEnMemoria.filter(m => 
-    normaliarTexto(m.nombre).includes(texto) ||
+    normalizarTexto(m.nombre).includes(texto) ||
     normalizarTexto(m.proveedor).includes(texto));
   pintarListaMateriales(filtrados);
 }
