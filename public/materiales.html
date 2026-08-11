@@ -36,6 +36,10 @@
 
     <!-- 1. Lista de materiales -->
     <section class="tarjeta">
+      <label class="campo" style="max-width: 320px;">
+        <span class="campo__etiqueta">Buscar</span>
+        <input type="text" id="buscadorMateriales" placeholder="Nombre, unidad o proveedor..." oninput="buscarMateriales()">
+      </label>
       <table class="tabla" id="tablaMateriales">
         <thead>
           <tr>

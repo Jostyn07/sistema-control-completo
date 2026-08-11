@@ -397,8 +397,7 @@ router.delete('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/ventas/por-entregar — pedidos con fecha de entrega, aún no entregados,
-// ordenados por fecha (los más urgentes primero). Lo usa también el dashboard.
+
 router.get('/por-entregar', async (req, res, next) => {
   try {
     const { data, error } = await supabase
