@@ -1,17 +1,39 @@
-
+// ============================================================
+// MÓDULO 4 — VENTAS  (/api/ventas)
+// Requiere sesión. Todo se filtra por req.usuarioId.
+// - GET  /productos-disponibles  productos con capacidad producible actual
+// - POST /                       registra la venta; descuenta materiales
+// - GET  /                       historial con filtros (desde, hasta, estado)
+// - PUT  /:id/estado             pendiente → en_produccion → listo → entregado
+// - PUT  /:id/pago                confirmar/desconfirmar pago — independiente
+//                                 del estado de entrega
+// - PUT  /:id                     editar contacto/fecha, y opcionalmente
+//                                 productos/cantidades (la categoría de
+//                                 cada línea sale del producto, no se manda)
+// - DELETE /:id                   elimina y revierte el stock consumido;
+//                                 bloqueada si existe cualquier factura
+//                                 asociada (incluso anulada)
+// ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const { cifrar, descifrar } = require('../servicios/cifrado');
+const { obtenerCostoMinutoManoObra } = require('../servicios/costos');
 const router = express.Router();
 
 const ESTADOS_VALIDOS = ['pendiente', 'en_produccion', 'listo', 'entregado'];
 
 // GET /api/ventas/productos-disponibles
+// Incluye el desglose de costo POR UNIDAD (materiales vs. mano de obra)
+// para que el formulario de venta pueda calcular en vivo, por
+// categoría, cuánto se invirtió en materiales, cuánto en mano de obra
+// y cuál es el margen — sin tener que pedirlo aparte por cada producto.
+// También trae la categoría propia del producto (asignada en Productos)
+// para que la venta la tome automáticamente, sin escribirla a mano.
 router.get('/productos-disponibles', async (req, res, next) => {
   try {
     const { data: productos, error: eProd } = await supabase
       .from('productos')
-      .select('id, nombre, precio_venta, costo_calculado')
+      .select('id, nombre, precio_venta, costo_calculado, minutos_fabricacion, categoria_id, categorias_productos(nombre)')
       .eq('usuario_id', req.usuarioId)
       .eq('activo', true)
       .order('nombre');
@@ -23,6 +45,8 @@ router.get('/productos-disponibles', async (req, res, next) => {
       .select('producto_id, cantidad, materiales(stock_actual)')
       .in('producto_id', productos.map(p => p.id));
     if (eFichas) throw new Error(eFichas.message);
+
+    const costoMinuto = await obtenerCostoMinutoManoObra(req.usuarioId);
 
     const fichasPorProducto = new Map();
     for (const f of fichas || []) {
@@ -37,8 +61,43 @@ router.get('/productos-disponibles', async (req, res, next) => {
         fabricables = Math.min(...filas.map(f =>
           Math.floor(Number(f.materiales.stock_actual) / Number(f.cantidad))));
       }
-      return { ...p, unidades_fabricables: fabricables };
+      // costo_calculado ya incluye materiales + mano de obra juntos;
+      // la mano de obra se puede aislar porque es minutos × precio de
+      // hora global, y lo que sobra son los materiales.
+      const costoManoObraUnitario = Math.round(Number(p.minutos_fabricacion || 0) * costoMinuto * 100) / 100;
+      const costoMaterialesUnitario = Math.round((Number(p.costo_calculado) - costoManoObraUnitario) * 100) / 100;
+      return {
+        ...p,
+        categoria: p.categorias_productos ? p.categorias_productos.nombre : null,
+        unidades_fabricables: fabricables,
+        costo_materiales_unitario: costoMaterialesUnitario,
+        costo_mano_obra_unitario: costoManoObraUnitario
+      };
     }));
+  } catch (err) { next(err); }
+});
+
+// GET /api/ventas/categorias-por-producto
+// Devuelve, por cada producto, las categorías (variantes) que ya se han
+// usado antes en ventas de este usuario — para sugerirlas al vender de
+// nuevo (ej: si ya vendiste "Gerberas / Amarilla", que la próxima vez
+// aparezca sugerida en vez de tener que escribirla otra vez).
+router.get('/categorias-por-producto', async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('ventas_items')
+      .select('producto_id, categoria, ventas!inner(usuario_id)')
+      .eq('ventas.usuario_id', req.usuarioId)
+      .not('categoria', 'is', null);
+    if (error) throw new Error(error.message);
+
+    const mapa = {};
+    for (const fila of data || []) {
+      if (!mapa[fila.producto_id]) mapa[fila.producto_id] = [];
+      if (!mapa[fila.producto_id].includes(fila.categoria)) mapa[fila.producto_id].push(fila.categoria);
+    }
+    for (const id in mapa) mapa[id].sort((a, b) => a.localeCompare(b, 'es'));
+    res.json(mapa);
   } catch (err) { next(err); }
 });
 
@@ -56,7 +115,7 @@ router.post('/', async (req, res, next) => {
     const productoIds = items.map(i => i.producto_id);
     const { data: productos, error: eProd } = await supabase
       .from('productos')
-      .select('id, nombre, precio_venta, costo_calculado, activo')
+      .select('id, nombre, precio_venta, costo_calculado, activo, categoria_id, categorias_productos(nombre)')
       .eq('usuario_id', req.usuarioId)
       .in('id', productoIds);
     if (eProd) throw new Error(eProd.message);
@@ -65,6 +124,7 @@ router.post('/', async (req, res, next) => {
       const p = productoPorId.get(item.producto_id);
       if (!p) return res.status(404).json({ error: 'Uno de los productos ya no existe o no te pertenece' });
       if (!p.activo) return res.status(400).json({ error: `"${p.nombre}" está desactivado y no se puede vender` });
+      if (!p.categoria_id) return res.status(400).json({ error: `"${p.nombre}" no tiene categoría asignada. Asígnale una en Productos antes de venderlo.` });
     }
 
     const { data: fichas, error: eFichas } = await supabase
@@ -114,10 +174,10 @@ router.post('/', async (req, res, next) => {
         cantidad,
         precio_unitario: Number(p.precio_venta),
         costo_unitario: Number(p.costo_calculado),
-        // Variante opcional dentro del mismo producto (ej: "Amarilla",
-        // "Azul") — permite vender el mismo producto varias veces en
-        // una venta, cada vez con su propia categoría y cantidad.
-        categoria: (item.categoria || '').trim() || null
+        // La categoría SIEMPRE sale de la que tiene asignada el producto
+        // (categoria_id) — no de lo que mande el navegador. Ya se validó
+        // arriba que todo producto vendido tiene categoría asignada.
+        categoria: p.categorias_productos ? p.categorias_productos.nombre : null
       };
     });
     total = Math.round(total * 100) / 100;
@@ -263,7 +323,7 @@ router.put('/:id/fecha-entrega', async (req, res, next) => {
 });
 
 // PUT /api/ventas/:id — edita datos de contacto/fecha, y OPCIONALMENTE
-// los productos/cantidades/categorías (mandando "items" en el body).
+// los productos/cantidades (mandando "items" en el body).
 // Si se mandan items, se recalcula el inventario de forma segura:
 // se "revierte" el consumo de los items viejos y se aplica el de los
 // nuevos, en un solo neto por material (no revierte todo y vuelve a
@@ -304,7 +364,7 @@ router.put('/:id', async (req, res, next) => {
       });
     }
 
-    // ---- Rama completa: también cambian productos/cantidades/categorías ----
+    // ---- Rama completa: también cambian productos/cantidades ----
     if (items.length === 0)
       return res.status(400).json({ error: 'La venta debe tener al menos un producto' });
     for (const item of items) {
@@ -329,7 +389,7 @@ router.put('/:id', async (req, res, next) => {
     const productoIds = items.map(i => i.producto_id);
     const { data: productos, error: eProd } = await supabase
       .from('productos')
-      .select('id, nombre, precio_venta, costo_calculado, activo')
+      .select('id, nombre, precio_venta, costo_calculado, activo, categoria_id, categorias_productos(nombre)')
       .eq('usuario_id', req.usuarioId)
       .in('id', productoIds);
     if (eProd) throw new Error(eProd.message);
@@ -338,6 +398,7 @@ router.put('/:id', async (req, res, next) => {
       const p = productoPorId.get(item.producto_id);
       if (!p) return res.status(404).json({ error: 'Uno de los productos ya no existe o no te pertenece' });
       if (!p.activo) return res.status(400).json({ error: `"${p.nombre}" está desactivado y no se puede vender` });
+      if (!p.categoria_id) return res.status(400).json({ error: `"${p.nombre}" no tiene categoría asignada. Asígnale una en Productos antes de venderlo.` });
     }
 
     // Fichas técnicas de TODOS los productos involucrados (viejos + nuevos)
@@ -405,7 +466,7 @@ router.put('/:id', async (req, res, next) => {
         cantidad,
         precio_unitario: Number(p.precio_venta),
         costo_unitario: Number(p.costo_calculado),
-        categoria: (item.categoria || '').trim() || null
+        categoria: p.categorias_productos ? p.categorias_productos.nombre : null
       };
     });
     total = Math.round(total * 100) / 100;

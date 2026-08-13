@@ -112,11 +112,11 @@
 
         <h3>Productos</h3>
         <p class="texto-secundario" style="margin:-4px 0 8px">
-          Si el producto se vende por variantes (ej: colores), agrégalo una vez por cada categoría.
+          La categoría se toma automáticamente de la que tiene asignada el producto en Productos.
         </p>
         <div class="agregar-material">
-          <select id="selectorProductoVenta"></select>
-          <input type="text" id="categoriaVenta" placeholder="Categoría (opcional): Amarilla, Azul…" style="max-width:200px">
+          <select id="selectorProductoVenta" onchange="actualizarCategoriaAutomatica('selectorProductoVenta','categoriaAutoVenta')"></select>
+          <span class="texto-secundario" id="categoriaAutoVenta" style="align-self:center"></span>
           <input type="number" id="cantidadVenta" min="1" step="1" placeholder="Cantidad" style="max-width:110px">
           <button type="button" class="boton" onclick="agregarItemVenta()">Agregar</button>
         </div>
@@ -130,6 +130,7 @@
         <section class="tarjeta tarjeta--resumen">
           <div><span class="campo__etiqueta">Total de la venta</span><strong id="totalVenta">$0</strong></div>
         </section>
+        <div id="desgloseCategoriaVenta"></div>
 
         <div class="modal__acciones">
           <button type="button" class="boton" onclick="cerrarNuevaVenta()">Cancelar</button>
@@ -182,8 +183,8 @@
 
         <h3>Productos</h3>
         <div class="agregar-material">
-          <select id="selectorProductoEditarVenta"></select>
-          <input type="text" id="categoriaEditarVenta" placeholder="Categoría (opcional): Amarilla, Azul…" style="max-width:200px">
+          <select id="selectorProductoEditarVenta" onchange="actualizarCategoriaAutomatica('selectorProductoEditarVenta','categoriaAutoEditarVenta')"></select>
+          <span class="texto-secundario" id="categoriaAutoEditarVenta" style="align-self:center"></span>
           <input type="number" id="cantidadEditarVenta" min="1" step="1" placeholder="Cantidad" style="max-width:110px">
           <button type="button" class="boton" onclick="agregarItemEditarVenta()">Agregar</button>
         </div>
@@ -197,6 +198,7 @@
         <section class="tarjeta tarjeta--resumen">
           <div><span class="campo__etiqueta">Total de la venta</span><strong id="totalEditarVenta">$0</strong></div>
         </section>
+        <div id="desgloseCategoriaEditarVenta"></div>
 
         <div class="modal__acciones">
           <button type="button" class="boton" onclick="cerrarEditarVenta()">Cancelar</button>

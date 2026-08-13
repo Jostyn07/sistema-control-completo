@@ -1,4 +1,12 @@
-
+// ============================================================
+// ventas.js — pestaña Ventas
+// Funciones (según estructura funcional):
+//   cargarProductosParaVenta()
+//   calcularTotalVenta(items)
+//   registrarVenta(datosVenta)
+//   cambiarEstadoPedido(id, nuevoEstado)
+//   cargarHistorialVentas(filtros)
+// ============================================================
 
 let productosParaVenta = [];
 let itemsVentaEnEdicion = []; // [{ producto_id, nombre, precio, cantidad, fabricables }]
@@ -21,6 +29,7 @@ const SIGUIENTE_ESTADO = {
 // ---- 1. Nueva venta ----
 async function cargarProductosParaVenta() {
   productosParaVenta = await API.obtener('/api/ventas/productos-disponibles');
+
   const opciones = productosParaVenta
     .map(p => `<option value="${p.id}">${escaparHtml(p.nombre)} — ${formatearPesos(p.precio_venta)} (puedes fabricar ${p.unidades_fabricables})</option>`)
     .join('');
@@ -29,6 +38,37 @@ async function cargarProductosParaVenta() {
   // presente (ej. otra pantalla que reutilice ventas.js) no pasa nada.
   const selectorEditar = document.getElementById('selectorProductoEditarVenta');
   if (selectorEditar) selectorEditar.innerHTML = opciones;
+
+  actualizarCategoriaAutomatica('selectorProductoVenta', 'categoriaAutoVenta');
+  actualizarCategoriaAutomatica('selectorProductoEditarVenta', 'categoriaAutoEditarVenta');
+}
+
+// La categoría de la venta ya NO se escribe: sale directo de la que
+// tiene asignada el producto en Productos. Si el producto no tiene
+// categoría, se avisa y se bloquea el botón "Agregar" — hay que
+// asignarle una categoría desde Productos antes de poder venderlo.
+function actualizarCategoriaAutomatica(idSelector, idMuestraCategoria) {
+  const selector = document.getElementById(idSelector);
+  const muestra = document.getElementById(idMuestraCategoria);
+  if (!selector || !muestra) return;
+
+  const producto = productosParaVenta.find(p => p.id === selector.value);
+  const botonAgregar = selector.closest('.agregar-material')?.querySelector('button');
+
+  if (!producto) {
+    muestra.textContent = '';
+    muestra.className = 'texto-secundario';
+    return;
+  }
+  if (producto.categoria) {
+    muestra.textContent = producto.categoria;
+    muestra.className = '';
+    if (botonAgregar) botonAgregar.disabled = false;
+  } else {
+    muestra.textContent = 'Este producto no tiene categoría asignada. Ve a Productos y asígnale una antes de venderlo.';
+    muestra.className = 'indicador__valor--negativo';
+    if (botonAgregar) botonAgregar.disabled = true;
+  }
 }
 
 async function abrirNuevaVenta() {
@@ -59,30 +99,32 @@ function cerrarNuevaVenta() {
 function agregarItemVenta() {
   const productoId = document.getElementById('selectorProductoVenta').value;
   const cantidad = Number(document.getElementById('cantidadVenta').value);
-  const categoria = document.getElementById('categoriaVenta').value.trim(); // opcional: "Amarilla", "Azul"...
   if (!productoId) { mostrarAviso('Elige un producto', 'error'); return; }
   if (!cantidad || cantidad <= 0) { mostrarAviso('La cantidad debe ser mayor a 0', 'error'); return; }
 
   const producto = productosParaVenta.find(p => p.id === productoId);
   if (!producto) return;
+  if (!producto.categoria) {
+    mostrarAviso('Este producto no tiene categoría asignada. Asígnale una en Productos antes de venderlo.', 'error');
+    return;
+  }
 
   // Aviso temprano (el backend valida de nuevo con la ficha técnica completa)
   if (cantidad > producto.unidades_fabricables) {
     mostrarAviso(`Ojo: con el stock actual solo alcanza para ${producto.unidades_fabricables} unidad(es) de este producto. El sistema te avisará al registrar.`, 'error');
   }
 
-  // Mismo producto + misma categoría => se suma/actualiza la cantidad.
-  // Mismo producto con OTRA categoría => queda como línea aparte (ej:
-  // "Gerberas / Amarilla" y "Gerberas / Azul" en la misma venta).
-  const existente = itemsVentaEnEdicion.find(i => i.producto_id === productoId && i.categoria === categoria);
+  // Mismo producto => se suma/actualiza la cantidad de esa línea.
+  const existente = itemsVentaEnEdicion.find(i => i.producto_id === productoId);
   if (existente) existente.cantidad = cantidad;
   else itemsVentaEnEdicion.push({
     producto_id: productoId, nombre: producto.nombre,
-    precio: Number(producto.precio_venta), cantidad, categoria
+    precio: Number(producto.precio_venta), cantidad, categoria: producto.categoria,
+    costoMaterialesUnitario: Number(producto.costo_materiales_unitario || 0),
+    costoManoObraUnitario: Number(producto.costo_mano_obra_unitario || 0)
   });
 
   document.getElementById('cantidadVenta').value = '';
-  document.getElementById('categoriaVenta').value = '';
   pintarItemsVenta();
 }
 
@@ -107,6 +149,64 @@ function pintarItemsVenta() {
       </tr>`).join('');
   }
   document.getElementById('totalVenta').textContent = formatearPesos(calcularTotalVenta(itemsVentaEnEdicion));
+  pintarDesgloseCategoria(itemsVentaEnEdicion, 'desgloseCategoriaVenta');
+}
+
+// Agrupa por categoría (o por producto si no tiene categoría) y calcula,
+// para cada grupo, inversión en materiales, mano de obra y margen —
+// y al final el total de la venta completa. Es solo informativo: no se
+// manda al backend, se recalcula siempre a partir de los items en pantalla.
+function calcularDesglosePorCategoria(items) {
+  const grupos = new Map();
+  for (const i of items) {
+    const clave = i.categoria ? i.categoria : i.nombre;
+    const previo = grupos.get(clave) || {
+      etiqueta: clave, cantidad: 0, inversion: 0, manoObra: 0, ventas: 0
+    };
+    previo.cantidad += i.cantidad;
+    previo.inversion += (i.costoMaterialesUnitario || 0) * i.cantidad;
+    previo.manoObra += (i.costoManoObraUnitario || 0) * i.cantidad;
+    previo.ventas += i.precio * i.cantidad;
+    grupos.set(clave, previo);
+  }
+  const filas = [...grupos.values()].map(g => ({
+    ...g,
+    margen: g.ventas - g.inversion - g.manoObra
+  }));
+  const totales = filas.reduce((s, g) => ({
+    inversion: s.inversion + g.inversion,
+    manoObra: s.manoObra + g.manoObra,
+    margen: s.margen + g.margen
+  }), { inversion: 0, manoObra: 0, margen: 0 });
+  return { filas, totales };
+}
+
+function pintarDesgloseCategoria(items, idContenedor) {
+  const contenedor = document.getElementById(idContenedor);
+  if (!contenedor) return;
+  if (items.length === 0) { contenedor.innerHTML = ''; return; }
+
+  const { filas, totales } = calcularDesglosePorCategoria(items);
+  contenedor.innerHTML = `
+    <h4 style="margin:14px 0 6px">Inversión y margen por categoría</h4>
+    <table class="tabla">
+      <thead><tr><th>Categoría</th><th>Cantidad</th><th>Inversión (materiales)</th><th>Mano de obra</th><th>Margen</th></tr></thead>
+      <tbody>
+        ${filas.map(g => `
+          <tr>
+            <td>${escaparHtml(g.etiqueta)}</td>
+            <td>${g.cantidad}</td>
+            <td>${formatearPesos(g.inversion)}</td>
+            <td>${formatearPesos(g.manoObra)}</td>
+            <td class="${g.margen < 0 ? 'indicador__valor--negativo' : ''}">${formatearPesos(g.margen)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+    <section class="tarjeta tarjeta--resumen">
+      <div><span class="campo__etiqueta">Inversión total</span><strong>${formatearPesos(totales.inversion)}</strong></div>
+      <div><span class="campo__etiqueta">Mano de obra total</span><strong>${formatearPesos(totales.manoObra)}</strong></div>
+      <div><span class="campo__etiqueta">Margen de ganancia total</span><strong class="${totales.margen < 0 ? 'indicador__valor--negativo' : ''}">${formatearPesos(totales.margen)}</strong></div>
+    </section>`;
 }
 
 // Suma en vivo el total según productos y cantidades elegidas
@@ -199,13 +299,22 @@ async function abrirEditarVenta(venta) {
   ventaFacturadaEnEdicion = !!venta.facturada;
   document.getElementById('avisoFacturadaEditar').hidden = !ventaFacturadaEnEdicion;
   document.getElementById('selectorProductoEditarVenta').disabled = ventaFacturadaEnEdicion;
-  document.getElementById('categoriaEditarVenta').disabled = ventaFacturadaEnEdicion;
   document.getElementById('cantidadEditarVenta').disabled = ventaFacturadaEnEdicion;
 
   try {
     await cargarProductosParaVenta();
   } catch (err) {
     mostrarAviso('No se pudieron cargar los productos disponibles: ' + err.message, 'error');
+  }
+
+  // Completa el desglose de costo (materiales/mano de obra) de los items
+  // que ya traía la venta — no vienen en venta.ventas_items, así que se
+  // buscan por producto_id en la lista recién cargada. Si el producto ya
+  // fue desactivado, queda en 0 (no se puede recalcular ese desglose).
+  for (const item of itemsEditarVentaEnEdicion) {
+    const producto = productosParaVenta.find(p => p.id === item.producto_id);
+    item.costoMaterialesUnitario = producto ? Number(producto.costo_materiales_unitario || 0) : 0;
+    item.costoManoObraUnitario = producto ? Number(producto.costo_mano_obra_unitario || 0) : 0;
   }
 
   pintarItemsEditarVenta();
@@ -216,22 +325,26 @@ function agregarItemEditarVenta() {
   if (ventaFacturadaEnEdicion) return;
   const productoId = document.getElementById('selectorProductoEditarVenta').value;
   const cantidad = Number(document.getElementById('cantidadEditarVenta').value);
-  const categoria = document.getElementById('categoriaEditarVenta').value.trim();
   if (!productoId) { mostrarAviso('Elige un producto', 'error'); return; }
   if (!cantidad || cantidad <= 0) { mostrarAviso('La cantidad debe ser mayor a 0', 'error'); return; }
 
   const producto = productosParaVenta.find(p => p.id === productoId);
   if (!producto) return;
+  if (!producto.categoria) {
+    mostrarAviso('Este producto no tiene categoría asignada. Asígnale una en Productos antes de venderlo.', 'error');
+    return;
+  }
 
-  const existente = itemsEditarVentaEnEdicion.find(i => i.producto_id === productoId && i.categoria === categoria);
+  const existente = itemsEditarVentaEnEdicion.find(i => i.producto_id === productoId);
   if (existente) existente.cantidad = cantidad;
   else itemsEditarVentaEnEdicion.push({
     producto_id: productoId, nombre: producto.nombre,
-    precio: Number(producto.precio_venta), cantidad, categoria
+    precio: Number(producto.precio_venta), cantidad, categoria: producto.categoria,
+    costoMaterialesUnitario: Number(producto.costo_materiales_unitario || 0),
+    costoManoObraUnitario: Number(producto.costo_mano_obra_unitario || 0)
   });
 
   document.getElementById('cantidadEditarVenta').value = '';
-  document.getElementById('categoriaEditarVenta').value = '';
   pintarItemsEditarVenta();
 }
 
@@ -257,6 +370,7 @@ function pintarItemsEditarVenta() {
       </tr>`).join('');
   }
   document.getElementById('totalEditarVenta').textContent = formatearPesos(calcularTotalVenta(itemsEditarVentaEnEdicion));
+  pintarDesgloseCategoria(itemsEditarVentaEnEdicion, 'desgloseCategoriaEditarVenta');
 }
 
 function cerrarEditarVenta() {
