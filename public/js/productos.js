@@ -1,18 +1,48 @@
-// ============================================================
-// productos.js — pestaña Productos (Fichas Técnicas)
-// Funciones (según estructura funcional):
-//   cargarListaProductos()
-//   abrirFichaProducto(id)
-//   agregarMaterialAFicha(materialId, cantidad)
-//   calcularCostoEnVivo()
-//   guardarProducto(datosFicha)
-//   simularCambioPrecio(nuevoPrecio)
-// ============================================================
-
 let productosEnMemoria = [];
 let materialesDisponibles = [];   // precios actuales, pedidos una sola vez al abrir la ficha
 let filasFichaEnEdicion = [];     // [{ material_id, nombre, unidad, costo_unitario, cantidad }]
 let costoMinutoGlobal = 0;        // se calcula a partir del precio de hora global
+let categoriasDisponibles = [];   // categorías de producto del usuario (ej: "Flores", "Panadería")
+
+// ---- Categorías de producto ----
+async function cargarCategorias() {
+  try {
+    categoriasDisponibles = await API.obtener('/api/categorias');
+  } catch (err) {
+    categoriasDisponibles = [];
+  }
+  pintarSelectorCategoria();
+}
+
+function pintarSelectorCategoria(categoriaSeleccionadaId) {
+  const selector = document.getElementById('selectorCategoriaProducto');
+  if (!selector) return;
+  const actual = categoriaSeleccionadaId !== undefined ? categoriaSeleccionadaId : selector.value;
+  selector.innerHTML =
+    '<option value="">Sin categoría</option>' +
+    categoriasDisponibles.map(c => `<option value="${c.id}">${escaparHtml(c.nombre)}</option>`).join('') +
+    '<option value="__nueva__">+ Crear categoría nueva…</option>';
+  selector.value = actual || '';
+}
+
+// Se dispara al elegir "+ Crear categoría nueva…" en el selector.
+async function manejarCambioCategoria() {
+  const selector = document.getElementById('selectorCategoriaProducto');
+  if (selector.value !== '__nueva__') return;
+
+  const nombre = prompt('Nombre de la nueva categoría (ej: Flores, Panadería):');
+  if (!nombre || !nombre.trim()) { selector.value = ''; return; }
+
+  try {
+    const nueva = await API.enviar('/api/categorias', { nombre: nombre.trim() });
+    if (!categoriasDisponibles.some(c => c.id === nueva.id)) categoriasDisponibles.push(nueva);
+    categoriasDisponibles.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+    pintarSelectorCategoria(nueva.id);
+  } catch (err) {
+    mostrarAviso('No se pudo crear la categoría: ' + err.message, 'error');
+    selector.value = '';
+  }
+}
 
 // ---- Precio de hora global (un solo lugar, afecta todos los productos) ----
 async function cargarPrecioHora() {
@@ -72,6 +102,7 @@ async function cargarListaProductos() {
           : `<div class="tarjeta-producto__foto tarjeta-producto__foto--vacia">Sin foto</div>`}
         <div class="tarjeta-producto__cuerpo">
           <h3>${escaparHtml(p.nombre)}</h3>
+          ${p.categorias_productos ? `<p class="texto-secundario" style="margin:-2px 0 6px">${escaparHtml(p.categorias_productos.nombre)}</p>` : ''}
           <p class="tarjeta-producto__precio">${formatearPesos(p.precio_venta)}</p>
           <p class="tarjeta-producto__margen ${p.margen_valor < 0 ? 'tarjeta-producto__margen--negativo' : ''}">
             Margen: ${formatearPesos(p.margen_valor)} (${p.margen_porcentaje}%)
@@ -137,6 +168,8 @@ async function abrirFichaProducto(id) {
     .map(m => `<option value="${m.id}">${escaparHtml(m.nombre)} (${escaparHtml(m.unidad)}) — ${formatearPesos(m.costo_unitario)}</option>`)
     .join('');
 
+  await cargarCategorias();
+
   if (id) {
     const p = productosEnMemoria.find(x => x.id === id);
     if (!p) return;
@@ -149,6 +182,7 @@ async function abrirFichaProducto(id) {
       : '';
     document.getElementById('campoPrecioVenta').value = p.precio_venta;
     document.getElementById('campoMinutos').value = p.minutos_fabricacion;
+    pintarSelectorCategoria(p.categoria_id || '');
 
     // Trae el desglose para precargar las filas de materiales de la ficha
     try {
@@ -170,6 +204,7 @@ async function abrirFichaProducto(id) {
     document.getElementById('campoFotoArchivo').value = '';
     document.getElementById('campoPrecioVenta').value = '';
     document.getElementById('campoMinutos').value = 0;
+    pintarSelectorCategoria('');
     filasFichaEnEdicion = [];
   }
 
@@ -275,6 +310,7 @@ async function guardarProducto() {
   const datosFicha = {
     nombre,
     foto_url: document.getElementById('campoFoto').value,
+    categoria_id: document.getElementById('selectorCategoriaProducto').value || null,
     precio_venta: precioVenta,
     minutos_fabricacion: document.getElementById('campoMinutos').value,
     materiales: filasFichaEnEdicion.map(f => ({ material_id: f.material_id, cantidad: f.cantidad }))

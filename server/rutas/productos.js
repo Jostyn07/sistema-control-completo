@@ -1,17 +1,3 @@
-// ============================================================
-// MÓDULO 2 — PRODUCTOS / FICHAS TÉCNICAS  (/api/productos)
-// Requiere sesión. Cada consulta se filtra por req.usuarioId.
-// El costo de mano de obra ya NO se guarda por producto: se calcula
-// con el precio de hora global (server/servicios/costos.js), así
-// que cambiarlo en un solo lugar (Configuración) afecta a todos
-// los productos automáticamente.
-// - GET    /                    productos con costo, precio y margen
-// - POST   /                    crear producto + su lista de materiales
-// - PUT    /:id                 editar ficha técnica; recalcula costo y margen
-// - DELETE /:id                 elimina solo si no tiene ventas históricas;
-//                               si las tiene, se desactiva en vez de borrar
-// - GET    /:id/costo           desglose de costo (materiales + mano de obra)
-// ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const { calcularCostoProducto, obtenerCostoMinutoManoObra } = require('../servicios/costos');
@@ -50,7 +36,7 @@ router.get('/', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('productos')
-      .select('*')
+      .select('*, categorias_productos(id, nombre)')
       .eq('usuario_id', req.usuarioId)
       .eq('activo', true)
       .order('nombre');
@@ -77,11 +63,12 @@ router.post('/', async (req, res, next) => {
         usuario_id: req.usuarioId,
         nombre: req.body.nombre.trim(),
         foto_url: req.body.foto_url || null,
+        categoria_id: req.body.categoria_id || null,
         precio_venta: Number(req.body.precio_venta),
         minutos_fabricacion: Number(req.body.minutos_fabricacion || 0),
         costo_calculado: costoCalculado
       })
-      .select().single();
+      .select('*, categorias_productos(id, nombre)').single();
     if (eProd) throw new Error(eProd.message);
 
     const filasMateriales = req.body.materiales.map(m => ({
@@ -113,6 +100,7 @@ router.put('/:id', async (req, res, next) => {
       .update({
         nombre: req.body.nombre.trim(),
         foto_url: req.body.foto_url || null,
+        categoria_id: req.body.categoria_id || null,
         precio_venta: Number(req.body.precio_venta),
         minutos_fabricacion: Number(req.body.minutos_fabricacion || 0),
         costo_calculado: costoCalculado,
@@ -120,7 +108,7 @@ router.put('/:id', async (req, res, next) => {
       })
       .eq('id', req.params.id)
       .eq('usuario_id', req.usuarioId)
-      .select().single();
+      .select('*, categorias_productos(id, nombre)').single();
     if (eProd) throw new Error(eProd.message);
     if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
 

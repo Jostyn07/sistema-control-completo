@@ -57,6 +57,10 @@
           <input type="text" id="campoNombreProducto" placeholder="Ej: Ramo mediano flores de chelines">
         </label>
         <label class="campo">
+          <span class="campo__etiqueta">Categoría</span>
+          <select id="selectorCategoriaProducto" onchange="manejarCambioCategoria()"></select>
+        </label>
+        <label class="campo">
           <span class="campo__etiqueta">Foto del producto (opcional)</span>
           <input type="file" id="campoFotoArchivo" accept="image/*" onchange="subirFotoProducto()">
           <input type="hidden" id="campoFoto">
