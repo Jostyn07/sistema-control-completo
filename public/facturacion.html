@@ -119,6 +119,27 @@
         </div>
         </div>
 
+        <h3>Datos adicionales para la factura (opcional)</h3>
+        <p class="texto-secundario" style="margin:-4px 0 8px">
+          Si los llenas, aparecen en el recibo/factura para que el cliente sepa a nombre de quién es y cómo pagar.
+        </p>
+        <div class="fila-campos">
+          <label class="campo">
+            <span class="campo__etiqueta">Nombre de la persona</span>
+            <input type="text" id="campoNombrePersona" placeholder="Ej: Jostyn Aragón">
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">Cédula de ciudadanía</span>
+            <input type="text" id="campoCedula" placeholder="Ej: 1234567890">
+          </label>
+        </div>
+
+        <h4 style="margin-bottom:6px">Métodos de pago (máximo 5)</h4>
+        <div id="listaMetodosPago"></div>
+        <button type="button" class="boton boton--pequeno" id="botonAgregarMetodoPago" onclick="agregarMetodoPago()" style="margin:8px 0 4px">
+          + Agregar método de pago
+        </button>
+
         <div class="modal__acciones">
           <button type="button" class="boton" onclick="cerrarConfiguracion()">Cancelar</button>
           <button type="button" class="boton boton--primario" onclick="guardarConfiguracionFiscal()">Guardar configuración</button>

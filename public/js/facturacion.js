@@ -34,8 +34,66 @@ function abrirConfiguracion() {
   document.getElementById('campoResolucionDesde').value = c.resolucion_desde || '';
   document.getElementById('campoResolucionHasta').value = c.resolucion_hasta || '';
   document.getElementById('campoResolucionVigencia').value = c.resolucion_vigencia || '';
+  document.getElementById('campoNombrePersona').value = c.nombre_persona || '';
+  document.getElementById('campoCedula').value = c.cedula || '';
+  metodosPagoEnEdicion = Array.isArray(c.metodos_pago) ? c.metodos_pago.map(m => ({ ...m })) : [];
+  pintarMetodosPago();
   alternarCamposRut();
   document.getElementById('modalConfiguracion').hidden = false;
+}
+
+// ---- Métodos de pago (hasta 5, para mostrar en la factura) ----
+let metodosPagoEnEdicion = [];
+const ETIQUETA_TIPO_PAGO = { cuenta: 'Número de cuenta', llave: 'Llave', nequi: 'Nequi' };
+
+function agregarMetodoPago() {
+  if (metodosPagoEnEdicion.length >= 5) {
+    mostrarAviso('Máximo 5 métodos de pago', 'error');
+    return;
+  }
+  metodosPagoEnEdicion.push({ tipo: 'cuenta', valor: '', etiqueta: '' });
+  pintarMetodosPago();
+}
+
+function quitarMetodoPago(indice) {
+  metodosPagoEnEdicion.splice(indice, 1);
+  pintarMetodosPago();
+}
+
+// Se llama desde los inputs/selects de cada fila con oninput/onchange
+function actualizarMetodoPago(indice, campo, valor) {
+  metodosPagoEnEdicion[indice][campo] = valor;
+}
+
+function pintarMetodosPago() {
+  const contenedor = document.getElementById('listaMetodosPago');
+  if (metodosPagoEnEdicion.length === 0) {
+    contenedor.innerHTML = '<p class="texto-secundario">Sin métodos de pago agregados.</p>';
+  } else {
+    contenedor.innerHTML = metodosPagoEnEdicion.map((m, i) => `
+      <div class="agregar-material" style="align-items:flex-end">
+        <label class="campo" style="margin:0;max-width:160px">
+          <span class="campo__etiqueta">Tipo</span>
+          <select onchange="actualizarMetodoPago(${i}, 'tipo', this.value)">
+            <option value="cuenta" ${m.tipo === 'cuenta' ? 'selected' : ''}>Número de cuenta</option>
+            <option value="llave" ${m.tipo === 'llave' ? 'selected' : ''}>Llave</option>
+            <option value="nequi" ${m.tipo === 'nequi' ? 'selected' : ''}>Nequi</option>
+          </select>
+        </label>
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Valor</span>
+          <input type="text" value="${escaparHtml(m.valor || '')}" placeholder="Ej: 123-456789-00"
+            oninput="actualizarMetodoPago(${i}, 'valor', this.value)">
+        </label>
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Detalle (opcional)</span>
+          <input type="text" value="${escaparHtml(m.etiqueta || '')}" placeholder="Ej: Bancolombia ahorros"
+            oninput="actualizarMetodoPago(${i}, 'etiqueta', this.value)">
+        </label>
+        <button type="button" class="boton boton--pequeno boton--peligro" onclick="quitarMetodoPago(${i})">Quitar</button>
+      </div>`).join('');
+  }
+  document.getElementById('botonAgregarMetodoPago').disabled = metodosPagoEnEdicion.length >= 5;
 }
 
 // Muestra/oculta NIT, régimen y resolución según el modo elegido:
@@ -67,8 +125,16 @@ async function guardarConfiguracionFiscal() {
     resolucion_prefijo: tieneResolucion ? document.getElementById('campoResolucionPrefijo').value : '',
     resolucion_desde: tieneResolucion ? document.getElementById('campoResolucionDesde').value : null,
     resolucion_hasta: tieneResolucion ? document.getElementById('campoResolucionHasta').value : null,
-    resolucion_vigencia: tieneResolucion ? (document.getElementById('campoResolucionVigencia').value || null) : null
+    resolucion_vigencia: tieneResolucion ? (document.getElementById('campoResolucionVigencia').value || null) : null,
+    nombre_persona: document.getElementById('campoNombrePersona').value,
+    cedula: document.getElementById('campoCedula').value,
+    metodos_pago: metodosPagoEnEdicion
   };
+
+  if (metodosPagoEnEdicion.some(m => !m.valor || !m.valor.trim())) {
+    mostrarAviso('Completa el valor de cada método de pago (o quítalo si no lo vas a usar)', 'error');
+    return;
+  }
 
   if (!datos.razon_social.trim()) {
     mostrarAviso('El nombre es obligatorio', 'error');
@@ -108,7 +174,13 @@ async function cargarVentasFacturables() {
         <td>${(v.ventas_items || []).map(i => `${i.cantidad}× ${escaparHtml(i.productos ? i.productos.nombre : '')}`).join(', ')}</td>
         <td>${formatearPesos(v.total)}</td>
         <td>${escaparHtml(v.estado)}</td>
-        <td><button type="button" class="boton boton--pequeno boton--primario" onclick="generarFactura('${v.id}')">Generar factura</button></td>
+        <td>
+          <select id="modoFacturar-${v.id}" style="width:auto;display:inline-block;margin-right:6px">
+            <option value="individual">Individual</option>
+            <option value="categorias">Por categorías</option>
+          </select>
+          <button type="button" class="boton boton--pequeno boton--primario" onclick="generarFactura('${v.id}')">Generar factura</button>
+        </td>
       </tr>`).join('');
   } catch (err) {
     cuerpo.innerHTML = `<tr><td colspan="6" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
@@ -116,8 +188,10 @@ async function cargarVentasFacturables() {
 }
 
 async function generarFactura(ventaId) {
+  const selectorModo = document.getElementById(`modoFacturar-${ventaId}`);
+  const modo = selectorModo ? selectorModo.value : 'individual';
   try {
-    const factura = await API.enviar('/api/facturacion/generar', { venta_id: ventaId });
+    const factura = await API.enviar('/api/facturacion/generar', { venta_id: ventaId, modo });
     mostrarAviso(`Factura ${factura.numero} generada`);
     if (factura.nota) setTimeout(() => mostrarAviso(factura.nota, 'error'), 1800);
     cargarVentasFacturables();
@@ -186,6 +260,9 @@ async function eliminarFactura(id, numero) {
 }
 
 // ---- Vista imprimible (para imprimir o guardar PDF y enviar al cliente) ----
+let facturaEnMemoria = null;   // { factura, config } de la última factura abierta
+let modoVistaFactura = 'individual'; // 'individual' | 'categorias'
+
 async function verFactura(facturaId) {
   const modal = document.getElementById('modalFactura');
   const contenido = document.getElementById('contenidoFactura');
@@ -193,13 +270,77 @@ async function verFactura(facturaId) {
   modal.hidden = false;
 
   try {
-    const { factura, config } = await API.obtener(`/api/facturacion/${facturaId}/detalle`);
-    const venta = factura.ventas;
-    const items = venta.ventas_items || [];
-    const tieneNit = !!(config && config.nit);
-    const tieneResolucion = !!(config && config.resolucion_numero);
+    facturaEnMemoria = await API.obtener(`/api/facturacion/${facturaId}/detalle`);
+    modoVistaFactura = facturaEnMemoria.factura.modo_visualizacion === 'categorias' ? 'categorias' : 'individual';
+    pintarFactura();
+  } catch (err) {
+    contenido.innerHTML = `<p class="tabla__vacio">Error: ${escaparHtml(err.message)}</p>`;
+  }
+}
 
-    contenido.innerHTML = `
+// Cambia entre "Individual" (un renglón por cada línea tal como se
+// vendió) y "Categorías" (agrupa y suma cantidades por categoría —
+// ej: todas las "Amarilla" de la venta en un solo renglón, sin
+// importar de qué producto vinieron). Queda guardado en la factura
+// (no solo en la vista) para que la próxima vez que se abra o
+// reimprima respete lo que pidió quien compró.
+async function cambiarModoFactura(modo) {
+  modoVistaFactura = modo;
+  pintarFactura(); // respuesta visual inmediata, sin esperar al servidor
+
+  if (facturaEnMemoria && facturaEnMemoria.factura.modo_visualizacion !== modo) {
+    try {
+      const actualizada = await API.actualizar(`/api/facturacion/${facturaEnMemoria.factura.id}/modo`, { modo });
+      facturaEnMemoria.factura.modo_visualizacion = actualizada.modo_visualizacion;
+    } catch (err) {
+      mostrarAviso('No se pudo guardar el modo elegido: ' + err.message, 'error');
+    }
+  }
+}
+
+function agruparItemsPorCategoria(items) {
+  const grupos = new Map();
+  for (const i of items) {
+    const clave = i.categoria ? i.categoria : (i.productos ? i.productos.nombre : 'Producto');
+    const previo = grupos.get(clave) || { etiqueta: clave, cantidad: 0, subtotal: 0 };
+    previo.cantidad += i.cantidad;
+    previo.subtotal += i.cantidad * i.precio_unitario;
+    grupos.set(clave, previo);
+  }
+  return [...grupos.values()];
+}
+
+function pintarFactura() {
+  if (!facturaEnMemoria) return;
+  const { factura, config } = facturaEnMemoria;
+  const contenido = document.getElementById('contenidoFactura');
+  const venta = factura.ventas;
+  const items = venta.ventas_items || [];
+  const tieneNit = !!(config && config.nit);
+  const tieneResolucion = !!(config && config.resolucion_numero);
+
+  const filasIndividual = items.map(i => `
+    <tr>
+      <td>${escaparHtml(i.productos ? i.productos.nombre : '')}${i.categoria ? ` <span class="texto-secundario">(${escaparHtml(i.categoria)})</span>` : ''}</td>
+      <td>${i.cantidad}</td>
+      <td>${formatearPesos(i.precio_unitario)}</td>
+      <td>${formatearPesos(i.cantidad * i.precio_unitario)}</td>
+    </tr>`).join('');
+
+  const filasCategorias = agruparItemsPorCategoria(items).map(g => `
+    <tr>
+      <td>${escaparHtml(g.etiqueta)}</td>
+      <td>${g.cantidad}</td>
+      <td colspan="1"></td>
+      <td>${formatearPesos(g.subtotal)}</td>
+    </tr>`).join('');
+
+  contenido.innerHTML = `
+      ${'' /* el toggle siempre se muestra: incluso sin categorías, "por categorías" agrupa por producto */}
+      <div class="modal__acciones" style="margin-bottom:10px">
+        <button type="button" class="boton boton--pequeno ${modoVistaFactura === 'individual' ? 'boton--primario' : ''}" onclick="cambiarModoFactura('individual')">Individual</button>
+        <button type="button" class="boton boton--pequeno ${modoVistaFactura === 'categorias' ? 'boton--primario' : ''}" onclick="cambiarModoFactura('categorias')">Por categorías</button>
+      </div>
       <div class="factura" id="areaImprimible">
         ${factura.anulada ? `<p class="indicador__valor--negativo" style="text-align:center;border:2px solid currentColor;padding:6px;margin:0 0 12px;font-weight:700">ANULADA — ${escaparHtml(factura.motivo_anulacion || '')} (${formatearFecha(factura.fecha_anulacion)})</p>` : ''}
         <header class="factura__encabezado">
@@ -218,15 +359,9 @@ async function verFactura(facturaId) {
         <p style="margin:12px 0 4px"><strong>Cliente:</strong> ${escaparHtml(venta.cliente || 'Consumidor final')}</p>
 
         <table class="tabla">
-          <thead><tr><th>Producto</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead>
+          <thead><tr><th>${modoVistaFactura === 'categorias' ? 'Categoría' : 'Producto'}</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead>
           <tbody>
-            ${items.map(i => `
-              <tr>
-                <td>${escaparHtml(i.productos ? i.productos.nombre : '')}</td>
-                <td>${i.cantidad}</td>
-                <td>${formatearPesos(i.precio_unitario)}</td>
-                <td>${formatearPesos(i.cantidad * i.precio_unitario)}</td>
-              </tr>`).join('')}
+            ${modoVistaFactura === 'categorias' ? filasCategorias : filasIndividual}
             <tr><td colspan="3" style="text-align:right"><strong>Total</strong></td><td><strong>${formatearPesos(venta.total)}</strong></td></tr>
           </tbody>
         </table>
@@ -240,14 +375,39 @@ async function verFactura(facturaId) {
                ${factura.cufe ? `<br>CUFE: ${escaparHtml(factura.cufe)}` : '<br>CUFE pendiente de validación ante la DIAN.'}`
             : ''}
         </footer>
+
+        ${bloqueDatosPersonaYPago(config)}
       </div>`;
-  } catch (err) {
-    contenido.innerHTML = `<p class="tabla__vacio">Error: ${escaparHtml(err.message)}</p>`;
-  }
+}
+
+// Datos opcionales de la configuración: nombre de la persona, cédula y
+// hasta 5 métodos de pago — solo se imprimen si de verdad se llenaron.
+function bloqueDatosPersonaYPago(config) {
+  if (!config) return '';
+  const tieneDatosPersona = !!(config.nombre_persona || config.cedula);
+  const metodos = Array.isArray(config.metodos_pago) ? config.metodos_pago : [];
+  if (!tieneDatosPersona && metodos.length === 0) return '';
+
+  return `
+    <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--hairline)">
+      ${tieneDatosPersona ? `
+        <p style="margin:2px 0">
+          ${config.nombre_persona ? `<strong>${escaparHtml(config.nombre_persona)}</strong>` : ''}
+          ${config.cedula ? ` — C.C. ${escaparHtml(config.cedula)}` : ''}
+        </p>` : ''}
+      ${metodos.length > 0 ? `
+        <p class="texto-secundario" style="margin:6px 0 2px"><strong>Métodos de pago</strong></p>
+        <ul style="margin:0;padding-left:18px">
+          ${metodos.map(m => `
+            <li>${ETIQUETA_TIPO_PAGO[m.tipo] || m.tipo}: ${escaparHtml(m.valor)}${m.etiqueta ? ` (${escaparHtml(m.etiqueta)})` : ''}</li>
+          `).join('')}
+        </ul>` : ''}
+    </div>`;
 }
 
 function cerrarFactura() {
   document.getElementById('modalFactura').hidden = true;
+  facturaEnMemoria = null;
 }
 
 // Imprime solo la factura (el CSS @media print oculta el resto).

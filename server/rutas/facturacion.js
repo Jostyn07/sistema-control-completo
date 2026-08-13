@@ -37,6 +37,24 @@ router.post('/configuracion', async (req, res, next) => {
         return res.status(400).json({ error: 'El "desde" de la numeración no puede ser mayor que el "hasta"' });
     }
 
+    // Métodos de pago para mostrar en la factura (todos opcionales):
+    // hasta 5, cada uno con tipo (cuenta/llave/nequi) y su valor.
+    const TIPOS_METODO_PAGO = ['cuenta', 'llave', 'nequi'];
+    const metodosPago = Array.isArray(c.metodos_pago) ? c.metodos_pago : [];
+    if (metodosPago.length > 5)
+      return res.status(400).json({ error: 'Puedes agregar máximo 5 métodos de pago' });
+    for (const m of metodosPago) {
+      if (!TIPOS_METODO_PAGO.includes(m.tipo))
+        return res.status(400).json({ error: 'Cada método de pago debe ser cuenta, llave o nequi' });
+      if (!m.valor || !String(m.valor).trim())
+        return res.status(400).json({ error: 'Cada método de pago necesita un valor (número de cuenta, llave o Nequi)' });
+    }
+    const metodosPagoLimpios = metodosPago.map(m => ({
+      tipo: m.tipo,
+      valor: String(m.valor).trim(),
+      etiqueta: (m.etiqueta || '').trim() || null // ej: nombre del banco, opcional
+    }));
+
     // El NIT puede existir SIN resolución (persona natural con RUT que aún
     // no tramita una resolución de numeración ante la DIAN) — en ese caso
     // se generan recibos internos igual, pero mostrando el NIT.
@@ -49,7 +67,10 @@ router.post('/configuracion', async (req, res, next) => {
       resolucion_prefijo: tieneResolucion ? ((c.resolucion_prefijo || '').trim() || null) : null,
       resolucion_desde: tieneResolucion ? Number(c.resolucion_desde) : null,
       resolucion_hasta: tieneResolucion ? Number(c.resolucion_hasta) : null,
-      resolucion_vigencia: tieneResolucion ? (c.resolucion_vigencia || null) : null
+      resolucion_vigencia: tieneResolucion ? (c.resolucion_vigencia || null) : null,
+      nombre_persona: (c.nombre_persona || '').trim() || null,
+      cedula: (c.cedula || '').trim() || null,
+      metodos_pago: metodosPagoLimpios
     };
 
     const { data, error } = await supabase
@@ -74,11 +95,14 @@ router.get('/facturables', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// POST /api/facturacion/generar — cuerpo: { venta_id }
+// POST /api/facturacion/generar — cuerpo: { venta_id, modo }
+// "modo": 'individual' (por defecto) o 'categorias' — lo decide quien
+// factura, según cómo lo pida el cliente. Queda guardado en la factura.
 router.post('/generar', async (req, res, next) => {
   try {
-    const { venta_id } = req.body;
+    const { venta_id, modo } = req.body;
     if (!venta_id) return res.status(400).json({ error: 'Falta indicar la venta' });
+    const modoVisualizacion = modo === 'categorias' ? 'categorias' : 'individual';
 
     const { data: config, error: eConf } = await supabase
       .from('configuracion_fiscal').select('*').eq('usuario_id', req.usuarioId).maybeSingle();
@@ -124,7 +148,8 @@ router.post('/generar', async (req, res, next) => {
         numero,
         cufe: emision.cufe,
         pdf_url: emision.pdf_url,
-        estado: emision.estado
+        estado: emision.estado,
+        modo_visualizacion: modoVisualizacion
       })
       .select().single();
     if (eFact) throw new Error(eFact.message);
@@ -195,6 +220,23 @@ router.delete('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// PUT /api/facturacion/:id/modo — cuerpo: { modo: 'individual' | 'categorias' }
+// Cambia cómo se ve/imprime la factura sin tocar números, CUFE ni
+// numeración — es solo el formato de presentación de las líneas.
+router.put('/:id/modo', async (req, res, next) => {
+  try {
+    const modo = req.body.modo === 'categorias' ? 'categorias' : 'individual';
+    const { data, error } = await supabase
+      .from('facturas')
+      .update({ modo_visualizacion: modo })
+      .eq('id', req.params.id).eq('usuario_id', req.usuarioId)
+      .select().single();
+    if (error) throw new Error(error.message);
+    if (!data) return res.status(404).json({ error: 'Factura no encontrada' });
+    res.json(data);
+  } catch (err) { next(err); }
+});
+
 // GET /api/facturacion/historial
 router.get('/historial', async (req, res, next) => {
   try {
@@ -214,7 +256,7 @@ router.get('/:id/detalle', async (req, res, next) => {
   try {
     const { data: factura, error: eFact } = await supabase
       .from('facturas')
-      .select('*, ventas(id, cliente, total, costo_total, fecha, ventas_items(cantidad, precio_unitario, productos(nombre)))')
+      .select('*, ventas(id, cliente, total, costo_total, fecha, ventas_items(cantidad, precio_unitario, categoria, productos(nombre)))')
       .eq('id', req.params.id)
       .eq('usuario_id', req.usuarioId)
       .single();
