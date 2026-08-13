@@ -1,19 +1,4 @@
-// ============================================================
-// MÓDULO 4 — VENTAS  (/api/ventas)
-// Requiere sesión. Todo se filtra por req.usuarioId.
-// - GET  /productos-disponibles  productos con capacidad producible actual
-// - POST /                       registra la venta; descuenta materiales
-// - GET  /                       historial con filtros (desde, hasta, estado)
-// - PUT  /:id/estado             pendiente → en_produccion → listo → entregado
-// - PUT  /:id/pago                confirmar/desconfirmar pago — independiente
-//                                 del estado de entrega
-// - PUT  /:id                     editar datos de contacto/fecha (NUNCA
-//                                 productos/cantidades, para no arriesgar
-//                                 la consistencia del inventario)
-// - DELETE /:id                   elimina y revierte el stock consumido;
-//                                 bloqueada si existe cualquier factura
-//                                 asociada (incluso anulada)
-// ============================================================
+
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const { cifrar, descifrar } = require('../servicios/cifrado');
@@ -128,7 +113,11 @@ router.post('/', async (req, res, next) => {
         producto_id: item.producto_id,
         cantidad,
         precio_unitario: Number(p.precio_venta),
-        costo_unitario: Number(p.costo_calculado)
+        costo_unitario: Number(p.costo_calculado),
+        // Variante opcional dentro del mismo producto (ej: "Amarilla",
+        // "Azul") — permite vender el mismo producto varias veces en
+        // una venta, cada vez con su propia categoría y cantidad.
+        categoria: (item.categoria || '').trim() || null
       };
     });
     total = Math.round(total * 100) / 100;
@@ -191,7 +180,7 @@ router.get('/', async (req, res, next) => {
   try {
     let consulta = supabase
       .from('ventas')
-      .select('*, ventas_items(cantidad, precio_unitario, costo_unitario, productos(nombre))')
+      .select('*, ventas_items(producto_id, cantidad, precio_unitario, costo_unitario, categoria, productos(nombre))')
       .eq('usuario_id', req.usuarioId)
       .order('fecha', { ascending: false })
       .limit(200);
@@ -273,40 +262,208 @@ router.put('/:id/fecha-entrega', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// PUT /api/ventas/:id — editar SOLO datos de contacto y fecha de entrega.
-// A propósito NO se pueden editar productos/cantidades acá: cambiar los
-// items de una venta ya registrada obligaría a recalcular y revertir
-// consumo de materiales de forma segura, que es justo lo que hace
-// DELETE + una venta nueva. Mantenerlos separados evita inconsistencias
-// silenciosas en el inventario.
+// PUT /api/ventas/:id — edita datos de contacto/fecha, y OPCIONALMENTE
+// los productos/cantidades/categorías (mandando "items" en el body).
+// Si se mandan items, se recalcula el inventario de forma segura:
+// se "revierte" el consumo de los items viejos y se aplica el de los
+// nuevos, en un solo neto por material (no revierte todo y vuelve a
+// consumir por separado, para no pasar por un estado intermedio raro).
+// Bloqueado si la venta ya tiene factura generada — hay que anularla
+// primero, porque una factura ya emitida no puede quedar desincronizada
+// de lo que realmente se vendió.
 router.put('/:id', async (req, res, next) => {
   try {
-    const { cliente, cliente_telefono, cliente_cedula, fecha_entrega } = req.body;
+    const { cliente, cliente_telefono, cliente_cedula, fecha_entrega, items, forzar } = req.body;
 
-    const cambios = {};
-    if (cliente !== undefined) cambios.cliente = (cliente || '').trim() || null;
-    if (cliente_telefono !== undefined) cambios.cliente_telefono_cifrado = cifrar(cliente_telefono);
-    if (cliente_cedula !== undefined) cambios.cliente_cedula_cifrada = cifrar(cliente_cedula);
-    if (fecha_entrega !== undefined) cambios.fecha_entrega = fecha_entrega || null;
+    const cambiosVenta = {};
+    if (cliente !== undefined) cambiosVenta.cliente = (cliente || '').trim() || null;
+    if (cliente_telefono !== undefined) cambiosVenta.cliente_telefono_cifrado = cifrar(cliente_telefono);
+    if (cliente_cedula !== undefined) cambiosVenta.cliente_cedula_cifrada = cifrar(cliente_cedula);
+    if (fecha_entrega !== undefined) cambiosVenta.fecha_entrega = fecha_entrega || null;
 
-    if (Object.keys(cambios).length === 0)
+    if (!Array.isArray(items) && Object.keys(cambiosVenta).length === 0)
       return res.status(400).json({ error: 'No se mandó ningún campo para editar' });
 
-    const { data, error } = await supabase
+    // ---- Rama simple: solo contacto/fecha (comportamiento anterior) ----
+    if (!Array.isArray(items)) {
+      const { data, error } = await supabase
+        .from('ventas')
+        .update(cambiosVenta)
+        .eq('id', req.params.id)
+        .eq('usuario_id', req.usuarioId)
+        .select().single();
+      if (error) throw new Error(error.message);
+      if (!data) return res.status(404).json({ error: 'Venta no encontrada' });
+
+      return res.json({
+        ...data,
+        cliente_telefono: descifrar(data.cliente_telefono_cifrado),
+        cliente_cedula: descifrar(data.cliente_cedula_cifrada),
+        cliente_telefono_cifrado: undefined,
+        cliente_cedula_cifrada: undefined
+      });
+    }
+
+    // ---- Rama completa: también cambian productos/cantidades/categorías ----
+    if (items.length === 0)
+      return res.status(400).json({ error: 'La venta debe tener al menos un producto' });
+    for (const item of items) {
+      if (!item.producto_id || !item.cantidad || Number(item.cantidad) <= 0)
+        return res.status(400).json({ error: 'Cada producto de la venta necesita una cantidad mayor a 0' });
+    }
+
+    const { data: ventaActual, error: eGet } = await supabase
+      .from('ventas').select('*, ventas_items(producto_id, cantidad)')
+      .eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+    if (eGet || !ventaActual) return res.status(404).json({ error: 'Venta no encontrada' });
+
+    const { data: facturasAsociadas, error: eFact } = await supabase
+      .from('facturas').select('id, numero').eq('venta_id', req.params.id).eq('anulada', false);
+    if (eFact) throw new Error(eFact.message);
+    if (facturasAsociadas && facturasAsociadas.length > 0) {
+      return res.status(400).json({
+        error: `Esta venta ya tiene factura generada (${facturasAsociadas[0].numero || 'sin número'}). Anúlala primero para poder editar los productos.`
+      });
+    }
+
+    const productoIds = items.map(i => i.producto_id);
+    const { data: productos, error: eProd } = await supabase
+      .from('productos')
+      .select('id, nombre, precio_venta, costo_calculado, activo')
+      .eq('usuario_id', req.usuarioId)
+      .in('id', productoIds);
+    if (eProd) throw new Error(eProd.message);
+    const productoPorId = new Map((productos || []).map(p => [p.id, p]));
+    for (const item of items) {
+      const p = productoPorId.get(item.producto_id);
+      if (!p) return res.status(404).json({ error: 'Uno de los productos ya no existe o no te pertenece' });
+      if (!p.activo) return res.status(400).json({ error: `"${p.nombre}" está desactivado y no se puede vender` });
+    }
+
+    // Fichas técnicas de TODOS los productos involucrados (viejos + nuevos)
+    // para poder revertir el consumo anterior y aplicar el nuevo.
+    const idsProductosViejos = (ventaActual.ventas_items || []).map(i => i.producto_id);
+    const idsUnion = [...new Set([...idsProductosViejos, ...productoIds])];
+    const { data: fichas, error: eFichas } = await supabase
+      .from('productos_materiales')
+      .select('producto_id, material_id, cantidad, materiales(id, nombre, unidad, stock_actual)')
+      .in('producto_id', idsUnion.length ? idsUnion : ['00000000-0000-0000-0000-000000000000']);
+    if (eFichas) throw new Error(eFichas.message);
+
+    function requeridoPorMaterialDe(listaItems) {
+      const mapa = new Map();
+      for (const item of listaItems) {
+        const filasDelProducto = (fichas || []).filter(f => f.producto_id === item.producto_id);
+        for (const f of filasDelProducto) {
+          const previo = mapa.get(f.material_id) || { material: f.materiales, requerido: 0 };
+          previo.requerido += Number(f.cantidad) * Number(item.cantidad);
+          mapa.set(f.material_id, previo);
+        }
+      }
+      return mapa;
+    }
+
+    const requeridoViejo = requeridoPorMaterialDe(ventaActual.ventas_items || []);
+    const requeridoNuevo = requeridoPorMaterialDe(items);
+
+    const idsMaterialUnion = new Set([...requeridoViejo.keys(), ...requeridoNuevo.keys()]);
+    const faltantes = [];
+    const netoPorMaterial = new Map(); // material_id -> { material, neto } (neto > 0 = consume más)
+    for (const materialId of idsMaterialUnion) {
+      const material = (requeridoNuevo.get(materialId) || requeridoViejo.get(materialId)).material;
+      const antes = requeridoViejo.get(materialId)?.requerido || 0;
+      const despues = requeridoNuevo.get(materialId)?.requerido || 0;
+      const neto = despues - antes; // positivo = necesita más material del que ya tenía reservado
+      netoPorMaterial.set(materialId, { material, neto });
+      if (neto > 0 && Number(material.stock_actual) < neto) {
+        faltantes.push({
+          material: material.nombre,
+          unidad: material.unidad,
+          stock_actual: Number(material.stock_actual),
+          requerido: Math.round(neto * 100) / 100
+        });
+      }
+    }
+    if (faltantes.length > 0 && !forzar) {
+      return res.status(409).json({
+        error: 'No hay material suficiente para estos cambios',
+        faltantes,
+        puede_forzar: true,
+        mensaje: 'Puedes forzar el guardado y luego corregir con un ajuste de inventario.'
+      });
+    }
+
+    let total = 0, costoTotal = 0;
+    const filasItemsNuevos = items.map(item => {
+      const p = productoPorId.get(item.producto_id);
+      const cantidad = Number(item.cantidad);
+      total += Number(p.precio_venta) * cantidad;
+      costoTotal += Number(p.costo_calculado) * cantidad;
+      return {
+        venta_id: req.params.id,
+        producto_id: item.producto_id,
+        cantidad,
+        precio_unitario: Number(p.precio_venta),
+        costo_unitario: Number(p.costo_calculado),
+        categoria: (item.categoria || '').trim() || null
+      };
+    });
+    total = Math.round(total * 100) / 100;
+    costoTotal = Math.round(costoTotal * 100) / 100;
+
+    // Aplica el neto de inventario primero (si algo falla acá, todavía no
+    // se tocaron ni los items ni el total de la venta).
+    for (const [materialId, { material, neto }] of netoPorMaterial) {
+      if (neto === 0) continue;
+      const stockAnterior = Number(material.stock_actual);
+      const stockNuevo = Math.max(0, Math.round((stockAnterior - neto) * 100) / 100);
+      const { error: eStock } = await supabase
+        .from('materiales')
+        .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
+        .eq('id', materialId).eq('usuario_id', req.usuarioId);
+      if (eStock) throw new Error(eStock.message);
+
+      await supabase.from('inventario_ajustes').insert({
+        usuario_id: req.usuarioId,
+        material_id: materialId,
+        stock_anterior: stockAnterior,
+        stock_nuevo: stockNuevo,
+        motivo: `Venta editada (${ventaActual.cliente || 'sin cliente'}): productos/cantidades actualizados`,
+        usuario: req.usuarioEmail || null
+      });
+      await supabase.from('inventario_movimientos').insert({
+        usuario_id: req.usuarioId,
+        material_id: materialId,
+        tipo: 'ajuste',
+        cantidad: -neto,
+        stock_anterior: stockAnterior,
+        stock_nuevo: stockNuevo,
+        referencia_id: req.params.id
+      });
+    }
+
+    const { error: eDelItems } = await supabase
+      .from('ventas_items').delete().eq('venta_id', req.params.id);
+    if (eDelItems) throw new Error(eDelItems.message);
+
+    const { error: eInsItems } = await supabase.from('ventas_items').insert(filasItemsNuevos);
+    if (eInsItems) throw new Error(eInsItems.message);
+
+    const { data: ventaActualizada, error: eUpd } = await supabase
       .from('ventas')
-      .update(cambios)
+      .update({ ...cambiosVenta, total, costo_total: costoTotal })
       .eq('id', req.params.id)
       .eq('usuario_id', req.usuarioId)
       .select().single();
-    if (error) throw new Error(error.message);
-    if (!data) return res.status(404).json({ error: 'Venta no encontrada' });
+    if (eUpd) throw new Error(eUpd.message);
 
     res.json({
-      ...data,
-      cliente_telefono: descifrar(data.cliente_telefono_cifrado),
-      cliente_cedula: descifrar(data.cliente_cedula_cifrada),
+      ...ventaActualizada,
+      cliente_telefono: descifrar(ventaActualizada.cliente_telefono_cifrado),
+      cliente_cedula: descifrar(ventaActualizada.cliente_cedula_cifrada),
       cliente_telefono_cifrado: undefined,
-      cliente_cedula_cifrada: undefined
+      cliente_cedula_cifrada: undefined,
+      forzada: faltantes.length > 0
     });
   } catch (err) { next(err); }
 });
@@ -397,7 +554,8 @@ router.delete('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-
+// GET /api/ventas/por-entregar — pedidos con fecha de entrega, aún no entregados,
+// ordenados por fecha (los más urgentes primero). Lo usa también el dashboard.
 router.get('/por-entregar', async (req, res, next) => {
   try {
     const { data, error } = await supabase

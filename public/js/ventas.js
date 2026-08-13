@@ -1,3 +1,5 @@
+
+
 let productosParaVenta = [];
 let itemsVentaEnEdicion = []; // [{ producto_id, nombre, precio, cantidad, fabricables }]
 let pedidosEnMemoria = [];
@@ -19,10 +21,14 @@ const SIGUIENTE_ESTADO = {
 // ---- 1. Nueva venta ----
 async function cargarProductosParaVenta() {
   productosParaVenta = await API.obtener('/api/ventas/productos-disponibles');
-  const selector = document.getElementById('selectorProductoVenta');
-  selector.innerHTML = productosParaVenta
+  const opciones = productosParaVenta
     .map(p => `<option value="${p.id}">${escaparHtml(p.nombre)} — ${formatearPesos(p.precio_venta)} (puedes fabricar ${p.unidades_fabricables})</option>`)
     .join('');
+  document.getElementById('selectorProductoVenta').innerHTML = opciones;
+  // El selector del modal de edición solo existe en esa vista; si no está
+  // presente (ej. otra pantalla que reutilice ventas.js) no pasa nada.
+  const selectorEditar = document.getElementById('selectorProductoEditarVenta');
+  if (selectorEditar) selectorEditar.innerHTML = opciones;
 }
 
 async function abrirNuevaVenta() {
@@ -53,6 +59,7 @@ function cerrarNuevaVenta() {
 function agregarItemVenta() {
   const productoId = document.getElementById('selectorProductoVenta').value;
   const cantidad = Number(document.getElementById('cantidadVenta').value);
+  const categoria = document.getElementById('categoriaVenta').value.trim(); // opcional: "Amarilla", "Azul"...
   if (!productoId) { mostrarAviso('Elige un producto', 'error'); return; }
   if (!cantidad || cantidad <= 0) { mostrarAviso('La cantidad debe ser mayor a 0', 'error'); return; }
 
@@ -64,34 +71,39 @@ function agregarItemVenta() {
     mostrarAviso(`Ojo: con el stock actual solo alcanza para ${producto.unidades_fabricables} unidad(es) de este producto. El sistema te avisará al registrar.`, 'error');
   }
 
-  const existente = itemsVentaEnEdicion.find(i => i.producto_id === productoId);
+  // Mismo producto + misma categoría => se suma/actualiza la cantidad.
+  // Mismo producto con OTRA categoría => queda como línea aparte (ej:
+  // "Gerberas / Amarilla" y "Gerberas / Azul" en la misma venta).
+  const existente = itemsVentaEnEdicion.find(i => i.producto_id === productoId && i.categoria === categoria);
   if (existente) existente.cantidad = cantidad;
   else itemsVentaEnEdicion.push({
     producto_id: productoId, nombre: producto.nombre,
-    precio: Number(producto.precio_venta), cantidad
+    precio: Number(producto.precio_venta), cantidad, categoria
   });
 
   document.getElementById('cantidadVenta').value = '';
+  document.getElementById('categoriaVenta').value = '';
   pintarItemsVenta();
 }
 
-function quitarItemVenta(productoId) {
-  itemsVentaEnEdicion = itemsVentaEnEdicion.filter(i => i.producto_id !== productoId);
+function quitarItemVenta(indice) {
+  itemsVentaEnEdicion.splice(indice, 1);
   pintarItemsVenta();
 }
 
 function pintarItemsVenta() {
   const cuerpo = document.getElementById('cuerpoItemsVenta');
   if (itemsVentaEnEdicion.length === 0) {
-    cuerpo.innerHTML = '<tr><td colspan="5" class="tabla__vacio">Aún no has agregado productos</td></tr>';
+    cuerpo.innerHTML = '<tr><td colspan="6" class="tabla__vacio">Aún no has agregado productos</td></tr>';
   } else {
-    cuerpo.innerHTML = itemsVentaEnEdicion.map(i => `
+    cuerpo.innerHTML = itemsVentaEnEdicion.map((i, indice) => `
       <tr>
         <td>${escaparHtml(i.nombre)}</td>
+        <td>${escaparHtml(i.categoria || '—')}</td>
         <td>${i.cantidad}</td>
         <td>${formatearPesos(i.precio)}</td>
         <td>${formatearPesos(i.precio * i.cantidad)}</td>
-        <td><button type="button" class="boton boton--pequeno boton--peligro" onclick="quitarItemVenta('${i.producto_id}')">Quitar</button></td>
+        <td><button type="button" class="boton boton--pequeno boton--peligro" onclick="quitarItemVenta(${indice})">Quitar</button></td>
       </tr>`).join('');
   }
   document.getElementById('totalVenta').textContent = formatearPesos(calcularTotalVenta(itemsVentaEnEdicion));
@@ -112,7 +124,7 @@ async function registrarVenta(forzar = false) {
     cliente_telefono: document.getElementById('campoClienteTelefono').value,
     cliente_cedula: document.getElementById('campoClienteCedula').value,
     fecha_entrega: document.getElementById('campoFechaEntrega').value || null,
-    items: itemsVentaEnEdicion.map(i => ({ producto_id: i.producto_id, cantidad: i.cantidad })),
+    items: itemsVentaEnEdicion.map(i => ({ producto_id: i.producto_id, cantidad: i.cantidad, categoria: i.categoria || null })),
     forzar
   };
 
@@ -166,13 +178,85 @@ function accionesVenta(venta) {
     <button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarVenta('${venta.id}', '${escaparHtml(venta.cliente || 'sin cliente')}')">Eliminar</button>`;
 }
 
-function abrirEditarVenta(venta) {
+let itemsEditarVentaEnEdicion = [];
+let ventaFacturadaEnEdicion = false;
+
+async function abrirEditarVenta(venta) {
   document.getElementById('campoEditarVentaId').value = venta.id;
   document.getElementById('campoEditarCliente').value = venta.cliente || '';
   document.getElementById('campoEditarTelefono').value = venta.cliente_telefono || '';
   document.getElementById('campoEditarCedula').value = venta.cliente_cedula || '';
   document.getElementById('campoEditarFechaEntrega').value = venta.fecha_entrega || '';
+
+  itemsEditarVentaEnEdicion = (venta.ventas_items || []).map(i => ({
+    producto_id: i.producto_id,
+    nombre: i.productos ? i.productos.nombre : 'Producto',
+    precio: Number(i.precio_unitario),
+    cantidad: i.cantidad,
+    categoria: i.categoria || ''
+  }));
+
+  ventaFacturadaEnEdicion = !!venta.facturada;
+  document.getElementById('avisoFacturadaEditar').hidden = !ventaFacturadaEnEdicion;
+  document.getElementById('selectorProductoEditarVenta').disabled = ventaFacturadaEnEdicion;
+  document.getElementById('categoriaEditarVenta').disabled = ventaFacturadaEnEdicion;
+  document.getElementById('cantidadEditarVenta').disabled = ventaFacturadaEnEdicion;
+
+  try {
+    await cargarProductosParaVenta();
+  } catch (err) {
+    mostrarAviso('No se pudieron cargar los productos disponibles: ' + err.message, 'error');
+  }
+
+  pintarItemsEditarVenta();
   document.getElementById('modalEditarVenta').hidden = false;
+}
+
+function agregarItemEditarVenta() {
+  if (ventaFacturadaEnEdicion) return;
+  const productoId = document.getElementById('selectorProductoEditarVenta').value;
+  const cantidad = Number(document.getElementById('cantidadEditarVenta').value);
+  const categoria = document.getElementById('categoriaEditarVenta').value.trim();
+  if (!productoId) { mostrarAviso('Elige un producto', 'error'); return; }
+  if (!cantidad || cantidad <= 0) { mostrarAviso('La cantidad debe ser mayor a 0', 'error'); return; }
+
+  const producto = productosParaVenta.find(p => p.id === productoId);
+  if (!producto) return;
+
+  const existente = itemsEditarVentaEnEdicion.find(i => i.producto_id === productoId && i.categoria === categoria);
+  if (existente) existente.cantidad = cantidad;
+  else itemsEditarVentaEnEdicion.push({
+    producto_id: productoId, nombre: producto.nombre,
+    precio: Number(producto.precio_venta), cantidad, categoria
+  });
+
+  document.getElementById('cantidadEditarVenta').value = '';
+  document.getElementById('categoriaEditarVenta').value = '';
+  pintarItemsEditarVenta();
+}
+
+function quitarItemEditarVenta(indice) {
+  if (ventaFacturadaEnEdicion) return;
+  itemsEditarVentaEnEdicion.splice(indice, 1);
+  pintarItemsEditarVenta();
+}
+
+function pintarItemsEditarVenta() {
+  const cuerpo = document.getElementById('cuerpoItemsEditarVenta');
+  if (itemsEditarVentaEnEdicion.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="6" class="tabla__vacio">Sin productos</td></tr>';
+  } else {
+    cuerpo.innerHTML = itemsEditarVentaEnEdicion.map((i, indice) => `
+      <tr>
+        <td>${escaparHtml(i.nombre)}</td>
+        <td>${escaparHtml(i.categoria || '—')}</td>
+        <td>${i.cantidad}</td>
+        <td>${formatearPesos(i.precio)}</td>
+        <td>${formatearPesos(i.precio * i.cantidad)}</td>
+        <td>${ventaFacturadaEnEdicion ? '' : `<button type="button" class="boton boton--pequeno boton--peligro" onclick="quitarItemEditarVenta(${indice})">Quitar</button>`}</td>
+      </tr>`).join('');
+  }
+  document.getElementById('totalEditarVenta').textContent = formatearPesos(calcularTotalVenta(itemsEditarVentaEnEdicion));
 }
 
 function cerrarEditarVenta() {
@@ -181,19 +265,52 @@ function cerrarEditarVenta() {
 
 async function guardarEdicionVenta() {
   const id = document.getElementById('campoEditarVentaId').value;
+  if (!ventaFacturadaEnEdicion && itemsEditarVentaEnEdicion.length === 0) {
+    mostrarAviso('La venta debe tener al menos un producto', 'error');
+    return;
+  }
+
+  const datos = {
+    cliente: document.getElementById('campoEditarCliente').value,
+    cliente_telefono: document.getElementById('campoEditarTelefono').value,
+    cliente_cedula: document.getElementById('campoEditarCedula').value,
+    fecha_entrega: document.getElementById('campoEditarFechaEntrega').value
+  };
+  // Si la venta ya tiene factura, el backend rechaza cambios de productos;
+  // en ese caso ni siquiera mandamos "items" para no disparar ese error
+  // quedando solo la edición de contacto/fecha.
+  if (!ventaFacturadaEnEdicion) {
+    datos.items = itemsEditarVentaEnEdicion.map(i => ({
+      producto_id: i.producto_id, cantidad: i.cantidad, categoria: i.categoria || null
+    }));
+  }
+
   try {
-    await API.actualizar(`/api/ventas/${id}`, {
-      cliente: document.getElementById('campoEditarCliente').value,
-      cliente_telefono: document.getElementById('campoEditarTelefono').value,
-      cliente_cedula: document.getElementById('campoEditarCedula').value,
-      fecha_entrega: document.getElementById('campoEditarFechaEntrega').value
-    });
+    await API.actualizar(`/api/ventas/${id}`, datos);
     mostrarAviso('Venta actualizada');
     cerrarEditarVenta();
     cargarPedidos();
     cargarHistorialVentas();
   } catch (err) {
-    mostrarAviso(err.message, 'error');
+    if (err.message.includes('No hay material suficiente')) {
+      const confirmado = confirm(
+        'No hay material suficiente según el sistema para estos cambios.\n\n' +
+        '¿Guardar de todas formas? (Luego corriges con un ajuste de inventario.)'
+      );
+      if (confirmado) {
+        try {
+          await API.actualizar(`/api/ventas/${id}`, { ...datos, forzar: true });
+          mostrarAviso('Venta actualizada forzando el stock');
+          cerrarEditarVenta();
+          cargarPedidos();
+          cargarHistorialVentas();
+        } catch (err2) {
+          mostrarAviso(err2.message, 'error');
+        }
+      }
+    } else {
+      mostrarAviso(err.message, 'error');
+    }
   }
 }
 
@@ -363,7 +480,9 @@ function buscarVentas() {
 
   const coincide = v =>
     normalizarTexto(v.cliente).includes(texto) ||
-    (v.ventas_items || []).some(i => normalizarTexto(i.productos ? i.productos.nombre : '').includes(texto));
+    (v.ventas_items || []).some(i =>
+      normalizarTexto(i.productos ? i.productos.nombre : '').includes(texto) ||
+      normalizarTexto(i.categoria).includes(texto));
 
   pintarPedidos(pedidosEnMemoria.filter(coincide));
   pintarHistorial(historialEnMemoria.filter(coincide));
@@ -383,7 +502,7 @@ function contactoCliente(venta) {
 
 function resumenProductos(venta) {
   return (venta.ventas_items || [])
-    .map(i => `${i.cantidad}× ${escaparHtml(i.productos ? i.productos.nombre : 'Producto')}`)
+    .map(i => `${i.cantidad}× ${escaparHtml(i.productos ? i.productos.nombre : 'Producto')}${i.categoria ? ` (${escaparHtml(i.categoria)})` : ''}`)
     .join(', ');
 }
 
