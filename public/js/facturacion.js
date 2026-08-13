@@ -331,7 +331,7 @@ function pintarFactura() {
     <tr>
       <td>${escaparHtml(g.etiqueta)}</td>
       <td>${g.cantidad}</td>
-      <td colspan="1"></td>
+      <td>${formatearPesos(g.cantidad > 0 ? g.subtotal / g.cantidad : 0)}</td>
       <td>${formatearPesos(g.subtotal)}</td>
     </tr>`).join('');
 
