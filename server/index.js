@@ -1,3 +1,7 @@
+// ============================================================
+// SERVIDOR PRINCIPAL — arranca Express y monta las rutas
+// Correr en local:  npm run dev   (http://localhost:3000)
+// ============================================================
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
@@ -45,6 +49,8 @@ app.use('/api', requiereSuscripcionActiva);
 app.use('/api/materiales', rutasMateriales);
 app.use('/api/productos', rutasProductos);
 app.use('/api/categorias', require('./rutas/categorias'));
+app.use('/api/procesos', require('./rutas/procesos'));
+app.use('/api/colaboradores', require('./rutas/colaboradores'));
 app.use('/api/inventario', require('./rutas/inventario'));
 app.use('/api/ventas', require('./rutas/ventas'));
 app.use('/api/compras', require('./rutas/compras'));

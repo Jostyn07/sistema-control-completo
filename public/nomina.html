@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nóminas — Sistema de Control</title>
+  <link rel="stylesheet" href="css/estilos.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tema-panel-oscuro.css">
+</head>
+<body>
+
+  <nav class="navegacion">
+    <a href="./index.html" class="navegacion__enlace">Inicio</a>
+    <a href="./materiales.html" class="navegacion__enlace">Materiales</a>
+    <a href="./productos.html" class="navegacion__enlace">Productos</a>
+    <a href="./procesos.html" class="navegacion__enlace">Procesos</a>
+    <a href="./inventario.html" class="navegacion__enlace">Inventario</a>
+    <a href="./compras.html" class="navegacion__enlace">Compras</a>
+    <a href="./ventas.html" class="navegacion__enlace">Ventas</a>
+    <a href="./finanzas.html" class="navegacion__enlace">Finanzas</a>
+    <a href="./facturacion.html" class="navegacion__enlace">Facturación</a>
+    <a href="./nomina.html" class="navegacion__enlace navegacion__enlace--activo">Nóminas</a>
+    <a href="./suscripcion.html" class="navegacion__enlace">Suscripción</a>
+  </nav>
+
+  <main class="pagina">
+    <header class="pagina__encabezado">
+      <h1>Nóminas</h1>
+      <button type="button" class="boton boton--primario" onclick="abrirFormularioColaborador()">
+        Crear colaborador
+      </button>
+    </header>
+    <p class="texto-secundario" style="margin-top:-14px">
+      Registra a tus colaboradores y el trabajo (materiales y procesos) que les asignas. Da clic en una
+      tarjeta para ver su rendimiento y llevar el detalle de lo que se le ha entregado y pagado.
+    </p>
+
+    <!-- Vista rápida de colaboradores -->
+    <section class="tarjetas-productos" id="listaColaboradores">
+      <p class="tabla__vacio">Cargando colaboradores…</p>
+    </section>
+
+    <!-- Crear / editar colaborador -->
+    <div class="modal" id="modalColaborador" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2 id="tituloFormularioColaborador">Crear colaborador</h2>
+        <input type="hidden" id="campoColaboradorId">
+
+        <label class="campo">
+          <span class="campo__etiqueta">Nombre *</span>
+          <input type="text" id="campoNombreColaborador" placeholder="Nombre completo">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Cédula de ciudadanía</span>
+          <input type="text" id="campoCedulaColaborador" placeholder="Ej: 1234567890">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Dirección</span>
+          <input type="text" id="campoDireccionColaborador" placeholder="Dirección de residencia">
+        </label>
+        <p class="texto-secundario" style="margin:-8px 0 4px">
+          Cédula y dirección se guardan cifradas; nadie puede leerlas directo desde la base de datos.
+        </p>
+
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarFormularioColaborador()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="guardarColaborador()">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detalle del colaborador: rendimiento + materiales/procesos -->
+    <div class="modal" id="modalDetalleColaborador" hidden>
+      <div class="modal__contenido tarjeta modal__contenido--ancho">
+        <div class="pagina__encabezado" style="margin-bottom:10px">
+          <h2 id="tituloDetalleColaborador" style="margin:0">Colaborador</h2>
+          <div>
+            <button type="button" class="boton boton--pequeno" onclick="editarColaboradorActual()">Editar datos</button>
+            <button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarColaboradorActual()">Eliminar</button>
+          </div>
+        </div>
+
+        <div class="modal__acciones" style="margin-bottom:14px">
+          <button type="button" class="boton boton--pequeno" id="pestanaRendimientoBtn" onclick="cambiarPestanaColaborador('rendimiento')">Análisis de rendimiento</button>
+          <button type="button" class="boton boton--pequeno" id="pestanaTrabajoBtn" onclick="cambiarPestanaColaborador('trabajo')">Materiales y procesos</button>
+        </div>
+
+        <!-- 1) Análisis de rendimiento -->
+        <div id="panelRendimiento">
+          <section class="cuadricula-inicio" id="tarjetasRendimiento"></section>
+        </div>
+
+        <!-- 2) Materiales entregados / procesos requeridos -->
+        <div id="panelTrabajo" hidden>
+          <h3>Nuevo encargo</h3>
+          <div class="fila-campos">
+            <label class="campo">
+              <span class="campo__etiqueta">Material entregado (opcional)</span>
+              <select id="selectorMaterialEncargo" onchange="alternarCampoCantidadMaterial()">
+                <option value="">— Sin material —</option>
+              </select>
+            </label>
+            <label class="campo" id="grupoCantidadMaterialEncargo" hidden>
+              <span class="campo__etiqueta">Cantidad de material entregada</span>
+              <input type="number" id="campoCantidadMaterialEncargo" min="0" step="0.01">
+            </label>
+          </div>
+          <div class="fila-campos">
+            <label class="campo">
+              <span class="campo__etiqueta">Proceso requerido *</span>
+              <select id="selectorProcesoEncargo"></select>
+            </label>
+            <label class="campo">
+              <span class="campo__etiqueta">Cantidad a entregar del proceso *</span>
+              <input type="number" id="campoCantidadRequeridaEncargo" min="0.01" step="0.01">
+            </label>
+            <label class="campo">
+              <span class="campo__etiqueta">Fecha de entrega esperada</span>
+              <input type="date" id="campoFechaEntregaEncargo">
+            </label>
+          </div>
+          <div class="modal__acciones" style="justify-content:flex-start;margin:0 0 16px">
+            <button type="button" class="boton boton--primario" onclick="crearEncargo()">Agregar encargo</button>
+          </div>
+
+          <h3>Encargos</h3>
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Material</th><th>Cant. material</th><th>Proceso</th><th>Cant. requerida</th>
+                <th>Cant. entregada</th><th>Fecha entrega</th><th>Costo unitario</th><th>Costo total</th>
+                <th>Pago</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="cuerpoEncargos">
+              <tr><td colspan="10" class="tabla__vacio">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarDetalleColaborador()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Registrar entrega de un encargo -->
+    <div class="modal" id="modalEntregaEncargo" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2>Registrar entrega</h2>
+        <input type="hidden" id="campoEncargoEntregaId">
+        <label class="campo">
+          <span class="campo__etiqueta">Cantidad entregada *</span>
+          <input type="number" id="campoCantidadEntregadaFinal" min="0" step="0.01">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Fecha de entrega</span>
+          <input type="date" id="campoFechaEntregaFinal">
+        </label>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarEntregaEncargo()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="guardarEntregaEncargo()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/tema.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/nomina.js"></script>
+  <script>
+    if (exigirSesion()) { mostrarUsuarioActual(); }
+  </script>
+</body>
+</html>
