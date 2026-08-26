@@ -171,6 +171,20 @@ router.delete('/:id', async (req, res, next) => {
       });
     }
 
+    // También hay que revisar si algún proceso puntual lo tiene en su
+    // lista de materiales — igual que con las fichas técnicas.
+    const { count: countProcesos, error: eProcesos } = await supabase
+      .from('procesos_materiales')
+      .select('id', { count: 'exact', head: true })
+      .eq('material_id', req.params.id);
+    if (eProcesos) throw new Error(eProcesos.message);
+
+    if (countProcesos > 0) {
+      return res.status(409).json({
+        error: `No se puede eliminar: este material está en ${countProcesos} proceso(s). Quítalo de esos procesos primero.`
+      });
+    }
+
     // También hay que revisar compras: si ya se compró este material alguna
     // vez, borrarlo dejaría ese historial de compras sin material asociado
     // (la base de datos lo bloquea con una restricción de llave foránea).

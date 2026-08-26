@@ -13,14 +13,16 @@
 <body>
 
   <nav class="navegacion">
-    <a href="./index.html" class="navegacion__enlace">Inicio</a>
+    <a href="./index.html" class="navegacion__enlace navegacion__enlace--activo">Inicio</a>
     <a href="./materiales.html" class="navegacion__enlace">Materiales</a>
-    <a href="./productos.html" class="navegacion__enlace navegacion__enlace--activo">Productos</a>
+    <a href="./productos.html" class="navegacion__enlace">Productos</a>
+    <a href="./procesos.html" class="navegacion__enlace">Procesos</a>
     <a href="./inventario.html" class="navegacion__enlace">Inventario</a>
     <a href="./compras.html" class="navegacion__enlace">Compras</a>
     <a href="./ventas.html" class="navegacion__enlace">Ventas</a>
     <a href="./finanzas.html" class="navegacion__enlace">Finanzas</a>
     <a href="./facturacion.html" class="navegacion__enlace">Facturación</a>
+    <a href="./nomina.html" class="navegacion__enlace">Nóminas</a>
     <a href="./suscripcion.html" class="navegacion__enlace">Suscripción</a>
   </nav>
 
@@ -74,10 +76,14 @@
           </label>
           <label class="campo">
             <span class="campo__etiqueta">Minutos de fabricación</span>
-            <input type="number" id="campoMinutos" min="0" step="1" value="0" oninput="calcularCostoEnVivo()">
+            <input type="text" id="campoMinutosSoloLectura" disabled>
+            <input type="hidden" id="campoMinutos" value="0">
           </label>
         </div>
-        <p class="texto-secundario" id="textoPrecioHoraActual" style="margin:-8px 0 12px"></p>
+        <p class="texto-secundario" id="textoMinutosOrigen" style="margin:-8px 0 4px">
+          Se suman solos según los procesos que le asignes a esta ficha técnica en la pestaña Procesos.
+        </p>
+        <p class="texto-secundario" id="textoPrecioHoraActual" style="margin:-4px 0 12px"></p>
 
         <h3>Materiales que usa</h3>
         <div class="agregar-material">

@@ -182,6 +182,7 @@ async function abrirFichaProducto(id) {
       : '';
     document.getElementById('campoPrecioVenta').value = p.precio_venta;
     document.getElementById('campoMinutos').value = p.minutos_fabricacion;
+    document.getElementById('campoMinutosSoloLectura').value = `${p.minutos_fabricacion} min`;
     pintarSelectorCategoria(p.categoria_id || '');
 
     // Trae el desglose para precargar las filas de materiales de la ficha
@@ -204,6 +205,7 @@ async function abrirFichaProducto(id) {
     document.getElementById('campoFotoArchivo').value = '';
     document.getElementById('campoPrecioVenta').value = '';
     document.getElementById('campoMinutos').value = 0;
+    document.getElementById('campoMinutosSoloLectura').value = '0 min (crea el producto y luego agrégale procesos)';
     pintarSelectorCategoria('');
     filasFichaEnEdicion = [];
   }
@@ -312,7 +314,6 @@ async function guardarProducto() {
     foto_url: document.getElementById('campoFoto').value,
     categoria_id: document.getElementById('selectorCategoriaProducto').value || null,
     precio_venta: precioVenta,
-    minutos_fabricacion: document.getElementById('campoMinutos').value,
     materiales: filasFichaEnEdicion.map(f => ({ material_id: f.material_id, cantidad: f.cantidad }))
   };
 

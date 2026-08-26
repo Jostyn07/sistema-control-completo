@@ -13,7 +13,7 @@
 <body>
 
   <nav class="navegacion">
-    <a href="./index.html" class="navegacion__enlace">Inicio</a>
+    <a href="./index.html" class="navegacion__enlace navegacion__enlace--activo">Inicio</a>
     <a href="./materiales.html" class="navegacion__enlace">Materiales</a>
     <a href="./productos.html" class="navegacion__enlace">Productos</a>
     <a href="./procesos.html" class="navegacion__enlace">Procesos</a>
@@ -22,79 +22,57 @@
     <a href="./ventas.html" class="navegacion__enlace">Ventas</a>
     <a href="./finanzas.html" class="navegacion__enlace">Finanzas</a>
     <a href="./facturacion.html" class="navegacion__enlace">Facturación</a>
-    <a href="./nomina.html" class="navegacion__enlace navegacion__enlace--activo">Nóminas</a>
+    <a href="./nomina.html" class="navegacion__enlace">Nóminas</a>
     <a href="./suscripcion.html" class="navegacion__enlace">Suscripción</a>
   </nav>
 
   <main class="pagina">
-    <header class="pagina__encabezado">
-      <h1>Nóminas</h1>
-      <button type="button" class="boton boton--primario" onclick="abrirFormularioColaborador()">
-        Crear colaborador
-      </button>
-    </header>
-    <p class="texto-secundario" style="margin-top:-14px">
-      Registra a tus colaboradores y el trabajo (materiales y procesos) que les asignas. Da clic en una
-      tarjeta para ver su rendimiento y llevar el detalle de lo que se le ha entregado y pagado.
-    </p>
 
-    <!-- Vista rápida de colaboradores -->
-    <section class="tarjetas-productos" id="listaColaboradores">
-      <p class="tabla__vacio">Cargando colaboradores…</p>
+    <!-- ===================== VISTA 1: lista de colaboradores ===================== -->
+    <section id="vistaListaColaboradores">
+      <header class="pagina__encabezado">
+        <h1>Nóminas</h1>
+        <button type="button" class="boton boton--primario" onclick="abrirFormularioColaborador()">
+          Crear colaborador
+        </button>
+      </header>
+      <p class="texto-secundario" style="margin-top:-14px">
+        Registra a tus colaboradores y el trabajo (materiales y procesos) que les asignas. Da clic en una
+        tarjeta para ver su rendimiento y llevar el detalle de lo que se le ha entregado y pagado.
+      </p>
+
+      <section class="tarjetas-productos" id="listaColaboradores">
+        <p class="tabla__vacio">Cargando colaboradores…</p>
+      </section>
     </section>
 
-    <!-- Crear / editar colaborador -->
-    <div class="modal" id="modalColaborador" hidden>
-      <div class="modal__contenido tarjeta">
-        <h2 id="tituloFormularioColaborador">Crear colaborador</h2>
-        <input type="hidden" id="campoColaboradorId">
-
-        <label class="campo">
-          <span class="campo__etiqueta">Nombre *</span>
-          <input type="text" id="campoNombreColaborador" placeholder="Nombre completo">
-        </label>
-        <label class="campo">
-          <span class="campo__etiqueta">Cédula de ciudadanía</span>
-          <input type="text" id="campoCedulaColaborador" placeholder="Ej: 1234567890">
-        </label>
-        <label class="campo">
-          <span class="campo__etiqueta">Dirección</span>
-          <input type="text" id="campoDireccionColaborador" placeholder="Dirección de residencia">
-        </label>
-        <p class="texto-secundario" style="margin:-8px 0 4px">
-          Cédula y dirección se guardan cifradas; nadie puede leerlas directo desde la base de datos.
-        </p>
-
-        <div class="modal__acciones">
-          <button type="button" class="boton" onclick="cerrarFormularioColaborador()">Cancelar</button>
-          <button type="button" class="boton boton--primario" onclick="guardarColaborador()">Guardar</button>
+    <!-- ===================== VISTA 2: detalle de colaborador (pestaña propia, no modal) ===================== -->
+    <section id="vistaDetalleColaborador" hidden>
+      <header class="pagina__encabezado">
+        <div>
+          <a href="#" onclick="volverAListaColaboradores();return false;" class="texto-secundario">← Volver a Nóminas</a>
+          <h1 id="tituloDetalleColaborador" style="margin:4px 0 0">Colaborador</h1>
         </div>
+        <div>
+          <button type="button" class="boton boton--pequeno" onclick="editarColaboradorActual()">Editar datos</button>
+          <button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarColaboradorActual()">Eliminar</button>
+        </div>
+      </header>
+
+      <!-- Las dos divisiones de esta pestaña -->
+      <div class="modal__acciones" style="justify-content:flex-start;margin-bottom:16px">
+        <button type="button" class="boton" id="pestanaRendimientoBtn" onclick="cambiarPestanaColaborador('rendimiento')">1. Análisis de rendimiento</button>
+        <button type="button" class="boton" id="pestanaTrabajoBtn" onclick="cambiarPestanaColaborador('trabajo')">2. Procesos entregados</button>
       </div>
-    </div>
 
-    <!-- Detalle del colaborador: rendimiento + materiales/procesos -->
-    <div class="modal" id="modalDetalleColaborador" hidden>
-      <div class="modal__contenido tarjeta modal__contenido--ancho">
-        <div class="pagina__encabezado" style="margin-bottom:10px">
-          <h2 id="tituloDetalleColaborador" style="margin:0">Colaborador</h2>
-          <div>
-            <button type="button" class="boton boton--pequeno" onclick="editarColaboradorActual()">Editar datos</button>
-            <button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarColaboradorActual()">Eliminar</button>
-          </div>
-        </div>
+      <!-- 2.1 Análisis de rendimiento -->
+      <div id="panelRendimiento">
+        <section class="cuadricula-inicio" id="tarjetasRendimiento"></section>
+      </div>
 
-        <div class="modal__acciones" style="margin-bottom:14px">
-          <button type="button" class="boton boton--pequeno" id="pestanaRendimientoBtn" onclick="cambiarPestanaColaborador('rendimiento')">Análisis de rendimiento</button>
-          <button type="button" class="boton boton--pequeno" id="pestanaTrabajoBtn" onclick="cambiarPestanaColaborador('trabajo')">Materiales y procesos</button>
-        </div>
-
-        <!-- 1) Análisis de rendimiento -->
-        <div id="panelRendimiento">
-          <section class="cuadricula-inicio" id="tarjetasRendimiento"></section>
-        </div>
-
-        <!-- 2) Materiales entregados / procesos requeridos -->
-        <div id="panelTrabajo" hidden>
+      <!-- 2.2 Procesos entregados -->
+      <div id="panelTrabajo" hidden>
+        <section class="tarjeta seccion">
           <h3>Nuevo encargo</h3>
           <div class="fila-campos">
             <label class="campo">
@@ -122,10 +100,12 @@
               <input type="date" id="campoFechaEntregaEncargo">
             </label>
           </div>
-          <div class="modal__acciones" style="justify-content:flex-start;margin:0 0 16px">
+          <div class="modal__acciones" style="justify-content:flex-start;margin:0">
             <button type="button" class="boton boton--primario" onclick="crearEncargo()">Agregar encargo</button>
           </div>
+        </section>
 
+        <section class="tarjeta seccion">
           <h3>Encargos</h3>
           <table class="tabla">
             <thead>
@@ -139,10 +119,35 @@
               <tr><td colspan="10" class="tabla__vacio">Cargando…</td></tr>
             </tbody>
           </table>
-        </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- Crear / editar colaborador -->
+    <div class="modal" id="modalColaborador" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2 id="tituloFormularioColaborador">Crear colaborador</h2>
+        <input type="hidden" id="campoColaboradorId">
+
+        <label class="campo">
+          <span class="campo__etiqueta">Nombre *</span>
+          <input type="text" id="campoNombreColaborador" placeholder="Nombre completo">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Cédula de ciudadanía</span>
+          <input type="text" id="campoCedulaColaborador" placeholder="Ej: 1234567890">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Dirección</span>
+          <input type="text" id="campoDireccionColaborador" placeholder="Dirección de residencia">
+        </label>
+        <p class="texto-secundario" style="margin:-8px 0 4px">
+          Cédula y dirección se guardan cifradas; nadie puede leerlas directo desde la base de datos.
+        </p>
 
         <div class="modal__acciones">
-          <button type="button" class="boton" onclick="cerrarDetalleColaborador()">Cerrar</button>
+          <button type="button" class="boton" onclick="cerrarFormularioColaborador()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="guardarColaborador()">Guardar</button>
         </div>
       </div>
     </div>

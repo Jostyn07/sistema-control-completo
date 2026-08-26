@@ -90,8 +90,9 @@ async function guardarColaborador() {
 }
 
 function editarColaboradorActual() {
-  cerrarDetalleColaborador();
-  abrirFormularioColaborador(colaboradorActualId);
+  const id = colaboradorActualId;
+  volverAListaColaboradores();
+  abrirFormularioColaborador(id);
 }
 
 async function eliminarColaboradorActual() {
@@ -110,13 +111,15 @@ async function eliminarColaboradorActual() {
   }
 }
 
-// ---- 3. Detalle: pestañas Rendimiento / Trabajo ----
+// ---- 3. Detalle: vista dedicada (no modal), con dos divisiones ----
 async function abrirDetalleColaborador(id) {
   colaboradorActualId = id;
   const c = colaboradoresEnMemoria.find(x => x.id === id);
   document.getElementById('tituloDetalleColaborador').textContent = c ? c.nombre : 'Colaborador';
 
-  document.getElementById('modalDetalleColaborador').hidden = false;
+  document.getElementById('vistaListaColaboradores').hidden = true;
+  document.getElementById('vistaDetalleColaborador').hidden = false;
+  window.scrollTo(0, 0);
   cambiarPestanaColaborador('rendimiento');
 
   await Promise.all([
@@ -126,9 +129,16 @@ async function abrirDetalleColaborador(id) {
   ]);
 }
 
-function cerrarDetalleColaborador() {
-  document.getElementById('modalDetalleColaborador').hidden = true;
+function volverAListaColaboradores() {
+  document.getElementById('vistaDetalleColaborador').hidden = true;
+  document.getElementById('vistaListaColaboradores').hidden = false;
   colaboradorActualId = null;
+}
+
+// Se mantiene por compatibilidad con el resto del archivo (ya no cierra
+// un modal, vuelve a la lista).
+function cerrarDetalleColaborador() {
+  volverAListaColaboradores();
 }
 
 function cambiarPestanaColaborador(pestana) {
@@ -185,7 +195,7 @@ async function cargarMaterialesYProcesosParaEncargo() {
     materialesParaEncargo.map(m => `<option value="${m.id}">${escaparHtml(m.nombre)} (${escaparHtml(m.unidad)})</option>`).join('');
 
   document.getElementById('selectorProcesoEncargo').innerHTML =
-    procesosParaEncargo.map(p => `<option value="${p.id}">${escaparHtml(p.nombre)} — ${formatearPesos(p.costo_unitario)} por ${escaparHtml(p.unidad)}</option>`).join('');
+    procesosParaEncargo.map(p => `<option value="${p.id}">${escaparHtml(p.nombre)} (${escaparHtml(p.productos ? p.productos.nombre : '')}) — ${formatearPesos(p.costo_unitario)}</option>`).join('');
 
   if (procesosParaEncargo.length === 0) {
     mostrarAviso('Aún no hay procesos creados. Ve a la pestaña Procesos para crear el primero.', 'error');

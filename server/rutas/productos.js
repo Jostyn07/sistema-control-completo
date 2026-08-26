@@ -8,8 +8,6 @@ function validarProducto(datos) {
   if (!datos.nombre || !datos.nombre.trim()) errores.push('El nombre es obligatorio');
   if (datos.precio_venta == null || isNaN(datos.precio_venta) || Number(datos.precio_venta) < 0)
     errores.push('El precio de venta debe ser un número mayor o igual a 0');
-  if (datos.minutos_fabricacion != null && (isNaN(datos.minutos_fabricacion) || Number(datos.minutos_fabricacion) < 0))
-    errores.push('Los minutos de fabricación deben ser un número válido');
   if (!Array.isArray(datos.materiales) || datos.materiales.length === 0)
     errores.push('La ficha técnica debe tener al menos un material');
   else {
@@ -51,9 +49,14 @@ router.post('/', async (req, res, next) => {
     const errores = validarProducto(req.body);
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
+    // Los minutos de fabricación arrancan en 0: un producto recién
+    // creado todavía no tiene procesos (no puede tenerlos — un proceso
+    // exige que la ficha técnica ya exista). Se van sumando solos a
+    // medida que se crean procesos para este producto en la pestaña
+    // Procesos.
     const costoCalculado = await calcularCostoProducto({
       materiales: req.body.materiales,
-      minutosFabricacion: req.body.minutos_fabricacion,
+      minutosFabricacion: 0,
       usuarioId: req.usuarioId
     });
 
@@ -65,7 +68,7 @@ router.post('/', async (req, res, next) => {
         foto_url: req.body.foto_url || null,
         categoria_id: req.body.categoria_id || null,
         precio_venta: Number(req.body.precio_venta),
-        minutos_fabricacion: Number(req.body.minutos_fabricacion || 0),
+        minutos_fabricacion: 0,
         costo_calculado: costoCalculado
       })
       .select('*, categorias_productos(id, nombre)').single();
@@ -84,14 +87,21 @@ router.post('/', async (req, res, next) => {
 });
 
 // PUT /api/productos/:id
+// Los minutos de fabricación NO se editan acá — se derivan de los
+// procesos de esta ficha técnica (pestaña Procesos). Aquí solo se
+// recalcula el costo con los minutos que ya tenía.
 router.put('/:id', async (req, res, next) => {
   try {
     const errores = validarProducto(req.body);
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
+    const { data: actual, error: eActual } = await supabase
+      .from('productos').select('minutos_fabricacion').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+    if (eActual || !actual) return res.status(404).json({ error: 'Producto no encontrado' });
+
     const costoCalculado = await calcularCostoProducto({
       materiales: req.body.materiales,
-      minutosFabricacion: req.body.minutos_fabricacion,
+      minutosFabricacion: actual.minutos_fabricacion,
       usuarioId: req.usuarioId
     });
 
@@ -102,7 +112,6 @@ router.put('/:id', async (req, res, next) => {
         foto_url: req.body.foto_url || null,
         categoria_id: req.body.categoria_id || null,
         precio_venta: Number(req.body.precio_venta),
-        minutos_fabricacion: Number(req.body.minutos_fabricacion || 0),
         costo_calculado: costoCalculado,
         actualizado_en: new Date().toISOString()
       })

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Procesos — Sistema de Control</title>
+  <link rel="stylesheet" href="css/estilos.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tema-panel-oscuro.css">
+</head>
+<body>
+
+  <nav class="navegacion">
+    <a href="./index.html" class="navegacion__enlace navegacion__enlace--activo">Inicio</a>
+    <a href="./materiales.html" class="navegacion__enlace">Materiales</a>
+    <a href="./productos.html" class="navegacion__enlace">Productos</a>
+    <a href="./procesos.html" class="navegacion__enlace">Procesos</a>
+    <a href="./inventario.html" class="navegacion__enlace">Inventario</a>
+    <a href="./compras.html" class="navegacion__enlace">Compras</a>
+    <a href="./ventas.html" class="navegacion__enlace">Ventas</a>
+    <a href="./finanzas.html" class="navegacion__enlace">Finanzas</a>
+    <a href="./facturacion.html" class="navegacion__enlace">Facturación</a>
+    <a href="./nomina.html" class="navegacion__enlace">Nóminas</a>
+    <a href="./suscripcion.html" class="navegacion__enlace">Suscripción</a>
+  </nav>
+
+  <main class="pagina">
+    <header class="pagina__encabezado">
+      <h1>Procesos</h1>
+      <button type="button" class="boton boton--primario" onclick="abrirFormularioProceso()">
+        Agregar proceso
+      </button>
+    </header>
+    <p class="texto-secundario" style="margin-top:-14px">
+      Cada proceso (ej: "Armado", "Pintura") pertenece a una ficha técnica — no puede existir suelto. Su
+      costo se calcula solo (minutos × precio de hora), y la suma de todos los procesos de un producto ES
+      su mano de obra total en la ficha técnica.
+    </p>
+
+    <!-- Filtro por ficha técnica -->
+    <section class="tarjeta">
+      <label class="campo" style="max-width:320px">
+        <span class="campo__etiqueta">Filtrar por ficha técnica</span>
+        <select id="filtroProductoProcesos" onchange="cargarListaProcesos()">
+          <option value="">Todas</option>
+        </select>
+      </label>
+      <table class="tabla" id="tablaProcesos">
+        <thead>
+          <tr>
+            <th>Ficha técnica</th>
+            <th>Nombre del proceso</th>
+            <th>Tiempo</th>
+            <th>Materiales que usa</th>
+            <th>Costo del proceso</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpoTablaProcesos">
+          <tr><td colspan="6" class="tabla__vacio">Cargando procesos…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Formulario nuevo / editar -->
+    <div class="modal" id="modalProceso" hidden>
+      <div class="modal__contenido tarjeta modal__contenido--ancho">
+        <h2 id="tituloFormularioProceso">Nuevo proceso</h2>
+        <input type="hidden" id="campoProcesoId">
+
+        <label class="campo">
+          <span class="campo__etiqueta">Ficha técnica a la que pertenece *</span>
+          <select id="selectorProductoProceso"></select>
+        </label>
+        <div class="fila-campos">
+          <label class="campo">
+            <span class="campo__etiqueta">Nombre del proceso *</span>
+            <input type="text" id="campoNombreProceso" placeholder="Ej: Armado de ramo">
+          </label>
+          <label class="campo">
+            <span class="campo__etiqueta">Tiempo del proceso (minutos) *</span>
+            <input type="number" id="campoTiempoProceso" min="0.01" step="0.01" oninput="calcularCostoProcesoEnVivo()">
+          </label>
+        </div>
+        <label class="campo">
+          <span class="campo__etiqueta">Descripción (opcional)</span>
+          <input type="text" id="campoDescripcionProceso" placeholder="Detalle de en qué consiste el proceso">
+        </label>
+
+        <h3>Materiales que se usan en este proceso</h3>
+        <div class="agregar-material">
+          <select id="selectorMaterialProceso"></select>
+          <input type="number" id="cantidadMaterialProceso" min="0.0001" step="0.01" placeholder="Cantidad" style="max-width:120px">
+          <button type="button" class="boton" onclick="agregarMaterialAProceso()">Agregar</button>
+        </div>
+        <table class="tabla">
+          <thead><tr><th>Material</th><th>Cantidad</th><th></th></tr></thead>
+          <tbody id="cuerpoMaterialesProceso">
+            <tr><td colspan="3" class="tabla__vacio">Sin materiales agregados</td></tr>
+          </tbody>
+        </table>
+
+        <section class="tarjeta tarjeta--resumen">
+          <div><span class="campo__etiqueta">Precio de hora vigente</span><strong id="resumenPrecioHoraProceso">$0</strong></div>
+          <div><span class="campo__etiqueta">Costo de este proceso</span><strong id="resumenCostoProceso">$0</strong></div>
+        </section>
+
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarFormularioProceso()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="guardarProceso()">Guardar proceso</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/tema.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/procesos.js"></script>
+  <script>
+    if (exigirSesion()) { mostrarUsuarioActual(); }
+  </script>
+</body>
+</html>

@@ -27,11 +27,13 @@ const ICONOS_NAV = {
   'index.html': '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/>',
   'materiales.html': '<path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
   'productos.html': '<path d="M6 2 3 6v14a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+  'procesos.html': '<circle cx="12" cy="6" r="2.2"/><circle cx="5" cy="18" r="2.2"/><circle cx="19" cy="18" r="2.2"/><path d="M12 8.2v3.3M12 11.5 6.6 16M12 11.5 17.4 16"/>',
   'inventario.html': '<rect x="3" y="7" width="18" height="14" rx="1"/><path d="M8 7V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v3"/>',
   'compras.html': '<circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.4 11.6a1 1 0 0 0 1 .8h8.8a1 1 0 0 0 1-.8L21 8H6"/>',
   'ventas.html': '<path d="M4 4h13l3 6-3 10H4l3-10Z"/><path d="M9 10h6"/>',
   'finanzas.html': '<path d="M4 20V10"/><path d="M11 20V4"/><path d="M18 20v-7"/>',
   'facturacion.html': '<path d="M6 2h9l4 4v16H6Z"/><path d="M15 2v4h4"/><path d="M9 12h6M9 16h6"/>',
+  'nomina.html': '<circle cx="9" cy="7" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.2a3.2 3.2 0 0 1 0 6M22 20c0-2.8-2-5.1-4.7-5.8"/>',
   'suscripcion.html': '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>'
 };
 
@@ -39,8 +41,9 @@ const ICONOS_NAV = {
 // nombres genéricos del mockup original.
 const SECCIONES_NAV = [
   { titulo: null, paginas: ['index.html', 'ventas.html', 'inventario.html', 'compras.html'] },
-  { titulo: 'Productos', paginas: ['materiales.html', 'productos.html'] },
+  { titulo: 'Productos', paginas: ['materiales.html', 'productos.html', 'procesos.html'] },
   { titulo: 'Finanzas', paginas: ['finanzas.html', 'facturacion.html'] },
+  { titulo: 'Equipo', paginas: ['nomina.html'] },
   { titulo: 'Cuenta', paginas: ['suscripcion.html'] }
 ];
 
