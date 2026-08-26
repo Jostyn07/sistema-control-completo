@@ -83,9 +83,54 @@ async function recalcularTodosLosProductos(usuarioId) {
   return contador;
 }
 
+// Suma el tiempo (minutos) de todos los procesos activos de un producto.
+// Los minutos de fabricación de una ficha técnica YA NO se escriben a
+// mano: son la suma de sus procesos.
+async function obtenerMinutosDesdeProcesos(productoId) {
+  const { data, error } = await supabase
+    .from('procesos')
+    .select('tiempo_minutos')
+    .eq('producto_id', productoId)
+    .eq('activo', true);
+  if (error) throw new Error(error.message);
+  return (data || []).reduce((s, p) => s + Number(p.tiempo_minutos || 0), 0);
+}
+
+// Recalcula minutos_fabricacion (= suma de sus procesos) y costo_calculado
+// (materiales + mano de obra) de UN producto, y guarda el resultado. Se
+// llama cada vez que se crea/edita/elimina un proceso de ese producto.
+async function recalcularProductoDesdeSusProcesos(productoId, usuarioId) {
+  const { data: filasMateriales, error: eMat } = await supabase
+    .from('productos_materiales')
+    .select('material_id, cantidad')
+    .eq('producto_id', productoId);
+  if (eMat) throw new Error(eMat.message);
+
+  const minutosFabricacion = await obtenerMinutosDesdeProcesos(productoId);
+  const costo = await calcularCostoProducto({
+    materiales: (filasMateriales || []).map(f => ({ material_id: f.material_id, cantidad: f.cantidad })),
+    minutosFabricacion,
+    usuarioId
+  });
+
+  const { error: eUpd } = await supabase
+    .from('productos')
+    .update({
+      minutos_fabricacion: minutosFabricacion,
+      costo_calculado: costo,
+      actualizado_en: new Date().toISOString()
+    })
+    .eq('id', productoId)
+    .eq('usuario_id', usuarioId);
+  if (eUpd) throw new Error(eUpd.message);
+
+  return { minutos_fabricacion: minutosFabricacion, costo_calculado: costo };
+}
+
 module.exports = {
   obtenerCostoMinutoManoObra,
   calcularCostoMateriales,
   calcularCostoProducto,
-  recalcularTodosLosProductos
+  recalcularTodosLosProductos,
+  recalcularProductoDesdeSusProcesos
 };
