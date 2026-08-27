@@ -13,7 +13,7 @@
 <body>
 
   <nav class="navegacion">
-    <a href="./index.html" class="navegacion__enlace navegacion__enlace--activo">Inicio</a>
+    <a href="./index.html" class="navegacion__enlace">Inicio</a>
     <a href="./materiales.html" class="navegacion__enlace">Materiales</a>
     <a href="./productos.html" class="navegacion__enlace">Productos</a>
     <a href="./procesos.html" class="navegacion__enlace">Procesos</a>
@@ -22,7 +22,7 @@
     <a href="./ventas.html" class="navegacion__enlace">Ventas</a>
     <a href="./finanzas.html" class="navegacion__enlace">Finanzas</a>
     <a href="./facturacion.html" class="navegacion__enlace">Facturación</a>
-    <a href="./nomina.html" class="navegacion__enlace">Nóminas</a>
+    <a href="./nomina.html" class="navegacion__enlace navegacion__enlace--activo">Nóminas</a>
     <a href="./suscripcion.html" class="navegacion__enlace">Suscripción</a>
   </nav>
 
@@ -76,31 +76,30 @@
           <h3>Nuevo encargo</h3>
           <div class="fila-campos">
             <label class="campo">
-              <span class="campo__etiqueta">Material entregado (opcional)</span>
-              <select id="selectorMaterialEncargo" onchange="alternarCampoCantidadMaterial()">
-                <option value="">— Sin material —</option>
-              </select>
-            </label>
-            <label class="campo" id="grupoCantidadMaterialEncargo" hidden>
-              <span class="campo__etiqueta">Cantidad de material entregada</span>
-              <input type="number" id="campoCantidadMaterialEncargo" min="0" step="0.01">
-            </label>
-          </div>
-          <div class="fila-campos">
-            <label class="campo">
               <span class="campo__etiqueta">Proceso requerido *</span>
-              <select id="selectorProcesoEncargo"></select>
+              <select id="selectorProcesoEncargo" onchange="calcularMaterialesEncargoEnVivo()"></select>
             </label>
             <label class="campo">
               <span class="campo__etiqueta">Cantidad a entregar del proceso *</span>
-              <input type="number" id="campoCantidadRequeridaEncargo" min="0.01" step="0.01">
+              <input type="number" id="campoCantidadRequeridaEncargo" min="0.01" step="0.01" oninput="calcularMaterialesEncargoEnVivo()">
             </label>
             <label class="campo">
               <span class="campo__etiqueta">Fecha de entrega esperada</span>
               <input type="date" id="campoFechaEntregaEncargo">
             </label>
           </div>
-          <div class="modal__acciones" style="justify-content:flex-start;margin:0">
+
+          <p class="texto-secundario" style="margin:4px 0 6px">
+            Materiales que se le entregarán (se calculan solos según lo que usa el proceso, y se descuentan del inventario al crear el encargo):
+          </p>
+          <table class="tabla">
+            <thead><tr><th>Material</th><th>Cantidad necesaria</th><th>Stock disponible</th></tr></thead>
+            <tbody id="cuerpoMaterialesEncargoPreview">
+              <tr><td colspan="3" class="tabla__vacio">Elige un proceso y una cantidad</td></tr>
+            </tbody>
+          </table>
+
+          <div class="modal__acciones" style="justify-content:flex-start;margin:14px 0 0">
             <button type="button" class="boton boton--primario" onclick="crearEncargo()">Agregar encargo</button>
           </div>
         </section>
@@ -110,13 +109,13 @@
           <table class="tabla">
             <thead>
               <tr>
-                <th>Material</th><th>Cant. material</th><th>Proceso</th><th>Cant. requerida</th>
+                <th>Materiales entregados</th><th>Proceso</th><th>Cant. requerida</th>
                 <th>Cant. entregada</th><th>Fecha entrega</th><th>Costo unitario</th><th>Costo total</th>
                 <th>Pago</th><th></th>
               </tr>
             </thead>
             <tbody id="cuerpoEncargos">
-              <tr><td colspan="10" class="tabla__vacio">Cargando…</td></tr>
+              <tr><td colspan="9" class="tabla__vacio">Cargando…</td></tr>
             </tbody>
           </table>
         </section>

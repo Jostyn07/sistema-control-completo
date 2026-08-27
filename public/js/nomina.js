@@ -190,21 +190,45 @@ async function cargarMaterialesYProcesosParaEncargo() {
     procesosParaEncargo = [];
   }
 
-  document.getElementById('selectorMaterialEncargo').innerHTML =
-    '<option value="">— Sin material —</option>' +
-    materialesParaEncargo.map(m => `<option value="${m.id}">${escaparHtml(m.nombre)} (${escaparHtml(m.unidad)})</option>`).join('');
-
   document.getElementById('selectorProcesoEncargo').innerHTML =
     procesosParaEncargo.map(p => `<option value="${p.id}">${escaparHtml(p.nombre)} (${escaparHtml(p.productos ? p.productos.nombre : '')}) — ${formatearPesos(p.costo_unitario)}</option>`).join('');
 
   if (procesosParaEncargo.length === 0) {
     mostrarAviso('Aún no hay procesos creados. Ve a la pestaña Procesos para crear el primero.', 'error');
   }
+  calcularMaterialesEncargoEnVivo();
 }
 
-function alternarCampoCantidadMaterial() {
-  const tieneMaterial = !!document.getElementById('selectorMaterialEncargo').value;
-  document.getElementById('grupoCantidadMaterialEncargo').hidden = !tieneMaterial;
+// Recalcula, en vivo, cuánto de cada material hace falta según el
+// proceso elegido y la cantidad a entregar (cantidad_por_proceso ×
+// cantidad_requerida) — y avisa si algo supera el stock disponible.
+function calcularMaterialesEncargoEnVivo() {
+  const cuerpo = document.getElementById('cuerpoMaterialesEncargoPreview');
+  const procesoId = document.getElementById('selectorProcesoEncargo').value;
+  const cantidadRequerida = Number(document.getElementById('campoCantidadRequeridaEncargo').value || 0);
+
+  const proceso = procesosParaEncargo.find(p => p.id === procesoId);
+  if (!proceso || !cantidadRequerida) {
+    cuerpo.innerHTML = '<tr><td colspan="3" class="tabla__vacio">Elige un proceso y una cantidad</td></tr>';
+    return;
+  }
+  const materiales = proceso.procesos_materiales || [];
+  if (materiales.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="3" class="tabla__vacio">Este proceso no tiene materiales definidos</td></tr>';
+    return;
+  }
+
+  cuerpo.innerHTML = materiales.map(m => {
+    const necesaria = Math.round(Number(m.cantidad) * cantidadRequerida * 10000) / 10000;
+    const stockActual = materialesParaEncargo.find(x => x.id === m.materiales.id)?.stock_actual ?? 0;
+    const faltaStock = necesaria > Number(stockActual);
+    return `
+      <tr>
+        <td>${escaparHtml(m.materiales.nombre)}</td>
+        <td class="${faltaStock ? 'indicador__valor--negativo' : ''}">${necesaria} ${escaparHtml(m.materiales.unidad)}</td>
+        <td>${stockActual} ${escaparHtml(m.materiales.unidad)}</td>
+      </tr>`;
+  }).join('');
 }
 
 async function cargarEncargosColaborador(id) {
@@ -213,20 +237,19 @@ async function cargarEncargosColaborador(id) {
     const encargos = await API.obtener(`/api/colaboradores/${id}/encargos`);
     pintarEncargos(encargos);
   } catch (err) {
-    cuerpo.innerHTML = `<tr><td colspan="10" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
+    cuerpo.innerHTML = `<tr><td colspan="9" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
   }
 }
 
 function pintarEncargos(encargos) {
   const cuerpo = document.getElementById('cuerpoEncargos');
   if (encargos.length === 0) {
-    cuerpo.innerHTML = '<tr><td colspan="10" class="tabla__vacio">Aún no hay encargos para este colaborador.</td></tr>';
+    cuerpo.innerHTML = '<tr><td colspan="9" class="tabla__vacio">Aún no hay encargos para este colaborador.</td></tr>';
     return;
   }
   cuerpo.innerHTML = encargos.map(e => `
     <tr>
-      <td>${e.materiales ? escaparHtml(e.materiales.nombre) : '—'}</td>
-      <td>${e.cantidad_material != null ? `${e.cantidad_material} ${escaparHtml(e.materiales ? e.materiales.unidad : '')}` : '—'}</td>
+      <td>${(e.colaboradores_encargos_materiales || []).map(m => `${m.cantidad} ${escaparHtml(m.materiales.unidad)} de ${escaparHtml(m.materiales.nombre)}`).join(', ') || '—'}</td>
       <td>${e.procesos ? escaparHtml(e.procesos.nombre) : '—'}</td>
       <td>${e.cantidad_requerida}</td>
       <td>${e.cantidad_entregada}</td>
@@ -248,15 +271,13 @@ function celdaPagoEncargo(e) {
   return `<button type="button" class="boton boton--pequeno" onclick="confirmarPagoEncargo('${e.id}', true)">Confirmar pago</button>`;
 }
 
-async function crearEncargo() {
+async function crearEncargo(forzar = false) {
   if (!colaboradorActualId) return;
-  const materialId = document.getElementById('selectorMaterialEncargo').value;
   const datos = {
-    material_id: materialId || null,
-    cantidad_material: materialId ? document.getElementById('campoCantidadMaterialEncargo').value : null,
     proceso_id: document.getElementById('selectorProcesoEncargo').value,
     cantidad_requerida: document.getElementById('campoCantidadRequeridaEncargo').value,
-    fecha_entrega: document.getElementById('campoFechaEntregaEncargo').value || null
+    fecha_entrega: document.getElementById('campoFechaEntregaEncargo').value || null,
+    forzar
   };
 
   if (!datos.proceso_id) { mostrarAviso('Elige el proceso requerido', 'error'); return; }
@@ -266,14 +287,25 @@ async function crearEncargo() {
   }
 
   try {
-    await API.enviar(`/api/colaboradores/${colaboradorActualId}/encargos`, datos);
-    mostrarAviso('Encargo agregado');
-    document.getElementById('campoCantidadMaterialEncargo').value = '';
+    const encargo = await API.enviar(`/api/colaboradores/${colaboradorActualId}/encargos`, datos);
+    mostrarAviso(encargo.forzado
+      ? 'Encargo agregado forzando el stock. Recuerda corregir el inventario con un ajuste.'
+      : 'Encargo agregado. El inventario se descontó automáticamente.');
     document.getElementById('campoCantidadRequeridaEncargo').value = '';
     document.getElementById('campoFechaEntregaEncargo').value = '';
+    calcularMaterialesEncargoEnVivo();
     cargarEncargosColaborador(colaboradorActualId);
   } catch (err) {
-    mostrarAviso(err.message, 'error');
+    // El backend responde 409 con la lista de faltantes; ofrecemos forzar
+    if (err.message.includes('No hay material suficiente')) {
+      const confirmado = confirm(
+        'No hay material suficiente según el sistema para este encargo.\n\n' +
+        '¿Crear el encargo de todas formas? (Luego corriges con un ajuste de inventario.)'
+      );
+      if (confirmado) crearEncargo(true);
+    } else {
+      mostrarAviso(err.message, 'error');
+    }
   }
 }
 
@@ -324,12 +356,12 @@ async function confirmarPagoEncargo(id, pagado) {
 }
 
 async function eliminarEncargo(id) {
-  const confirmado = confirm('¿Eliminar este encargo? Esta acción no se puede deshacer.');
+  const confirmado = confirm('¿Eliminar este encargo? El material que se le había entregado se devuelve al inventario.');
   if (!confirmado) return;
 
   try {
     await API.eliminar(`/api/colaboradores/encargos/${id}`);
-    mostrarAviso('Encargo eliminado');
+    mostrarAviso('Encargo eliminado y stock revertido');
     cargarEncargosColaborador(colaboradorActualId);
     cargarRendimientoColaborador(colaboradorActualId);
   } catch (err) {
