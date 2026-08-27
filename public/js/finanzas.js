@@ -73,12 +73,41 @@ async function guardarMetaVentas() {
   }
 }
 
+// ---- Fecha de inicio de operación (base del ROI acumulado) ----
+let fechaInicioOperacionActual = null;
+
+function abrirFechaInicioRoi() {
+  document.getElementById('campoFechaInicioRoi').value = fechaInicioOperacionActual || '';
+  document.getElementById('modalFechaInicioRoi').hidden = false;
+}
+
+function cerrarFechaInicioRoi() {
+  document.getElementById('modalFechaInicioRoi').hidden = true;
+}
+
+async function guardarFechaInicioRoi() {
+  const valor = document.getElementById('campoFechaInicioRoi').value;
+  if (!valor) {
+    mostrarAviso('Elige una fecha', 'error');
+    return;
+  }
+  try {
+    await API.actualizar('/api/configuracion/fecha-inicio-roi', { fecha_inicio_operacion: valor });
+    mostrarAviso('Fecha de inicio actualizada');
+    cerrarFechaInicioRoi();
+    cargarResumenFinanciero();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
 // ---- 1. Panel resumen ----
 async function cargarResumenFinanciero() {
   const panel = document.getElementById('panelResumen');
   try {
     const r = await API.obtener('/api/finanzas/resumen');
     pintarPanelMeta(r);
+    fechaInicioOperacionActual = r.fecha_inicio_operacion;
 
     const colorUtilidad = r.utilidad_mes >= 0 ? 'indicador__valor--positivo' : 'indicador__valor--negativo';
     const colorFlujo = r.flujo_caja_mes >= 0 ? 'indicador__valor--positivo' : 'indicador__valor--negativo';
@@ -95,9 +124,16 @@ async function cargarResumenFinanciero() {
     }
 
     const textoRoi = r.roi_acumulado != null ? `${r.roi_acumulado}%` : '—';
-    const subtextoRoi = r.roi_acumulado != null
-      ? `Utilidad acumulada ${formatearPesos(r.utilidad_acumulada)} sobre ${formatearPesos(r.capital_invertido)} (${r.meses_operando} mes(es))`
-      : (r.nota_roi || '');
+    let subtextoRoi;
+    if (r.roi_acumulado != null) {
+      const baseFecha = r.fecha_inicio_operacion
+        ? `desde ${formatearFechaCliente(r.fecha_inicio_operacion + 'T00:00:00')}`
+        : `${r.meses_operando} mes(es), desde tu primera venta`;
+      subtextoRoi = `Utilidad acumulada ${formatearPesos(r.utilidad_acumulada)} sobre ${formatearPesos(r.capital_invertido)} (${baseFecha})`;
+      if (r.nota_roi) subtextoRoi += ` · ${r.nota_roi}`;
+    } else {
+      subtextoRoi = r.nota_roi || '';
+    }
 
     panel.innerHTML = `
       <div class="indicador tarjeta">
@@ -108,6 +144,11 @@ async function cargarResumenFinanciero() {
         <span class="campo__etiqueta">Costo de ventas</span>
         <span class="indicador__valor">${formatearPesos(r.costo_ventas_mes)}</span>
         <span class="texto-secundario">materiales + mano de obra de lo vendido</span>
+      </div>
+      <div class="indicador tarjeta">
+        <span class="campo__etiqueta">Nómina pagada</span>
+        <span class="indicador__valor">${formatearPesos(r.costos_nomina_mes)}</span>
+        <span class="texto-secundario">confirmada como pagada en Nóminas este mes — cuenta como gasto variable</span>
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Utilidad bruta</span>
@@ -160,9 +201,13 @@ async function cargarResumenFinanciero() {
           <span class="indicador__valor">${formatearPesos(r.costos_fijos_mes)}</span>
         </div>
         <div class="indicador tarjeta">
+          <span class="campo__etiqueta">Nómina pagada</span>
+          <span class="indicador__valor">${formatearPesos(r.costos_nomina_mes)}</span>
+        </div>
+        <div class="indicador tarjeta">
           <span class="campo__etiqueta">Flujo de caja neto</span>
           <span class="indicador__valor ${colorFlujo}">${formatearPesos(r.flujo_caja_mes)}</span>
-          <span class="texto-secundario">ingresos − compras − costos fijos</span>
+          <span class="texto-secundario">ingresos − compras − costos fijos − nómina pagada</span>
         </div>
       </div>`;
   } catch (err) {

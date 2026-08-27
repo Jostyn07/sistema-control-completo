@@ -25,7 +25,7 @@ async function obtenerConfiguracion(usuarioId) {
 router.get('/produccion', async (req, res, next) => {
   try {
     const data = await obtenerConfiguracion(req.usuarioId);
-    res.json(data || { costo_hora_mano_obra: 0, meta_ventas_mensual: null });
+    res.json(data || { costo_hora_mano_obra: 0, meta_ventas_mensual: null, fecha_inicio_operacion: null });
   } catch (err) { next(err); }
 });
 
@@ -76,6 +76,36 @@ router.put('/meta-ventas', async (req, res, next) => {
       resultado = await supabase
         .from('configuracion_produccion')
         .insert({ usuario_id: req.usuarioId, meta_ventas_mensual: Number(meta_ventas_mensual) })
+        .select().single();
+    }
+    if (resultado.error) throw new Error(resultado.error.message);
+    res.json(resultado.data);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/configuracion/fecha-inicio-roi — cuerpo: { fecha_inicio_operacion }
+// Fecha desde la que se cuentan los meses para restar costos fijos en el
+// ROI acumulado de Finanzas (en vez de usar la fecha de la primera venta,
+// que no siempre coincide con cuándo empezó realmente el negocio).
+router.put('/fecha-inicio-roi', async (req, res, next) => {
+  try {
+    const { fecha_inicio_operacion } = req.body;
+    if (!fecha_inicio_operacion) return res.status(400).json({ error: 'La fecha de inicio es obligatoria' });
+    if (isNaN(new Date(fecha_inicio_operacion).getTime()))
+      return res.status(400).json({ error: 'La fecha de inicio no es válida' });
+
+    const existente = await obtenerConfiguracion(req.usuarioId);
+    let resultado;
+    if (existente) {
+      resultado = await supabase
+        .from('configuracion_produccion')
+        .update({ fecha_inicio_operacion, actualizado_en: new Date().toISOString() })
+        .eq('usuario_id', req.usuarioId)
+        .select().single();
+    } else {
+      resultado = await supabase
+        .from('configuracion_produccion')
+        .insert({ usuario_id: req.usuarioId, fecha_inicio_operacion })
         .select().single();
     }
     if (resultado.error) throw new Error(resultado.error.message);

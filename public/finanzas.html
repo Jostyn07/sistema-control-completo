@@ -13,14 +13,14 @@
 <body>
 
   <nav class="navegacion">
-    <a href="./index.html" class="navegacion__enlace">Inicio</a>
+    <a href="./index.html" class="navegacion__enlace navegacion__enlace--activo">Inicio</a>
     <a href="./materiales.html" class="navegacion__enlace">Materiales</a>
     <a href="./productos.html" class="navegacion__enlace">Productos</a>
     <a href="./procesos.html" class="navegacion__enlace">Procesos</a>
     <a href="./inventario.html" class="navegacion__enlace">Inventario</a>
     <a href="./compras.html" class="navegacion__enlace">Compras</a>
     <a href="./ventas.html" class="navegacion__enlace">Ventas</a>
-    <a href="./finanzas.html" class="navegacion__enlace navegacion__enlace--activo">Finanzas</a>
+    <a href="./finanzas.html" class="navegacion__enlace">Finanzas</a>
     <a href="./facturacion.html" class="navegacion__enlace">Facturación</a>
     <a href="./nomina.html" class="navegacion__enlace">Nóminas</a>
     <a href="./suscripcion.html" class="navegacion__enlace">Suscripción</a>
@@ -112,7 +112,10 @@
     <section class="tarjeta seccion">
       <div class="pagina__encabezado" style="margin-bottom:8px">
         <h2 style="margin:0">Capital invertido</h2>
-        <button type="button" class="boton" onclick="abrirCapital()">Registrar aporte</button>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="boton" onclick="abrirFechaInicioRoi()">Fecha de inicio</button>
+          <button type="button" class="boton" onclick="abrirCapital()">Registrar aporte</button>
+        </div>
       </div>
       <p class="texto-secundario">Es la base con la que se calcula el ROI del panel.</p>
       <table class="tabla">
@@ -158,6 +161,21 @@
         <div class="modal__acciones">
           <button type="button" class="boton" onclick="cerrarCapital()">Cancelar</button>
           <button type="button" class="boton boton--primario" onclick="guardarCapital()">Registrar</button>
+        </div>
+      </div>
+    </div>
+    <!-- Modal fecha de inicio de operación (base del ROI) -->
+    <div class="modal" id="modalFechaInicioRoi" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2>Fecha de inicio de operación</h2>
+        <p class="texto-secundario">Desde aquí se cuentan los meses que se restan como costos fijos en el ROI acumulado — es un número total, no algo que cambie según el mes en que lo consultes.</p>
+        <label class="campo">
+          <span class="campo__etiqueta">Fecha de inicio *</span>
+          <input type="date" id="campoFechaInicioRoi">
+        </label>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarFechaInicioRoi()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="guardarFechaInicioRoi()">Guardar</button>
         </div>
       </div>
     </div>

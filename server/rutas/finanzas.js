@@ -35,11 +35,25 @@ router.get('/resumen', async (req, res, next) => {
 
     const ingresosMes = (ventasMes || []).reduce((s, v) => s + Number(v.total), 0);
 
+    // Nómina pagada a colaboradores — lo que se confirma como "pagado" en
+    // Nóminas es dinero real que sale del negocio, así que cuenta como
+    // gasto variable en Finanzas (se suma al costo de lo vendido). Se usa
+    // fecha_pago (cuándo se pagó), no fecha_entrega ni creado_en.
+    const { data: nominaPagadaMes, error: eNominaMes } = await supabase
+      .from('colaboradores_encargos')
+      .select('costo_total_proceso')
+      .eq('usuario_id', req.usuarioId)
+      .eq('pagado', true)
+      .gte('fecha_pago', desdeMes);
+    if (eNominaMes) throw new Error(eNominaMes.message);
+    const costosNominaMes = (nominaPagadaMes || []).reduce((s, e) => s + Number(e.costo_total_proceso), 0);
+
     // Meta de ventas y avance del mes en curso
     const { data: configProd, error: eConfigProd } = await supabase
-      .from('configuracion_produccion').select('meta_ventas_mensual').eq('usuario_id', req.usuarioId).maybeSingle();
+      .from('configuracion_produccion').select('meta_ventas_mensual, fecha_inicio_operacion').eq('usuario_id', req.usuarioId).maybeSingle();
     if (eConfigProd) throw new Error(eConfigProd.message);
     const metaVentas = configProd && configProd.meta_ventas_mensual != null ? Number(configProd.meta_ventas_mensual) : null;
+    const fechaInicioOperacion = configProd && configProd.fecha_inicio_operacion ? configProd.fecha_inicio_operacion : null;
 
     const diaActual = ahora.getDate();
     const diasEnMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).getDate();
@@ -55,7 +69,12 @@ router.get('/resumen', async (req, res, next) => {
         ? Math.round((faltanteMeta / diasRestantesMes) * 100) / 100
         : (faltanteMeta > 0 ? null : 0); // null = ya no quedan días y no se alcanzó
     }
-    const costosVariablesMes = (ventasMes || []).reduce((s, v) => s + Number(v.costo_total), 0);
+    const costoVentasMes = (ventasMes || []).reduce((s, v) => s + Number(v.costo_total), 0);
+    // "Costo de ventas" (ficha técnica) + nómina pagada = costos variables
+    // totales del mes. Se mantienen separados como campos (costo_ventas_mes
+    // vs costos_nomina_mes) para que el panel pueda mostrar cada uno, pero
+    // toda la contabilidad de utilidad/equilibrio usa la suma de ambos.
+    const costosVariablesMes = costoVentasMes + costosNominaMes;
 
     const costosFijos = await obtenerCostosFijosMensuales(req.usuarioId);
     const utilidadMes = ingresosMes - costosVariablesMes - costosFijos.total;
@@ -85,7 +104,7 @@ router.get('/resumen', async (req, res, next) => {
       .from('compras').select('total').eq('usuario_id', req.usuarioId).gte('fecha', desdeMes);
     if (eComprasMes) throw new Error(eComprasMes.message);
     const comprasMesTotal = (comprasMes || []).reduce((s, c) => s + Number(c.total), 0);
-    const flujoCajaMes = ingresosMes - comprasMesTotal - costosFijos.total;
+    const flujoCajaMes = ingresosMes - comprasMesTotal - costosFijos.total - costosNominaMes;
 
     let puntoEquilibrio = null;
     let margenContribucion = null;
@@ -105,16 +124,42 @@ router.get('/resumen', async (req, res, next) => {
       .from('ventas').select('total, costo_total, fecha').eq('usuario_id', req.usuarioId).order('fecha', { ascending: true });
     if (eTodas) throw new Error(eTodas.message);
 
-    let utilidadAcumulada = 0;
+    // Nómina pagada en TODA la historia (no solo este mes) — también sale
+    // de la utilidad acumulada que alimenta el ROI, por la misma razón:
+    // es dinero real que salió del negocio.
+    const { data: nominaPagadaTotal, error: eNominaTotal } = await supabase
+      .from('colaboradores_encargos')
+      .select('costo_total_proceso')
+      .eq('usuario_id', req.usuarioId)
+      .eq('pagado', true);
+    if (eNominaTotal) throw new Error(eNominaTotal.message);
+    const costosNominaTotal = (nominaPagadaTotal || []).reduce((s, e) => s + Number(e.costo_total_proceso), 0);
+
+    const margenAcumulado = (todasVentas || []).reduce((s, v) => s + (Number(v.total) - Number(v.costo_total)), 0)
+      - costosNominaTotal;
+
+    // Los meses para restar costos fijos se cuentan SIEMPRE desde la fecha
+    // de inicio de operación que se configura en Finanzas — no desde la
+    // primera venta (que puede no coincidir con cuándo arrancó el negocio)
+    // ni desde el mes en curso. Así el ROI es un número total acumulado,
+    // no algo que cambie según el mes en el que se consulte.
     let mesesTranscurridos = 0;
-    if (todasVentas && todasVentas.length > 0) {
-      const margenAcumulado = todasVentas.reduce((s, v) => s + (Number(v.total) - Number(v.costo_total)), 0);
+    let notaMesesRoi = null;
+    if (fechaInicioOperacion) {
+      const inicio = inicioDeMes(new Date(fechaInicioOperacion + 'T00:00:00'));
+      const actual = inicioDeMes(ahora);
+      mesesTranscurridos = Math.max(0, (actual.getFullYear() - inicio.getFullYear()) * 12
+                                      + (actual.getMonth() - inicio.getMonth()) + 1);
+    } else if (todasVentas && todasVentas.length > 0) {
+      // Sin fecha configurada todavía: se usa la primera venta como antes,
+      // para no dejar el ROI en cero de un momento a otro.
       const primera = inicioDeMes(new Date(todasVentas[0].fecha));
       const actual = inicioDeMes(ahora);
       mesesTranscurridos = (actual.getFullYear() - primera.getFullYear()) * 12
-                         + (actual.getMonth() - primera.getMonth()) + 1;
-      utilidadAcumulada = margenAcumulado - costosFijos.total * mesesTranscurridos;
+                          + (actual.getMonth() - primera.getMonth()) + 1;
+      notaMesesRoi = 'Configura la fecha de inicio de operación en Finanzas para un ROI más exacto (por ahora se usa la fecha de tu primera venta).';
     }
+    const utilidadAcumulada = margenAcumulado - costosFijos.total * mesesTranscurridos;
 
     const { data: capital, error: eCap } = await supabase
       .from('capital_invertido').select('valor').eq('usuario_id', req.usuarioId);
@@ -125,6 +170,7 @@ router.get('/resumen', async (req, res, next) => {
     let notaRoi = null;
     if (capitalTotal > 0) {
       roiAcumulado = Math.round((utilidadAcumulada / capitalTotal) * 1000) / 10;
+      notaRoi = notaMesesRoi;
     } else {
       notaRoi = 'Registra el capital invertido para calcular el ROI.';
     }
@@ -135,7 +181,8 @@ router.get('/resumen', async (req, res, next) => {
       costos_variables_mes: Math.round(costosVariablesMes * 100) / 100,
       costos_fijos_mes: costosFijos.total,
       utilidad_mes: Math.round(utilidadMes * 100) / 100,
-      costo_ventas_mes: Math.round(costosVariablesMes * 100) / 100,
+      costo_ventas_mes: Math.round(costoVentasMes * 100) / 100,
+      costos_nomina_mes: Math.round(costosNominaMes * 100) / 100,
       utilidad_bruta_mes: Math.round(utilidadBrutaMes * 100) / 100,
       margen_bruto_pct: margenBrutoPct,
       utilidad_operativa_mes: Math.round(utilidadOperativaMes * 100) / 100,
@@ -154,6 +201,7 @@ router.get('/resumen', async (req, res, next) => {
       nota_equilibrio: notaEquilibrio,
       utilidad_acumulada: Math.round(utilidadAcumulada * 100) / 100,
       meses_operando: mesesTranscurridos,
+      fecha_inicio_operacion: fechaInicioOperacion,
       capital_invertido: Math.round(capitalTotal * 100) / 100,
       roi_acumulado: roiAcumulado,
       nota_roi: notaRoi,
@@ -256,6 +304,16 @@ router.get('/historico-mensual', async (req, res, next) => {
       .gte('fecha', desde.toISOString());
     if (eCompras) throw new Error(eCompras.message);
 
+    // Nómina pagada por mes — misma razón que en /resumen: es un gasto
+    // variable real, así que entra en costos totales, utilidad y flujo.
+    const { data: nomina, error: eNomina } = await supabase
+      .from('colaboradores_encargos')
+      .select('costo_total_proceso, fecha_pago')
+      .eq('usuario_id', req.usuarioId)
+      .eq('pagado', true)
+      .gte('fecha_pago', desde.toISOString());
+    if (eNomina) throw new Error(eNomina.message);
+
     const costosFijos = await obtenerCostosFijosMensuales(req.usuarioId);
 
     const historico = [];
@@ -264,18 +322,22 @@ router.get('/historico-mensual', async (req, res, next) => {
       const clave = claveMes(mesFecha);
       const ventasDelMes = (ventas || []).filter(v => claveMes(v.fecha) === clave);
       const comprasDelMes = (compras || []).filter(c => claveMes(c.fecha) === clave);
+      const nominaDelMes = (nomina || []).filter(n => claveMes(n.fecha_pago) === clave);
       const ingresos = ventasDelMes.reduce((s, v) => s + Number(v.total), 0);
-      const variables = ventasDelMes.reduce((s, v) => s + Number(v.costo_total), 0);
+      const costoVentas = ventasDelMes.reduce((s, v) => s + Number(v.costo_total), 0);
+      const nominaTotal = nominaDelMes.reduce((s, n) => s + Number(n.costo_total_proceso), 0);
+      const variables = costoVentas + nominaTotal;
       const comprasTotal = comprasDelMes.reduce((s, c) => s + Number(c.total), 0);
       historico.push({
         mes: clave,
         ingresos: Math.round(ingresos * 100) / 100,
         costos_variables: Math.round(variables * 100) / 100,
+        costos_nomina: Math.round(nominaTotal * 100) / 100,
         costos_fijos: costosFijos.total,
         costos_totales: Math.round((variables + costosFijos.total) * 100) / 100,
         utilidad: Math.round((ingresos - variables - costosFijos.total) * 100) / 100,
         compras: Math.round(comprasTotal * 100) / 100,
-        flujo_caja: Math.round((ingresos - comprasTotal - costosFijos.total) * 100) / 100
+        flujo_caja: Math.round((ingresos - comprasTotal - costosFijos.total - nominaTotal) * 100) / 100
       });
     }
 
