@@ -19,6 +19,12 @@ function conDatosDescifrados(c) {
   };
 }
 
+// Los materiales de un encargo ya NO se eligen a mano: salen solos de la
+// receta del proceso (procesos_materiales) × la cantidad requerida, y se
+// guardan aquí para trazabilidad y para pintar la columna "Materiales
+// entregados" en Nóminas.
+const SELECT_ENCARGO = '*, procesos(nombre, unidad), colaboradores_encargos_materiales(material_id, cantidad, materiales(id, nombre, unidad))';
+
 // GET /api/colaboradores
 router.get('/', async (req, res, next) => {
   try {
@@ -108,7 +114,7 @@ router.get('/:id/encargos', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('colaboradores_encargos')
-      .select('*, materiales(nombre, unidad), procesos(nombre, unidad)')
+      .select(SELECT_ENCARGO)
       .eq('colaborador_id', req.params.id)
       .eq('usuario_id', req.usuarioId)
       .order('creado_en', { ascending: false });
@@ -118,43 +124,114 @@ router.get('/:id/encargos', async (req, res, next) => {
 });
 
 // POST /api/colaboradores/:id/encargos — cuerpo:
-// { material_id, cantidad_material, proceso_id, cantidad_requerida, fecha_entrega }
-// El material es opcional (no todo proceso necesita material entregado);
-// el proceso es obligatorio, porque de ahí sale el costo unitario.
+// { proceso_id, cantidad_requerida, fecha_entrega, forzar }
+// Los materiales entregados YA NO se eligen a mano: se calculan solos
+// desde la receta del proceso (procesos_materiales) × la cantidad
+// requerida — igual que una venta descuenta materiales según la ficha
+// técnica. Si falta stock avisa con el detalle (409) y permite forzar,
+// igual que en Ventas. Al confirmarse, descuenta el inventario y guarda
+// el detalle en colaboradores_encargos_materiales para control y para
+// la columna "Materiales entregados" de Nóminas.
 router.post('/:id/encargos', async (req, res, next) => {
   try {
-    const { material_id, cantidad_material, proceso_id, cantidad_requerida, fecha_entrega } = req.body;
+    const { proceso_id, cantidad_requerida, fecha_entrega, forzar } = req.body;
     if (!proceso_id) return res.status(400).json({ error: 'Elige el proceso requerido' });
     if (cantidad_requerida == null || isNaN(cantidad_requerida) || Number(cantidad_requerida) <= 0)
       return res.status(400).json({ error: 'La cantidad a entregar del proceso debe ser mayor a 0' });
-    if (material_id && (cantidad_material == null || isNaN(cantidad_material) || Number(cantidad_material) < 0))
-      return res.status(400).json({ error: 'La cantidad de material entregado no es válida' });
 
     const { data: colaborador, error: eCol } = await supabase
       .from('colaboradores').select('id').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
     if (eCol || !colaborador) return res.status(404).json({ error: 'Colaborador no encontrado' });
 
     const { data: proceso, error: eProc } = await supabase
-      .from('procesos').select('id, costo_unitario').eq('id', proceso_id).eq('usuario_id', req.usuarioId).single();
+      .from('procesos')
+      .select('id, costo_unitario, procesos_materiales(material_id, cantidad, materiales(id, nombre, unidad, stock_actual))')
+      .eq('id', proceso_id).eq('usuario_id', req.usuarioId).single();
     if (eProc || !proceso) return res.status(404).json({ error: 'Proceso no encontrado' });
+
+    const cantidadReq = Number(cantidad_requerida);
+
+    // Materiales que la receta del proceso necesita para esta cantidad
+    const requeridoPorMaterial = new Map();
+    for (const fila of proceso.procesos_materiales || []) {
+      requeridoPorMaterial.set(fila.material_id, {
+        material: fila.materiales,
+        requerido: Number(fila.cantidad) * cantidadReq
+      });
+    }
+
+    const faltantes = [];
+    for (const { material, requerido } of requeridoPorMaterial.values()) {
+      if (Number(material.stock_actual) < requerido) {
+        faltantes.push({
+          material: material.nombre,
+          unidad: material.unidad,
+          stock_actual: Number(material.stock_actual),
+          requerido: Math.round(requerido * 10000) / 10000
+        });
+      }
+    }
+    if (faltantes.length > 0 && !forzar) {
+      return res.status(409).json({
+        error: 'No hay material suficiente para este encargo',
+        faltantes,
+        puede_forzar: true,
+        mensaje: 'Puedes forzar el encargo (por ejemplo, si el conteo del sistema está desactualizado) y luego corregir con un ajuste de inventario.'
+      });
+    }
 
     const nuevo = {
       usuario_id: req.usuarioId,
       colaborador_id: req.params.id,
-      material_id: material_id || null,
-      cantidad_material: material_id ? Number(cantidad_material) : null,
       proceso_id,
-      cantidad_requerida: Number(cantidad_requerida),
+      cantidad_requerida: cantidadReq,
       cantidad_entregada: 0,
       fecha_entrega: fecha_entrega || null,
       costo_unitario_proceso: Number(proceso.costo_unitario),
       costo_total_proceso: 0
     };
-    const { data, error } = await supabase
-      .from('colaboradores_encargos').insert(nuevo)
-      .select('*, materiales(nombre, unidad), procesos(nombre, unidad)').single();
+    const { data: encargo, error } = await supabase
+      .from('colaboradores_encargos').insert(nuevo).select().single();
     if (error) throw new Error(error.message);
-    res.status(201).json(data);
+
+    if (requeridoPorMaterial.size > 0) {
+      const filasMateriales = [...requeridoPorMaterial.entries()].map(([materialId, { requerido }]) => ({
+        encargo_id: encargo.id,
+        material_id: materialId,
+        cantidad: Math.round(requerido * 10000) / 10000
+      }));
+      const { error: eIns } = await supabase.from('colaboradores_encargos_materiales').insert(filasMateriales);
+      if (eIns) throw new Error(eIns.message);
+
+      for (const [materialId, { material, requerido }] of requeridoPorMaterial) {
+        const stockAnterior = Number(material.stock_actual);
+        const stockNuevo = Math.max(0, Math.round((stockAnterior - requerido) * 100) / 100);
+        const { error: eStock } = await supabase
+          .from('materiales')
+          .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
+          .eq('id', materialId).eq('usuario_id', req.usuarioId);
+        if (eStock) throw new Error(eStock.message);
+
+        // Bitácora — si esto falla no se revierte el encargo ni el
+        // stock, igual que en Ventas: es "buena, no perfecta".
+        const { error: eMov } = await supabase.from('inventario_movimientos').insert({
+          usuario_id: req.usuarioId,
+          material_id: materialId,
+          tipo: 'encargo',
+          cantidad: -requerido,
+          stock_anterior: stockAnterior,
+          stock_nuevo: stockNuevo,
+          referencia_id: encargo.id
+        });
+        if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de encargo:', eMov.message);
+      }
+    }
+
+    const { data: completo, error: eFinal } = await supabase
+      .from('colaboradores_encargos').select(SELECT_ENCARGO).eq('id', encargo.id).single();
+    if (eFinal) throw new Error(eFinal.message);
+
+    res.status(201).json({ ...completo, forzado: faltantes.length > 0 });
   } catch (err) { next(err); }
 });
 
@@ -184,7 +261,7 @@ router.put('/encargos/:id/entrega', async (req, res, next) => {
         actualizado_en: new Date().toISOString()
       })
       .eq('id', req.params.id).eq('usuario_id', req.usuarioId)
-      .select('*, materiales(nombre, unidad), procesos(nombre, unidad)').single();
+      .select(SELECT_ENCARGO).single();
     if (error) throw new Error(error.message);
     res.json(data);
   } catch (err) { next(err); }
@@ -202,16 +279,45 @@ router.put('/encargos/:id/pago', async (req, res, next) => {
       .from('colaboradores_encargos')
       .update({ pagado, fecha_pago: pagado ? new Date().toISOString() : null })
       .eq('id', req.params.id).eq('usuario_id', req.usuarioId)
-      .select('*, materiales(nombre, unidad), procesos(nombre, unidad)').single();
+      .select(SELECT_ENCARGO).single();
     if (error) throw new Error(error.message);
     if (!data) return res.status(404).json({ error: 'Encargo no encontrado' });
     res.json(data);
   } catch (err) { next(err); }
 });
 
-// DELETE /api/colaboradores/encargos/:id
+// DELETE /api/colaboradores/encargos/:id — revierte al inventario los
+// materiales que se le habían entregado al colaborador para este encargo
+// (antes esto se prometía en el confirm() del frontend pero no pasaba).
 router.delete('/encargos/:id', async (req, res, next) => {
   try {
+    const { data: encargo, error: eGet } = await supabase
+      .from('colaboradores_encargos')
+      .select('id, colaboradores_encargos_materiales(material_id, cantidad, materiales(stock_actual))')
+      .eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+    if (eGet || !encargo) return res.status(404).json({ error: 'Encargo no encontrado' });
+
+    for (const fila of encargo.colaboradores_encargos_materiales || []) {
+      const stockAnterior = Number(fila.materiales.stock_actual);
+      const stockNuevo = Math.round((stockAnterior + Number(fila.cantidad)) * 100) / 100;
+      const { error: eStock } = await supabase
+        .from('materiales')
+        .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
+        .eq('id', fila.material_id).eq('usuario_id', req.usuarioId);
+      if (eStock) throw new Error(eStock.message);
+
+      const { error: eMov } = await supabase.from('inventario_movimientos').insert({
+        usuario_id: req.usuarioId,
+        material_id: fila.material_id,
+        tipo: 'ajuste',
+        cantidad: Number(fila.cantidad),
+        stock_anterior: stockAnterior,
+        stock_nuevo: stockNuevo,
+        referencia_id: encargo.id
+      });
+      if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de reversión:', eMov.message);
+    }
+
     const { error } = await supabase
       .from('colaboradores_encargos').delete().eq('id', req.params.id).eq('usuario_id', req.usuarioId);
     if (error) throw new Error(error.message);
