@@ -84,6 +84,7 @@ function abrirFormularioProceso(id) {
   }
 
   filasMaterialesProcesoEnEdicion = [];
+  document.getElementById('selectorUnidadTiempoProceso').value = 'minutos';
 
   if (id) {
     const p = procesosEnMemoria.find(x => x.id === id);
@@ -153,9 +154,16 @@ function pintarMaterialesProceso() {
     </tr>`).join('');
 }
 
+// ---- Tiempo ingresado → siempre en minutos (segundos se dividen entre 60) ----
+function tiempoProcesoEnMinutos() {
+  const valor = Number(document.getElementById('campoTiempoProceso').value || 0);
+  const unidad = document.getElementById('selectorUnidadTiempoProceso').value;
+  return unidad === 'segundos' ? valor / 60 : valor;
+}
+
 // ---- Costo en vivo: tiempo × precio de hora global ----
 function calcularCostoProcesoEnVivo() {
-  const minutos = Number(document.getElementById('campoTiempoProceso').value || 0);
+  const minutos = tiempoProcesoEnMinutos();
   const costo = minutos * costoMinutoGlobalProceso;
   document.getElementById('resumenPrecioHoraProceso').textContent = formatearPesos(costoMinutoGlobalProceso * 60);
   document.getElementById('resumenCostoProceso').textContent = formatearPesos(costo);
@@ -167,7 +175,7 @@ async function guardarProceso() {
   const datos = {
     producto_id: document.getElementById('selectorProductoProceso').value,
     nombre: document.getElementById('campoNombreProceso').value,
-    tiempo_minutos: document.getElementById('campoTiempoProceso').value,
+    tiempo_minutos: tiempoProcesoEnMinutos(),
     descripcion: document.getElementById('campoDescripcionProceso').value,
     materiales: filasMaterialesProcesoEnEdicion.map(f => ({ material_id: f.material_id, cantidad: f.cantidad }))
   };
@@ -175,7 +183,7 @@ async function guardarProceso() {
   if (!datos.producto_id) { mostrarAviso('Elige a qué ficha técnica pertenece este proceso', 'error'); return; }
   if (!datos.nombre.trim()) { mostrarAviso('El nombre del proceso es obligatorio', 'error'); return; }
   if (!datos.tiempo_minutos || Number(datos.tiempo_minutos) <= 0) {
-    mostrarAviso('El tiempo del proceso debe ser mayor a 0 minutos', 'error');
+    mostrarAviso('El tiempo del proceso debe ser mayor a 0', 'error');
     return;
   }
 

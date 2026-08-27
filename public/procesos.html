@@ -80,8 +80,14 @@
             <input type="text" id="campoNombreProceso" placeholder="Ej: Armado de ramo">
           </label>
           <label class="campo">
-            <span class="campo__etiqueta">Tiempo del proceso (minutos) *</span>
-            <input type="number" id="campoTiempoProceso" min="0.01" step="0.01" oninput="calcularCostoProcesoEnVivo()">
+            <span class="campo__etiqueta">Tiempo del proceso *</span>
+            <div style="display:flex;gap:6px">
+              <input type="number" id="campoTiempoProceso" min="0.01" step="0.01" style="flex:1" oninput="calcularCostoProcesoEnVivo()">
+              <select id="selectorUnidadTiempoProceso" style="max-width:110px" onchange="calcularCostoProcesoEnVivo()">
+                <option value="minutos">min</option>
+                <option value="segundos">seg</option>
+              </select>
+            </div>
           </label>
         </div>
         <label class="campo">

@@ -151,6 +151,13 @@ router.post('/:id/encargos', async (req, res, next) => {
 
     const cantidadReq = Number(cantidad_requerida);
 
+    // Para pagarle al colaborador se usa el costo por unidad REDONDEADO
+    // al entero más cercano (ej: $52,91 → $53), no el decimal exacto de
+    // la ficha técnica — así el total que se le paga no arrastra
+    // centavos. La ficha técnica y el costo del producto para Ventas
+    // siguen usando el valor exacto; esto es solo para Nóminas.
+    const costoUnitarioColaborador = Math.round(Number(proceso.costo_unitario));
+
     const nuevo = {
       usuario_id: req.usuarioId,
       colaborador_id: req.params.id,
@@ -158,7 +165,7 @@ router.post('/:id/encargos', async (req, res, next) => {
       cantidad_requerida: cantidadReq,
       cantidad_entregada: 0,
       fecha_entrega: fecha_entrega || null,
-      costo_unitario_proceso: Number(proceso.costo_unitario),
+      costo_unitario_proceso: costoUnitarioColaborador,
       costo_total_proceso: 0
     };
     const { data: encargo, error } = await supabase
@@ -200,7 +207,8 @@ router.put('/encargos/:id/entrega', async (req, res, next) => {
     if (eGet || !actual) return res.status(404).json({ error: 'Encargo no encontrado' });
 
     const cantidadEntregada = Number(cantidad_entregada);
-    const costoTotal = Math.round(cantidadEntregada * Number(actual.costo_unitario_proceso) * 100) / 100;
+    const costoUnitarioRedondeado = Math.round(Number(actual.costo_unitario_proceso));
+    const costoTotal = Math.round(cantidadEntregada * costoUnitarioRedondeado * 100) / 100;
 
     const { data, error } = await supabase
       .from('colaboradores_encargos')
