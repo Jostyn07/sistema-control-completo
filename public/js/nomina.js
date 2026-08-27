@@ -271,13 +271,12 @@ function celdaPagoEncargo(e) {
   return `<button type="button" class="boton boton--pequeno" onclick="confirmarPagoEncargo('${e.id}', true)">Confirmar pago</button>`;
 }
 
-async function crearEncargo(forzar = false) {
+async function crearEncargo() {
   if (!colaboradorActualId) return;
   const datos = {
     proceso_id: document.getElementById('selectorProcesoEncargo').value,
     cantidad_requerida: document.getElementById('campoCantidadRequeridaEncargo').value,
-    fecha_entrega: document.getElementById('campoFechaEntregaEncargo').value || null,
-    forzar
+    fecha_entrega: document.getElementById('campoFechaEntregaEncargo').value || null
   };
 
   if (!datos.proceso_id) { mostrarAviso('Elige el proceso requerido', 'error'); return; }
@@ -287,25 +286,14 @@ async function crearEncargo(forzar = false) {
   }
 
   try {
-    const encargo = await API.enviar(`/api/colaboradores/${colaboradorActualId}/encargos`, datos);
-    mostrarAviso(encargo.forzado
-      ? 'Encargo agregado forzando el stock. Recuerda corregir el inventario con un ajuste.'
-      : 'Encargo agregado. El inventario se descontó automáticamente.');
+    await API.enviar(`/api/colaboradores/${colaboradorActualId}/encargos`, datos);
+    mostrarAviso('Encargo agregado.');
     document.getElementById('campoCantidadRequeridaEncargo').value = '';
     document.getElementById('campoFechaEntregaEncargo').value = '';
     calcularMaterialesEncargoEnVivo();
     cargarEncargosColaborador(colaboradorActualId);
   } catch (err) {
-    // El backend responde 409 con la lista de faltantes; ofrecemos forzar
-    if (err.message.includes('No hay material suficiente')) {
-      const confirmado = confirm(
-        'No hay material suficiente según el sistema para este encargo.\n\n' +
-        '¿Crear el encargo de todas formas? (Luego corriges con un ajuste de inventario.)'
-      );
-      if (confirmado) crearEncargo(true);
-    } else {
-      mostrarAviso(err.message, 'error');
-    }
+    mostrarAviso(err.message, 'error');
   }
 }
 
@@ -356,7 +344,7 @@ async function confirmarPagoEncargo(id, pagado) {
 }
 
 async function eliminarEncargo(id) {
-  const confirmado = confirm('¿Eliminar este encargo? El material que se le había entregado se devuelve al inventario.');
+  const confirmado = confirm('¿Eliminar este encargo?');
   if (!confirmado) return;
 
   try {

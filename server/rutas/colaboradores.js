@@ -124,17 +124,17 @@ router.get('/:id/encargos', async (req, res, next) => {
 });
 
 // POST /api/colaboradores/:id/encargos — cuerpo:
-// { proceso_id, cantidad_requerida, fecha_entrega, forzar }
-// Los materiales entregados YA NO se eligen a mano: se calculan solos
-// desde la receta del proceso (procesos_materiales) × la cantidad
-// requerida — igual que una venta descuenta materiales según la ficha
-// técnica. Si falta stock avisa con el detalle (409) y permite forzar,
-// igual que en Ventas. Al confirmarse, descuenta el inventario y guarda
-// el detalle en colaboradores_encargos_materiales para control y para
-// la columna "Materiales entregados" de Nóminas.
+// { proceso_id, cantidad_requerida, fecha_entrega }
+// Los materiales entregados se calculan solos desde la receta del proceso
+// (procesos_materiales) × la cantidad requerida, y se guardan en
+// colaboradores_encargos_materiales SOLO para control y trazabilidad
+// (columna "Materiales entregados" de Nóminas). YA NO se descuentan del
+// inventario aquí: ese mismo material se descuenta cuando se vende el
+// producto terminado (ficha técnica del producto en Ventas), así que
+// descontarlo también al crear el encargo duplicaba la salida.
 router.post('/:id/encargos', async (req, res, next) => {
   try {
-    const { proceso_id, cantidad_requerida, fecha_entrega, forzar } = req.body;
+    const { proceso_id, cantidad_requerida, fecha_entrega } = req.body;
     if (!proceso_id) return res.status(400).json({ error: 'Elige el proceso requerido' });
     if (cantidad_requerida == null || isNaN(cantidad_requerida) || Number(cantidad_requerida) <= 0)
       return res.status(400).json({ error: 'La cantidad a entregar del proceso debe ser mayor a 0' });
@@ -145,40 +145,11 @@ router.post('/:id/encargos', async (req, res, next) => {
 
     const { data: proceso, error: eProc } = await supabase
       .from('procesos')
-      .select('id, costo_unitario, procesos_materiales(material_id, cantidad, materiales(id, nombre, unidad, stock_actual))')
+      .select('id, costo_unitario, procesos_materiales(material_id, cantidad)')
       .eq('id', proceso_id).eq('usuario_id', req.usuarioId).single();
     if (eProc || !proceso) return res.status(404).json({ error: 'Proceso no encontrado' });
 
     const cantidadReq = Number(cantidad_requerida);
-
-    // Materiales que la receta del proceso necesita para esta cantidad
-    const requeridoPorMaterial = new Map();
-    for (const fila of proceso.procesos_materiales || []) {
-      requeridoPorMaterial.set(fila.material_id, {
-        material: fila.materiales,
-        requerido: Number(fila.cantidad) * cantidadReq
-      });
-    }
-
-    const faltantes = [];
-    for (const { material, requerido } of requeridoPorMaterial.values()) {
-      if (Number(material.stock_actual) < requerido) {
-        faltantes.push({
-          material: material.nombre,
-          unidad: material.unidad,
-          stock_actual: Number(material.stock_actual),
-          requerido: Math.round(requerido * 10000) / 10000
-        });
-      }
-    }
-    if (faltantes.length > 0 && !forzar) {
-      return res.status(409).json({
-        error: 'No hay material suficiente para este encargo',
-        faltantes,
-        puede_forzar: true,
-        mensaje: 'Puedes forzar el encargo (por ejemplo, si el conteo del sistema está desactualizado) y luego corregir con un ajuste de inventario.'
-      });
-    }
 
     const nuevo = {
       usuario_id: req.usuarioId,
@@ -194,44 +165,23 @@ router.post('/:id/encargos', async (req, res, next) => {
       .from('colaboradores_encargos').insert(nuevo).select().single();
     if (error) throw new Error(error.message);
 
-    if (requeridoPorMaterial.size > 0) {
-      const filasMateriales = [...requeridoPorMaterial.entries()].map(([materialId, { requerido }]) => ({
+    const filasMateriales = (proceso.procesos_materiales || [])
+      .filter(f => Number(f.cantidad) > 0)
+      .map(f => ({
         encargo_id: encargo.id,
-        material_id: materialId,
-        cantidad: Math.round(requerido * 10000) / 10000
+        material_id: f.material_id,
+        cantidad: Math.round(Number(f.cantidad) * cantidadReq * 10000) / 10000
       }));
+    if (filasMateriales.length > 0) {
       const { error: eIns } = await supabase.from('colaboradores_encargos_materiales').insert(filasMateriales);
       if (eIns) throw new Error(eIns.message);
-
-      for (const [materialId, { material, requerido }] of requeridoPorMaterial) {
-        const stockAnterior = Number(material.stock_actual);
-        const stockNuevo = Math.max(0, Math.round((stockAnterior - requerido) * 100) / 100);
-        const { error: eStock } = await supabase
-          .from('materiales')
-          .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-          .eq('id', materialId).eq('usuario_id', req.usuarioId);
-        if (eStock) throw new Error(eStock.message);
-
-        // Bitácora — si esto falla no se revierte el encargo ni el
-        // stock, igual que en Ventas: es "buena, no perfecta".
-        const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-          usuario_id: req.usuarioId,
-          material_id: materialId,
-          tipo: 'encargo',
-          cantidad: -requerido,
-          stock_anterior: stockAnterior,
-          stock_nuevo: stockNuevo,
-          referencia_id: encargo.id
-        });
-        if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de encargo:', eMov.message);
-      }
     }
 
     const { data: completo, error: eFinal } = await supabase
       .from('colaboradores_encargos').select(SELECT_ENCARGO).eq('id', encargo.id).single();
     if (eFinal) throw new Error(eFinal.message);
 
-    res.status(201).json({ ...completo, forzado: faltantes.length > 0 });
+    res.status(201).json(completo);
   } catch (err) { next(err); }
 });
 
@@ -286,37 +236,16 @@ router.put('/encargos/:id/pago', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// DELETE /api/colaboradores/encargos/:id — revierte al inventario los
-// materiales que se le habían entregado al colaborador para este encargo
-// (antes esto se prometía en el confirm() del frontend pero no pasaba).
+// DELETE /api/colaboradores/encargos/:id — el encargo no toca inventario
+// (los materiales que trae solo son registro/control), así que aquí no
+// hay stock que revertir: se borra el encargo y sus filas de materiales.
 router.delete('/encargos/:id', async (req, res, next) => {
   try {
     const { data: encargo, error: eGet } = await supabase
-      .from('colaboradores_encargos')
-      .select('id, colaboradores_encargos_materiales(material_id, cantidad, materiales(stock_actual))')
-      .eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('colaboradores_encargos').select('id').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
     if (eGet || !encargo) return res.status(404).json({ error: 'Encargo no encontrado' });
 
-    for (const fila of encargo.colaboradores_encargos_materiales || []) {
-      const stockAnterior = Number(fila.materiales.stock_actual);
-      const stockNuevo = Math.round((stockAnterior + Number(fila.cantidad)) * 100) / 100;
-      const { error: eStock } = await supabase
-        .from('materiales')
-        .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-        .eq('id', fila.material_id).eq('usuario_id', req.usuarioId);
-      if (eStock) throw new Error(eStock.message);
-
-      const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-        usuario_id: req.usuarioId,
-        material_id: fila.material_id,
-        tipo: 'ajuste',
-        cantidad: Number(fila.cantidad),
-        stock_anterior: stockAnterior,
-        stock_nuevo: stockNuevo,
-        referencia_id: encargo.id
-      });
-      if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de reversión:', eMov.message);
-    }
+    await supabase.from('colaboradores_encargos_materiales').delete().eq('encargo_id', req.params.id);
 
     const { error } = await supabase
       .from('colaboradores_encargos').delete().eq('id', req.params.id).eq('usuario_id', req.usuarioId);
