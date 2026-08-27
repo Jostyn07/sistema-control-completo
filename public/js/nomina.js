@@ -369,3 +369,4 @@ function escaparHtml(texto) {
 }
 
 document.addEventListener('DOMContentLoaded', cargarListaColaboradores);
+// Buenas tardes
