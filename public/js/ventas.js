@@ -730,45 +730,72 @@ async function borrarGrupoEntregaVenta(grupoId, ventaId) {
 // Antes de generarlo SIEMPRE se pregunta si el cliente va a firmar el
 // papel impreso — de eso depende si se agrega el bloque de firma al
 // final. El resto del comprobante es idéntico en ambos casos.
-function abrirComprobanteVenta(venta) {
+// También incluye la misma información del negocio que ya se usa en
+// Facturación (razón social, NIT, régimen, resolución si aplica,
+// persona y métodos de pago) — se trae una sola vez y se reutiliza.
+let configFiscalEnMemoria = undefined; // undefined = todavía no se pidió; null = se pidió y no hay configuración
+
+async function obtenerConfigFiscalParaComprobante() {
+  if (configFiscalEnMemoria !== undefined) return configFiscalEnMemoria;
+  try {
+    configFiscalEnMemoria = await API.obtener('/api/facturacion/configuracion');
+  } catch (err) {
+    configFiscalEnMemoria = null;
+  }
+  return configFiscalEnMemoria;
+}
+
+async function abrirComprobanteVenta(venta) {
   const conFirma = confirm('¿El cliente va a firmar este comprobante impreso?\n\nAceptar = sí, se agrega el espacio de firma.\nCancelar = no, se imprime sin eso.');
   const items = (venta.ventas_items || []).map(i => ({
     producto: i.productos ? i.productos.nombre : 'Producto',
     cantidad: i.cantidad
   }));
-  pintarComprobante({ cliente: venta.cliente, fecha: venta.fecha, items, conFirma });
+  const config = await obtenerConfigFiscalParaComprobante();
+  pintarComprobante({ cliente: venta.cliente, fecha: venta.fecha, items, conFirma, config });
   document.getElementById('modalComprobanteVenta').hidden = false;
 }
 
-function abrirComprobanteGrupo(indice) {
+async function abrirComprobanteGrupo(indice) {
   const grupo = gruposEntregaEnMemoria[indice];
   if (!grupo) return;
   const ventaId = document.getElementById('campoEntregaVentaId').value;
   const venta = pedidosEnMemoria.find(v => v.id === ventaId) || historialEnMemoria.find(v => v.id === ventaId);
 
   const conFirma = confirm('¿El cliente va a firmar este comprobante impreso?\n\nAceptar = sí, se agrega el espacio de firma.\nCancelar = no, se imprime sin eso.');
+  const config = await obtenerConfigFiscalParaComprobante();
   pintarComprobante({
     cliente: venta ? venta.cliente : '',
     fecha: grupo.fecha,
     items: grupo.items.map(it => ({ producto: it.producto, cantidad: it.cantidad })),
     conFirma,
-    esParcial: true
+    esParcial: true,
+    config
   });
   document.getElementById('modalComprobanteVenta').hidden = false;
 }
 
-function pintarComprobante({ cliente, fecha, items, conFirma, esParcial }) {
+function pintarComprobante({ cliente, fecha, items, conFirma, esParcial, config }) {
   const filas = items.map(i => `
     <tr>
       <td>${escaparHtml(i.producto)}</td>
       <td>${i.cantidad}</td>
     </tr>`).join('');
 
+  const tieneNit = !!(config && config.nit);
+
   document.getElementById('contenidoComprobante').innerHTML = `
     <div class="factura" id="areaImprimible">
       <header class="factura__encabezado">
-        <h2 style="margin:0">${esParcial ? 'Comprobante de entrega parcial' : 'Comprobante de entrega'}</h2>
-        <p class="texto-secundario" style="margin:2px 0">${formatearFecha(fecha)}</p>
+        <div>
+          <h2 style="margin:0">${escaparHtml(config ? config.razon_social || '' : '')}</h2>
+          ${tieneNit ? `<p class="texto-secundario" style="margin:2px 0">NIT: ${escaparHtml(config.nit)}</p>` : ''}
+          ${tieneNit && config.regimen ? `<p class="texto-secundario" style="margin:2px 0">${escaparHtml(config.regimen)}</p>` : ''}
+        </div>
+        <div style="text-align:right">
+          <h3 style="margin:0">${esParcial ? 'Comprobante de entrega parcial' : 'Comprobante de entrega'}</h3>
+          <p class="texto-secundario" style="margin:2px 0">${formatearFecha(fecha)}</p>
+        </div>
       </header>
 
       <p style="margin:12px 0 4px"><strong>Cliente:</strong> ${escaparHtml(cliente || 'Consumidor final')}</p>
@@ -778,7 +805,35 @@ function pintarComprobante({ cliente, fecha, items, conFirma, esParcial }) {
         <tbody>${filas}</tbody>
       </table>
 
+      ${bloqueDatosPersonaYPagoComprobante(config)}
       ${conFirma ? bloqueFirmaComprobante() : ''}
+    </div>`;
+}
+
+// Mismo bloque que ya se usa en la factura DIAN (persona + hasta 5
+// métodos de pago) — solo se imprime si de verdad se llenó algo.
+const ETIQUETA_TIPO_PAGO_COMPROBANTE = { cuenta: 'Número de cuenta', llave: 'Llave', nequi: 'Nequi' };
+
+function bloqueDatosPersonaYPagoComprobante(config) {
+  if (!config) return '';
+  const tieneDatosPersona = !!(config.nombre_persona || config.cedula);
+  const metodos = Array.isArray(config.metodos_pago) ? config.metodos_pago : [];
+  if (!tieneDatosPersona && metodos.length === 0) return '';
+
+  return `
+    <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--hairline)">
+      ${tieneDatosPersona ? `
+        <p style="margin:2px 0">
+          ${config.nombre_persona ? `<strong>${escaparHtml(config.nombre_persona)}</strong>` : ''}
+          ${config.cedula ? ` — C.C. ${escaparHtml(config.cedula)}` : ''}
+        </p>` : ''}
+      ${metodos.length > 0 ? `
+        <p class="texto-secundario" style="margin:6px 0 2px"><strong>Métodos de pago</strong></p>
+        <ul style="margin:0;padding-left:18px">
+          ${metodos.map(m => `
+            <li>${ETIQUETA_TIPO_PAGO_COMPROBANTE[m.tipo] || m.tipo}: ${escaparHtml(m.valor)}${m.etiqueta ? ` (${escaparHtml(m.etiqueta)})` : ''}</li>
+          `).join('')}
+        </ul>` : ''}
     </div>`;
 }
 
