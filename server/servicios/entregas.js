@@ -13,13 +13,40 @@
 const supabase = require('../supabase/cliente');
 const { registrarProduccionProceso, revertirProduccionProceso } = require('./produccion');
 
+// `ventas_items` no tiene su propia columna usuario_id (el dueño es
+// `ventas`, la tabla padre) — para ese tipo se verifica la propiedad
+// con un join a ventas en vez de filtrar directo por esa columna.
 const CONFIG_TIPO = {
-  proceso_colaborador: { tabla: 'colaboradores_encargos', columnaTotal: 'cantidad_requerida' },
-  venta_item: { tabla: 'ventas_items', columnaTotal: 'cantidad' }
+  proceso_colaborador: { tabla: 'colaboradores_encargos', columnaTotal: 'cantidad_requerida', tieneUsuarioId: true },
+  venta_item: { tabla: 'ventas_items', columnaTotal: 'cantidad', tieneUsuarioId: false }
 };
 
 function errorConEstado(mensaje, status) {
   return Object.assign(new Error(mensaje), { status });
+}
+
+// Trae la fila de referencia (colaboradores_encargos o ventas_items),
+// verificando que sea del usuario correcto — con o sin columna
+// usuario_id propia, según el tipo.
+async function obtenerReferencia(config, referenciaId, usuarioId) {
+  if (config.tieneUsuarioId) {
+    const { data, error } = await supabase
+      .from(config.tabla).select('*').eq('id', referenciaId).eq('usuario_id', usuarioId).single();
+    return { data, error };
+  }
+  const { data, error } = await supabase
+    .from(config.tabla).select('*, ventas!inner(usuario_id)')
+    .eq('id', referenciaId).eq('ventas.usuario_id', usuarioId).single();
+  return { data, error };
+}
+
+// Actualiza la fila de referencia — mismo detalle: ventas_items no
+// tiene usuario_id propio para filtrar el UPDATE.
+async function actualizarReferencia(config, referenciaId, usuarioId, cambios) {
+  let consulta = supabase.from(config.tabla).update(cambios).eq('id', referenciaId);
+  if (config.tieneUsuarioId) consulta = consulta.eq('usuario_id', usuarioId);
+  const { error } = await consulta;
+  return error;
 }
 
 // Registra UN evento de entrega. `cantidad` es lo que se entregó EN
@@ -34,8 +61,7 @@ async function registrarEntrega({ tipo, referenciaId, cantidad, fecha, usuarioId
     throw errorConEstado('La cantidad entregada debe ser un número mayor a 0', 400);
   if (!fecha) throw errorConEstado('La fecha de entrega es obligatoria', 400);
 
-  const { data: referencia, error: eRef } = await supabase
-    .from(config.tabla).select('*').eq('id', referenciaId).eq('usuario_id', usuarioId).single();
+  const { data: referencia, error: eRef } = await obtenerReferencia(config, referenciaId, usuarioId);
   if (eRef || !referencia) throw errorConEstado('No se encontró lo que se está entregando', 404);
 
   const totalRequerido = Number(referencia[config.columnaTotal]);
@@ -81,7 +107,7 @@ async function registrarEntrega({ tipo, referenciaId, cantidad, fecha, usuarioId
     cambios.fecha_entrega = fecha;
   }
 
-  const { error: eUpd } = await supabase.from(config.tabla).update(cambios).eq('id', referenciaId).eq('usuario_id', usuarioId);
+  const eUpd = await actualizarReferencia(config, referenciaId, usuarioId, cambios);
   if (eUpd) throw new Error(eUpd.message);
 
   return { ok: true, entrega };
@@ -95,8 +121,7 @@ async function eliminarEntrega(entregaId, usuarioId) {
   if (eGet || !entrega) throw errorConEstado('Ese registro de entrega no existe', 404);
 
   const config = CONFIG_TIPO[entrega.tipo];
-  const { data: referencia, error: eRef } = await supabase
-    .from(config.tabla).select('*').eq('id', entrega.referencia_id).eq('usuario_id', usuarioId).single();
+  const { data: referencia, error: eRef } = await obtenerReferencia(config, entrega.referencia_id, usuarioId);
   if (eRef || !referencia) throw new Error('No se encontró el registro asociado a esta entrega');
 
   if (entrega.tipo === 'proceso_colaborador') {
@@ -123,7 +148,7 @@ async function eliminarEntrega(entregaId, usuarioId) {
     cambios.costo_total_proceso = Math.round(nuevoTotal * costoUnitarioRedondeado * 100) / 100;
   }
 
-  const { error: eUpd } = await supabase.from(config.tabla).update(cambios).eq('id', entrega.referencia_id).eq('usuario_id', usuarioId);
+  const eUpd = await actualizarReferencia(config, entrega.referencia_id, usuarioId, cambios);
   if (eUpd) throw new Error(eUpd.message);
 
   return { eliminado: true, nuevo_total: nuevoTotal };
