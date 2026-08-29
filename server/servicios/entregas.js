@@ -98,13 +98,15 @@ async function registrarEntrega({ tipo, referenciaId, cantidad, fecha, usuarioId
   if (eIns) throw new Error(eIns.message);
 
   const nuevoTotal = Math.round((yaEntregado + cantidadNum) * 10000) / 10000;
-  const cambios = { cantidad_entregada: nuevoTotal, actualizado_en: new Date().toISOString() };
+  const cambios = { cantidad_entregada: nuevoTotal };
   if (tipo === 'proceso_colaborador') {
     const costoUnitarioRedondeado = Math.round(Number(referencia.costo_unitario_proceso));
     cambios.costo_total_proceso = Math.round(nuevoTotal * costoUnitarioRedondeado * 100) / 100;
     // Se mantiene fecha_entrega con la más reciente, para no romper
     // pantallas que ya muestran ese campo suelto.
     cambios.fecha_entrega = fecha;
+    // ventas_items no tiene columna actualizado_en — solo se manda aquí.
+    cambios.actualizado_en = new Date().toISOString();
   }
 
   const eUpd = await actualizarReferencia(config, referenciaId, usuarioId, cambios);
@@ -142,10 +144,11 @@ async function eliminarEntrega(entregaId, usuarioId) {
   if (eDel) throw new Error(eDel.message);
 
   const nuevoTotal = Math.max(0, Math.round((Number(referencia.cantidad_entregada) - Number(entrega.cantidad)) * 10000) / 10000);
-  const cambios = { cantidad_entregada: nuevoTotal, actualizado_en: new Date().toISOString() };
+  const cambios = { cantidad_entregada: nuevoTotal };
   if (entrega.tipo === 'proceso_colaborador') {
     const costoUnitarioRedondeado = Math.round(Number(referencia.costo_unitario_proceso));
     cambios.costo_total_proceso = Math.round(nuevoTotal * costoUnitarioRedondeado * 100) / 100;
+    cambios.actualizado_en = new Date().toISOString();
   }
 
   const eUpd = await actualizarReferencia(config, entrega.referencia_id, usuarioId, cambios);
