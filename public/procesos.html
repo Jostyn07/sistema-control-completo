@@ -50,6 +50,7 @@
       <table class="tabla" id="tablaProcesos">
         <thead>
           <tr>
+            <th>Orden</th>
             <th>Ficha técnica</th>
             <th>Nombre del proceso</th>
             <th>Tiempo</th>
@@ -59,7 +60,7 @@
           </tr>
         </thead>
         <tbody id="cuerpoTablaProcesos">
-          <tr><td colspan="6" class="tabla__vacio">Cargando procesos…</td></tr>
+          <tr><td colspan="7" class="tabla__vacio">Cargando procesos…</td></tr>
         </tbody>
       </table>
     </section>
@@ -78,6 +79,10 @@
           <label class="campo">
             <span class="campo__etiqueta">Nombre del proceso *</span>
             <input type="text" id="campoNombreProceso" placeholder="Ej: Armado de ramo">
+          </label>
+          <label class="campo" style="max-width:110px">
+            <span class="campo__etiqueta">Orden</span>
+            <input type="number" id="campoOrdenProceso" min="1" step="1" placeholder="Auto">
           </label>
           <label class="campo">
             <span class="campo__etiqueta">Tiempo del proceso *</span>

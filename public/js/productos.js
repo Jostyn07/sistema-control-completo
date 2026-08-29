@@ -3,6 +3,7 @@ let materialesDisponibles = [];   // precios actuales, pedidos una sola vez al a
 let filasFichaEnEdicion = [];     // [{ material_id, nombre, unidad, costo_unitario, cantidad }]
 let costoMinutoGlobal = 0;        // se calcula a partir del precio de hora global
 let categoriasDisponibles = [];   // categorías de producto del usuario (ej: "Flores", "Panadería")
+let fichaEnEdicionUsaCosteoPorProcesos = false; // si true, "Materiales" es de solo lectura (viene de Procesos)
 
 // ---- Categorías de producto ----
 async function cargarCategorias() {
@@ -184,8 +185,10 @@ async function abrirFichaProducto(id) {
     document.getElementById('campoMinutos').value = p.minutos_fabricacion;
     document.getElementById('campoMinutosSoloLectura').value = `${p.minutos_fabricacion} min`;
     pintarSelectorCategoria(p.categoria_id || '');
+    fichaEnEdicionUsaCosteoPorProcesos = !!p.usa_costeo_por_procesos;
 
     // Trae el desglose para precargar las filas de materiales de la ficha
+    // (en modo "por procesos" ya viene agregado desde ahí, de solo lectura)
     try {
       const desglose = await API.obtener(`/api/productos/${id}/costo`);
       filasFichaEnEdicion = desglose.materiales.map(m => ({
@@ -208,7 +211,12 @@ async function abrirFichaProducto(id) {
     document.getElementById('campoMinutosSoloLectura').value = '0 min (crea el producto y luego agrégale procesos)';
     pintarSelectorCategoria('');
     filasFichaEnEdicion = [];
+    fichaEnEdicionUsaCosteoPorProcesos = false;
   }
+
+  document.getElementById('bloqueMaterialesEditable').hidden = fichaEnEdicionUsaCosteoPorProcesos;
+  document.getElementById('avisoMaterialesSoloLectura').hidden = !fichaEnEdicionUsaCosteoPorProcesos;
+  document.getElementById('tablaMaterialesSoloLectura').hidden = !fichaEnEdicionUsaCosteoPorProcesos;
 
   pintarFilasFicha();
   calcularCostoEnVivo();
@@ -255,16 +263,27 @@ function pintarFilasFicha() {
   const cuerpo = document.getElementById('cuerpoTablaFicha');
   if (filasFichaEnEdicion.length === 0) {
     cuerpo.innerHTML = '<tr><td colspan="5" class="tabla__vacio">Aún no has agregado materiales</td></tr>';
-    return;
+  } else {
+    cuerpo.innerHTML = filasFichaEnEdicion.map(f => `
+      <tr>
+        <td>${escaparHtml(f.nombre)}</td>
+        <td>${f.cantidad} ${escaparHtml(f.unidad)}</td>
+        <td>${formatearPesos(f.costo_unitario)}</td>
+        <td>${formatearPesos(f.costo_unitario * f.cantidad)}</td>
+        <td><button type="button" class="boton boton--pequeno boton--peligro" onclick="quitarMaterialDeFicha('${f.material_id}')">Quitar</button></td>
+      </tr>`).join('');
   }
-  cuerpo.innerHTML = filasFichaEnEdicion.map(f => `
-    <tr>
-      <td>${escaparHtml(f.nombre)}</td>
-      <td>${f.cantidad} ${escaparHtml(f.unidad)}</td>
-      <td>${formatearPesos(f.costo_unitario)}</td>
-      <td>${formatearPesos(f.costo_unitario * f.cantidad)}</td>
-      <td><button type="button" class="boton boton--pequeno boton--peligro" onclick="quitarMaterialDeFicha('${f.material_id}')">Quitar</button></td>
-    </tr>`).join('');
+
+  const cuerpoSoloLectura = document.getElementById('cuerpoTablaFichaSoloLectura');
+  cuerpoSoloLectura.innerHTML = filasFichaEnEdicion.length === 0
+    ? '<tr><td colspan="4" class="tabla__vacio">Sin materiales en los procesos todavía</td></tr>'
+    : filasFichaEnEdicion.map(f => `
+      <tr>
+        <td>${escaparHtml(f.nombre)}</td>
+        <td>${f.cantidad} ${escaparHtml(f.unidad)}</td>
+        <td>${formatearPesos(f.costo_unitario)}</td>
+        <td>${formatearPesos(f.costo_unitario * f.cantidad)}</td>
+      </tr>`).join('');
 }
 
 // ---- 3. Simulador de margen: recalcula costo y margen sin guardar ----
@@ -307,15 +326,20 @@ async function guardarProducto() {
 
   if (!nombre.trim()) { mostrarAviso('El nombre del producto es obligatorio', 'error'); return; }
   if (precioVenta === '' || Number(precioVenta) < 0) { mostrarAviso('El precio de venta no es válido', 'error'); return; }
-  if (filasFichaEnEdicion.length === 0) { mostrarAviso('Agrega al menos un material a la ficha', 'error'); return; }
+  // Los materiales ya no son obligatorios aquí: un producto puede crearse
+  // vacío y llenarse luego agregándole procesos en la pestaña Procesos.
 
   const datosFicha = {
     nombre,
     foto_url: document.getElementById('campoFoto').value,
     categoria_id: document.getElementById('selectorCategoriaProducto').value || null,
-    precio_venta: precioVenta,
-    materiales: filasFichaEnEdicion.map(f => ({ material_id: f.material_id, cantidad: f.cantidad }))
+    precio_venta: precioVenta
   };
+  // En modo "por procesos" no se manda `materiales`: esta ficha es de
+  // solo lectura aquí, se edita desde Procesos.
+  if (!fichaEnEdicionUsaCosteoPorProcesos) {
+    datosFicha.materiales = filasFichaEnEdicion.map(f => ({ material_id: f.material_id, cantidad: f.cantidad }));
+  }
 
   try {
     if (id) {
@@ -388,7 +412,51 @@ function escaparHtml(texto) {
   return div.innerHTML;
 }
 
+// ---- Conflictos de materiales (producto con procesos cuya lista de
+// materiales no coincide con la ficha técnica manual) ----
+async function cargarConflictosMateriales() {
+  const seccion = document.getElementById('seccionConflictosMateriales');
+  try {
+    const conflictos = await API.obtener('/api/productos/conflictos-materiales');
+    if (!conflictos || conflictos.length === 0) { seccion.hidden = true; return; }
+
+    seccion.hidden = false;
+    document.getElementById('listaConflictosMateriales').innerHTML = conflictos.map(c => `
+      <div class="tarjeta" style="margin-bottom:12px">
+        <h3 style="margin-top:0">${escaparHtml(c.nombre)}</h3>
+        <div class="fila-campos">
+          <div>
+            <p class="texto-secundario"><strong>Ficha técnica (manual)</strong></p>
+            <ul>${c.materiales_ficha_tecnica.map(m => `<li>${m.cantidad} ${escaparHtml(m.unidad)} de ${escaparHtml(m.nombre)} — ${formatearPesos(m.subtotal)}</li>`).join('')}</ul>
+          </div>
+          <div>
+            <p class="texto-secundario"><strong>Suma de sus procesos</strong></p>
+            <ul>${c.materiales_desde_procesos.map(m => `<li>${m.cantidad} ${escaparHtml(m.unidad)} de ${escaparHtml(m.nombre)} — ${formatearPesos(m.subtotal)}</li>`).join('')}</ul>
+          </div>
+        </div>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="resolverConflictoMaterial('${c.producto_id}', false)">Usar ficha técnica</button>
+          <button type="button" class="boton boton--primario" onclick="resolverConflictoMaterial('${c.producto_id}', true)">Usar procesos</button>
+        </div>
+      </div>`).join('');
+  } catch (err) {
+    seccion.hidden = true;
+  }
+}
+
+async function resolverConflictoMaterial(productoId, usarProcesos) {
+  try {
+    await API.actualizar(`/api/productos/${productoId}/costeo-materiales`, { usar_procesos: usarProcesos });
+    mostrarAviso('Listo, se actualizó el costo de ese producto');
+    cargarConflictosMateriales();
+    cargarListaProductos();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   cargarPrecioHora();
   cargarListaProductos();
+  cargarConflictosMateriales();
 });

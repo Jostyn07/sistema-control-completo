@@ -235,6 +235,12 @@ async function registrarVenta(forzar = false) {
     } else {
       mostrarAviso(`Venta registrada por ${formatearPesos(venta.total)}. El inventario se descontó automáticamente.`);
     }
+    if (venta.produccion_generada && venta.produccion_generada.length > 0) {
+      const detalle = venta.produccion_generada
+        .map(p => `${p.producto}: ${p.procesos.map(pr => `${pr.cantidad} de ${pr.nombre}`).join(', ')}`)
+        .join(' · ');
+      mostrarAviso(`No había suficiente producción lista — se agregaron procesos pendientes en Nóminas: ${detalle}`);
+    }
     cerrarNuevaVenta();
     cargarPedidos();
     cargarHistorialVentas();
@@ -275,6 +281,8 @@ async function confirmarPago(id, pagado) {
 function accionesVenta(venta) {
   return `
     <button type="button" class="boton boton--pequeno" onclick='abrirEditarVenta(${JSON.stringify(venta).replace(/'/g, "&#39;")})'>Editar</button>
+    <button type="button" class="boton boton--pequeno" onclick='abrirEntregasVenta(${JSON.stringify(venta).replace(/'/g, "&#39;")})'>Entregas</button>
+    <button type="button" class="boton boton--pequeno" onclick='abrirComprobanteVenta(${JSON.stringify(venta).replace(/'/g, "&#39;")})'>Comprobante</button>
     <button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarVenta('${venta.id}', '${escaparHtml(venta.cliente || 'sin cliente')}')">Eliminar</button>`;
 }
 
@@ -616,8 +624,186 @@ function contactoCliente(venta) {
 
 function resumenProductos(venta) {
   return (venta.ventas_items || [])
-    .map(i => `${i.cantidad}× ${escaparHtml(i.productos ? i.productos.nombre : 'Producto')}${i.categoria ? ` (${escaparHtml(i.categoria)})` : ''}`)
+    .map(i => {
+      const entregado = Number(i.cantidad_entregada || 0);
+      const progreso = entregado > 0 && entregado < Number(i.cantidad) ? ` (${entregado}/${i.cantidad} entregado)` : '';
+      return `${i.cantidad}× ${escaparHtml(i.productos ? i.productos.nombre : 'Producto')}${i.categoria ? ` (${escaparHtml(i.categoria)})` : ''}${progreso}`;
+    })
     .join(', ');
+}
+
+// ---- Entregas parciales de un pedido ----
+async function abrirEntregasVenta(venta) {
+  document.getElementById('campoEntregaVentaId').value = venta.id;
+  document.getElementById('campoFechaEntregaVenta').value = new Date().toISOString().slice(0, 10);
+
+  const cuerpo = document.getElementById('cuerpoItemsEntregaVenta');
+  cuerpo.innerHTML = (venta.ventas_items || []).map(i => {
+    const total = Number(i.cantidad);
+    const entregado = Number(i.cantidad_entregada || 0);
+    const pendiente = Math.round((total - entregado) * 10000) / 10000;
+    return `
+      <tr>
+        <td><input type="checkbox" id="chkEntregaItem-${i.id}" ${pendiente > 0 ? 'checked' : 'disabled'}></td>
+        <td>${escaparHtml(i.productos ? i.productos.nombre : 'Producto')}</td>
+        <td>${total}</td>
+        <td>${entregado}</td>
+        <td><input type="number" id="cantidadEntregaItem-${i.id}" min="0" max="${pendiente}" step="1" value="${pendiente}" style="max-width:100px" ${pendiente <= 0 ? 'disabled' : ''}></td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('modalEntregasVenta').hidden = false;
+  cargarHistorialEntregaVenta(venta.id);
+}
+
+function cerrarEntregasVenta() {
+  document.getElementById('modalEntregasVenta').hidden = true;
+}
+
+let gruposEntregaEnMemoria = [];
+
+async function cargarHistorialEntregaVenta(ventaId) {
+  const cuerpo = document.getElementById('cuerpoHistorialEntregaVenta');
+  cuerpo.innerHTML = '<tr><td colspan="3" class="tabla__vacio">Cargando…</td></tr>';
+  try {
+    const grupos = await API.obtener(`/api/ventas/${ventaId}/entregas`);
+    gruposEntregaEnMemoria = grupos;
+    if (grupos.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="3" class="tabla__vacio">Todavía no hay entregas registradas</td></tr>';
+      return;
+    }
+    cuerpo.innerHTML = grupos.map((g, indice) => `
+      <tr>
+        <td>${formatearFechaCortaVenta(g.fecha)}</td>
+        <td>${g.items.map(it => `${it.cantidad}× ${escaparHtml(it.producto)}`).join(', ')}</td>
+        <td class="tabla__acciones">
+          <button type="button" class="boton boton--pequeno" onclick="abrirComprobanteGrupo(${indice})">Comprobante</button>
+          <button type="button" class="boton boton--pequeno boton--peligro" onclick="borrarGrupoEntregaVenta('${g.grupo_id}', '${ventaId}')">Borrar</button>
+        </td>
+      </tr>`).join('');
+  } catch (err) {
+    cuerpo.innerHTML = `<tr><td colspan="3" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function registrarEntregaVenta() {
+  const ventaId = document.getElementById('campoEntregaVentaId').value;
+  const fecha = document.getElementById('campoFechaEntregaVenta').value;
+  if (!fecha) { mostrarAviso('Elige la fecha de esta entrega', 'error'); return; }
+
+  const venta = pedidosEnMemoria.find(v => v.id === ventaId) || historialEnMemoria.find(v => v.id === ventaId);
+  const items = [];
+  for (const i of (venta ? venta.ventas_items : [])) {
+    const casilla = document.getElementById(`chkEntregaItem-${i.id}`);
+    if (!casilla || !casilla.checked) continue;
+    const cantidad = document.getElementById(`cantidadEntregaItem-${i.id}`).value;
+    if (cantidad && Number(cantidad) > 0) items.push({ venta_item_id: i.id, cantidad });
+  }
+  if (items.length === 0) { mostrarAviso('Marca al menos un producto con cantidad mayor a 0', 'error'); return; }
+
+  try {
+    await API.enviar(`/api/ventas/${ventaId}/entregas`, { fecha, items });
+    mostrarAviso('Entrega registrada');
+    abrirEntregasVenta(venta); // vuelve a pintar con los pendientes actualizados
+    cargarPedidos();
+    cargarHistorialVentas();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
+async function borrarGrupoEntregaVenta(grupoId, ventaId) {
+  const confirmado = confirm('¿Borrar esta entrega? Se quita del historial y las cantidades vuelven a quedar pendientes.');
+  if (!confirmado) return;
+  try {
+    await API.eliminar(`/api/ventas/entregas/grupo/${grupoId}`);
+    mostrarAviso('Entrega borrada');
+    cargarHistorialEntregaVenta(ventaId);
+    cargarPedidos();
+    cargarHistorialVentas();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
+// ---- Comprobante de entrega (imprimible, con firma opcional) ----
+// Antes de generarlo SIEMPRE se pregunta si el cliente va a firmar el
+// papel impreso — de eso depende si se agrega el bloque de firma al
+// final. El resto del comprobante es idéntico en ambos casos.
+function abrirComprobanteVenta(venta) {
+  const conFirma = confirm('¿El cliente va a firmar este comprobante impreso?\n\nAceptar = sí, se agrega el espacio de firma.\nCancelar = no, se imprime sin eso.');
+  const items = (venta.ventas_items || []).map(i => ({
+    producto: i.productos ? i.productos.nombre : 'Producto',
+    cantidad: i.cantidad
+  }));
+  pintarComprobante({ cliente: venta.cliente, fecha: venta.fecha, items, conFirma });
+  document.getElementById('modalComprobanteVenta').hidden = false;
+}
+
+function abrirComprobanteGrupo(indice) {
+  const grupo = gruposEntregaEnMemoria[indice];
+  if (!grupo) return;
+  const ventaId = document.getElementById('campoEntregaVentaId').value;
+  const venta = pedidosEnMemoria.find(v => v.id === ventaId) || historialEnMemoria.find(v => v.id === ventaId);
+
+  const conFirma = confirm('¿El cliente va a firmar este comprobante impreso?\n\nAceptar = sí, se agrega el espacio de firma.\nCancelar = no, se imprime sin eso.');
+  pintarComprobante({
+    cliente: venta ? venta.cliente : '',
+    fecha: grupo.fecha,
+    items: grupo.items.map(it => ({ producto: it.producto, cantidad: it.cantidad })),
+    conFirma,
+    esParcial: true
+  });
+  document.getElementById('modalComprobanteVenta').hidden = false;
+}
+
+function pintarComprobante({ cliente, fecha, items, conFirma, esParcial }) {
+  const filas = items.map(i => `
+    <tr>
+      <td>${escaparHtml(i.producto)}</td>
+      <td>${i.cantidad}</td>
+    </tr>`).join('');
+
+  document.getElementById('contenidoComprobante').innerHTML = `
+    <div class="factura" id="areaImprimible">
+      <header class="factura__encabezado">
+        <h2 style="margin:0">${esParcial ? 'Comprobante de entrega parcial' : 'Comprobante de entrega'}</h2>
+        <p class="texto-secundario" style="margin:2px 0">${formatearFecha(fecha)}</p>
+      </header>
+
+      <p style="margin:12px 0 4px"><strong>Cliente:</strong> ${escaparHtml(cliente || 'Consumidor final')}</p>
+
+      <table class="tabla">
+        <thead><tr><th>Producto</th><th>Cantidad</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+
+      ${conFirma ? bloqueFirmaComprobante() : ''}
+    </div>`;
+}
+
+function bloqueFirmaComprobante() {
+  return `
+    <div style="margin-top:60px;display:flex;justify-content:space-between;gap:40px">
+      <div style="flex:1;text-align:center">
+        <div style="border-top:1px solid #000;margin-bottom:6px"></div>
+        <span>Firma del comprador o autorizado</span>
+      </div>
+      <div style="flex:1;text-align:center">
+        <div style="border-top:1px solid #000;margin-bottom:6px"></div>
+        <span>Fecha de entrega</span>
+      </div>
+    </div>
+    <p style="margin-top:24px">Al firmar el comprobante declaro haber recibido conforme el producto.</p>
+    <p><strong>IMPORTANTE:</strong> En caso de contracargos por parte del titular de la tarjeta, se presentará este documento como prueba de la entrega del producto.</p>`;
+}
+
+function cerrarComprobanteVenta() {
+  document.getElementById('modalComprobanteVenta').hidden = true;
+}
+
+function imprimirComprobanteVenta() {
+  window.print();
 }
 
 function formatearFecha(fecha) {

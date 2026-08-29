@@ -17,7 +17,10 @@
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const { cifrar, descifrar } = require('../servicios/cifrado');
-const { obtenerCostoMinutoManoObra } = require('../servicios/costos');
+const { obtenerCostoMinutoManoObra, obtenerFichasEfectivasParaProductos } = require('../servicios/costos');
+const { consumirWIPYGenerarNecesidad } = require('../servicios/produccion');
+const { registrarEntrega, eliminarEntrega, obtenerHistorial } = require('../servicios/entregas');
+const { randomUUID } = require('crypto');
 const router = express.Router();
 
 const ESTADOS_VALIDOS = ['pendiente', 'en_produccion', 'listo', 'entregado'];
@@ -40,11 +43,7 @@ router.get('/productos-disponibles', async (req, res, next) => {
     if (eProd) throw new Error(eProd.message);
     if (!productos || productos.length === 0) return res.json([]);
 
-    const { data: fichas, error: eFichas } = await supabase
-      .from('productos_materiales')
-      .select('producto_id, cantidad, materiales(stock_actual)')
-      .in('producto_id', productos.map(p => p.id));
-    if (eFichas) throw new Error(eFichas.message);
+    const fichas = await obtenerFichasEfectivasParaProductos(productos.map(p => p.id), req.usuarioId);
 
     const costoMinuto = await obtenerCostoMinutoManoObra(req.usuarioId);
 
@@ -127,14 +126,26 @@ router.post('/', async (req, res, next) => {
       if (!p.categoria_id) return res.status(400).json({ error: `"${p.nombre}" no tiene categoría asignada. Asígnale una en Productos antes de venderlo.` });
     }
 
-    const { data: fichas, error: eFichas } = await supabase
-      .from('productos_materiales')
-      .select('producto_id, material_id, cantidad, materiales(id, nombre, unidad, stock_actual)')
+    const fichas = await obtenerFichasEfectivasParaProductos(productoIds, req.usuarioId);
+
+    // Productos con procesos activos van por el flujo de WIP (el
+    // material se descuenta cuando se entrega cada proceso, no aquí,
+    // así que se excluyen del chequeo de material de abajo). Los
+    // demás siguen el flujo clásico: material directo en la venta.
+    const { data: procesosActivos, error: eProcActivos } = await supabase
+      .from('procesos')
+      .select('producto_id')
+      .eq('usuario_id', req.usuarioId)
+      .eq('activo', true)
       .in('producto_id', productoIds);
-    if (eFichas) throw new Error(eFichas.message);
+    if (eProcActivos) throw new Error(eProcActivos.message);
+    const idsConProcesos = new Set((procesosActivos || []).map(p => p.producto_id));
+
+    const itemsSinProcesos = items.filter(i => !idsConProcesos.has(i.producto_id));
+    const itemsConProcesos = items.filter(i => idsConProcesos.has(i.producto_id));
 
     const requeridoPorMaterial = new Map();
-    for (const item of items) {
+    for (const item of itemsSinProcesos) {
       const filasDelProducto = (fichas || []).filter(f => f.producto_id === item.producto_id);
       for (const f of filasDelProducto) {
         const previo = requeridoPorMaterial.get(f.material_id) || { material: f.materiales, requerido: 0 };
@@ -226,10 +237,30 @@ router.post('/', async (req, res, next) => {
       if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de venta:', eMov.message);
     }
 
+    // Productos CON procesos: se toma de WIP terminado lo que haya, y
+    // si falta, se genera sola la cola de procesos pendientes (sin
+    // asignar todavía) — esto NUNCA bloquea la venta, a diferencia del
+    // chequeo de material de arriba.
+    const produccionGenerada = [];
+    for (const item of itemsConProcesos) {
+      const resultado = await consumirWIPYGenerarNecesidad({
+        productoId: item.producto_id,
+        cantidadVendida: Number(item.cantidad),
+        usuarioId: req.usuarioId
+      });
+      if (resultado.generado.length > 0) {
+        produccionGenerada.push({
+          producto: productoPorId.get(item.producto_id).nombre,
+          procesos: resultado.generado.map(g => ({ nombre: g.nombre, cantidad: g.cantidad }))
+        });
+      }
+    }
+
     res.status(201).json({
       ...venta,
       forzada: faltantes.length > 0,
       faltantes: faltantes.length > 0 ? faltantes : undefined,
+      produccion_generada: produccionGenerada.length > 0 ? produccionGenerada : undefined,
       facturable: true
     });
   } catch (err) { next(err); }
@@ -240,7 +271,7 @@ router.get('/', async (req, res, next) => {
   try {
     let consulta = supabase
       .from('ventas')
-      .select('*, ventas_items(producto_id, cantidad, precio_unitario, costo_unitario, categoria, productos(nombre))')
+      .select('*, ventas_items(id, producto_id, cantidad, cantidad_entregada, precio_unitario, costo_unitario, categoria, productos(nombre))')
       .eq('usuario_id', req.usuarioId)
       .order('fecha', { ascending: false })
       .limit(200);
@@ -405,11 +436,27 @@ router.put('/:id', async (req, res, next) => {
     // para poder revertir el consumo anterior y aplicar el nuevo.
     const idsProductosViejos = (ventaActual.ventas_items || []).map(i => i.producto_id);
     const idsUnion = [...new Set([...idsProductosViejos, ...productoIds])];
-    const { data: fichas, error: eFichas } = await supabase
-      .from('productos_materiales')
-      .select('producto_id, material_id, cantidad, materiales(id, nombre, unidad, stock_actual)')
-      .in('producto_id', idsUnion.length ? idsUnion : ['00000000-0000-0000-0000-000000000000']);
-    if (eFichas) throw new Error(eFichas.message);
+
+    // Los productos con procesos van por WIP, no por material directo
+    // en la venta — editar cantidades ahí implicaría revertir/generar
+    // WIP y encargos, algo que esta versión todavía no soporta. Se
+    // bloquea con un mensaje claro en vez de dejar el WIP inconsistente.
+    if (idsUnion.length > 0) {
+      const { data: procesosActivos, error: eProcActivos } = await supabase
+        .from('procesos')
+        .select('producto_id')
+        .eq('usuario_id', req.usuarioId)
+        .eq('activo', true)
+        .in('producto_id', idsUnion);
+      if (eProcActivos) throw new Error(eProcActivos.message);
+      if (procesosActivos && procesosActivos.length > 0) {
+        return res.status(400).json({
+          error: 'Esta venta incluye un producto con procesos (producción por etapas) — todavía no se puede editar productos/cantidades en ese caso. Elimínala y regístrala de nuevo con los datos correctos.'
+        });
+      }
+    }
+
+    const fichas = idsUnion.length ? await obtenerFichasEfectivasParaProductos(idsUnion, req.usuarioId) : [];
 
     function requeridoPorMaterialDe(listaItems) {
       const mapa = new Map();
@@ -563,15 +610,26 @@ router.delete('/:id', async (req, res, next) => {
       });
     }
 
+    // Los productos con procesos no descontaron material en la venta
+    // (van por WIP) — se excluyen de esta reversión. Limitación
+    // conocida: eliminar la venta NO revierte el WIP consumido ni
+    // cancela los encargos que se hayan generado automáticamente; si
+    // hace falta, revísalos a mano en Nóminas.
     const productoIds = (venta.ventas_items || []).map(i => i.producto_id);
-    const { data: fichas, error: eFichas } = await supabase
-      .from('productos_materiales')
-      .select('producto_id, material_id, cantidad, materiales(stock_actual)')
+    const { data: procesosActivos, error: eProcActivos } = await supabase
+      .from('procesos')
+      .select('producto_id')
+      .eq('usuario_id', req.usuarioId)
+      .eq('activo', true)
       .in('producto_id', productoIds.length ? productoIds : ['00000000-0000-0000-0000-000000000000']);
-    if (eFichas) throw new Error(eFichas.message);
+    if (eProcActivos) throw new Error(eProcActivos.message);
+    const idsConProcesos = new Set((procesosActivos || []).map(p => p.producto_id));
+
+    const itemsSinProcesos = (venta.ventas_items || []).filter(i => !idsConProcesos.has(i.producto_id));
+    const fichas = await obtenerFichasEfectivasParaProductos(itemsSinProcesos.map(i => i.producto_id), req.usuarioId);
 
     const requeridoPorMaterial = new Map();
-    for (const item of (venta.ventas_items || [])) {
+    for (const item of itemsSinProcesos) {
       const filasDelProducto = (fichas || []).filter(f => f.producto_id === item.producto_id);
       for (const f of filasDelProducto) {
         const previo = requeridoPorMaterial.get(f.material_id) || { stockActual: Number(f.materiales.stock_actual), requerido: 0 };
@@ -635,6 +693,110 @@ router.get('/por-entregar', async (req, res, next) => {
       es_hoy: v.fecha_entrega === hoy
     }));
     res.json(conUrgencia);
+  } catch (err) { next(err); }
+});
+
+// POST /api/ventas/:id/entregas — cuerpo: { fecha, items: [{ venta_item_id, cantidad }] }
+// Registra UNA visita/entrega física: puede cubrir uno, varios, o todos
+// los productos de la venta (no obliga a entregar todo a la vez). Todas
+// las filas quedan amarradas con el mismo grupo_id, para poder ver e
+// imprimir esa visita como un solo comprobante (ver entrega C).
+router.post('/:id/entregas', async (req, res, next) => {
+  try {
+    const { fecha, items } = req.body;
+    if (!fecha) return res.status(400).json({ error: 'La fecha de esta entrega es obligatoria' });
+    if (!Array.isArray(items) || items.length === 0)
+      return res.status(400).json({ error: 'Elige al menos un producto para esta entrega' });
+
+    const { data: venta, error: eVenta } = await supabase
+      .from('ventas').select('id, ventas_items(id)').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+    if (eVenta || !venta) return res.status(404).json({ error: 'Venta no encontrada' });
+
+    const idsDeLaVenta = new Set((venta.ventas_items || []).map(i => i.id));
+    for (const item of items) {
+      if (!idsDeLaVenta.has(item.venta_item_id))
+        return res.status(400).json({ error: 'Uno de los productos no pertenece a esta venta' });
+    }
+
+    const grupoId = randomUUID();
+    const registradas = [];
+    for (const item of items) {
+      const resultado = await registrarEntrega({
+        tipo: 'venta_item',
+        referenciaId: item.venta_item_id,
+        cantidad: item.cantidad,
+        fecha,
+        usuarioId: req.usuarioId,
+        grupoId
+      });
+      registradas.push(resultado.entrega);
+    }
+
+    res.status(201).json({ grupo_id: grupoId, entregas: registradas });
+  } catch (err) { next(err); }
+});
+
+// GET /api/ventas/:id/entregas — historial de entregas de una venta,
+// agrupado por visita (grupo_id) — cada grupo puede tener uno o varios productos.
+router.get('/:id/entregas', async (req, res, next) => {
+  try {
+    const { data: venta, error: eVenta } = await supabase
+      .from('ventas').select('id, ventas_items(id, producto_id, productos(nombre))').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+    if (eVenta || !venta) return res.status(404).json({ error: 'Venta no encontrada' });
+
+    const nombrePorItem = new Map((venta.ventas_items || []).map(i => [i.id, i.productos ? i.productos.nombre : 'Producto']));
+    const idsItems = (venta.ventas_items || []).map(i => i.id);
+    if (idsItems.length === 0) return res.json([]);
+
+    const { data: filas, error } = await supabase
+      .from('entregas_parciales')
+      .select('*')
+      .eq('tipo', 'venta_item')
+      .eq('usuario_id', req.usuarioId)
+      .in('referencia_id', idsItems)
+      .order('fecha', { ascending: false })
+      .order('creado_en', { ascending: false });
+    if (error) throw new Error(error.message);
+
+    const porGrupo = new Map();
+    for (const fila of filas || []) {
+      const clave = fila.grupo_id || fila.id; // por si alguna quedó sin grupo
+      if (!porGrupo.has(clave)) porGrupo.set(clave, { grupo_id: fila.grupo_id, fecha: fila.fecha, items: [] });
+      porGrupo.get(clave).items.push({
+        entrega_id: fila.id,
+        venta_item_id: fila.referencia_id,
+        producto: nombrePorItem.get(fila.referencia_id) || 'Producto',
+        cantidad: Number(fila.cantidad)
+      });
+    }
+    res.json([...porGrupo.values()]);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/ventas/entregas/:id — borra UN registro puntual (corrección).
+router.delete('/entregas/:id', async (req, res, next) => {
+  try {
+    const resultado = await eliminarEntrega(req.params.id, req.usuarioId);
+    res.json(resultado);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/ventas/entregas/grupo/:grupoId — borra TODA una visita
+// (todos los productos que se entregaron juntos ese día) de una sola vez.
+router.delete('/entregas/grupo/:grupoId', async (req, res, next) => {
+  try {
+    const { data: filas, error } = await supabase
+      .from('entregas_parciales')
+      .select('id')
+      .eq('grupo_id', req.params.grupoId)
+      .eq('usuario_id', req.usuarioId);
+    if (error) throw new Error(error.message);
+    if (!filas || filas.length === 0) return res.status(404).json({ error: 'Ese grupo de entregas no existe' });
+
+    for (const fila of filas) {
+      await eliminarEntrega(fila.id, req.usuarioId);
+    }
+    res.json({ eliminado: true, cantidad: filas.length });
   } catch (err) { next(err); }
 });
 

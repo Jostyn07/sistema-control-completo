@@ -56,16 +56,17 @@ async function cargarListaProcesos() {
 function pintarListaProcesos(lista) {
   const cuerpo = document.getElementById('cuerpoTablaProcesos');
   if (lista.length === 0) {
-    cuerpo.innerHTML = '<tr><td colspan="6" class="tabla__vacio">Aún no hay procesos. Agrega el primero con el botón de arriba.</td></tr>';
+    cuerpo.innerHTML = '<tr><td colspan="7" class="tabla__vacio">Aún no hay procesos. Agrega el primero con el botón de arriba.</td></tr>';
     return;
   }
   cuerpo.innerHTML = lista.map(p => `
     <tr>
+      <td>${p.orden != null ? p.orden : '—'}</td>
       <td>${p.productos ? escaparHtml(p.productos.nombre) : '—'}</td>
       <td>${escaparHtml(p.nombre)}</td>
       <td>${p.tiempo_minutos} min</td>
       <td>${(p.procesos_materiales || []).map(m => `${m.cantidad} ${escaparHtml(m.materiales.unidad)} de ${escaparHtml(m.materiales.nombre)}`).join(', ') || '—'}</td>
-      <td>${formatearPesos(p.costo_unitario)}</td>
+      <td>${formatearPesos(Number(p.costo_unitario) + Number(p.costo_materiales || 0))}</td>
       <td class="tabla__acciones">
         <button type="button" class="boton boton--pequeno" onclick="abrirFormularioProceso('${p.id}')">Editar</button>
         <button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarProceso('${p.id}')">Eliminar</button>
@@ -93,6 +94,7 @@ function abrirFormularioProceso(id) {
     document.getElementById('campoProcesoId').value = p.id;
     document.getElementById('selectorProductoProceso').value = p.producto_id;
     document.getElementById('campoNombreProceso').value = p.nombre;
+    document.getElementById('campoOrdenProceso').value = p.orden != null ? p.orden : '';
     document.getElementById('campoTiempoProceso').value = p.tiempo_minutos;
     document.getElementById('campoDescripcionProceso').value = p.descripcion || '';
     filasMaterialesProcesoEnEdicion = (p.procesos_materiales || []).map(m => ({
@@ -102,6 +104,7 @@ function abrirFormularioProceso(id) {
     titulo.textContent = 'Nuevo proceso';
     document.getElementById('campoProcesoId').value = '';
     document.getElementById('campoNombreProceso').value = '';
+    document.getElementById('campoOrdenProceso').value = '';
     document.getElementById('campoTiempoProceso').value = '';
     document.getElementById('campoDescripcionProceso').value = '';
     const productoPreseleccionado = document.getElementById('filtroProductoProcesos').value;
@@ -133,11 +136,13 @@ function agregarMaterialAProceso() {
 
   document.getElementById('cantidadMaterialProceso').value = '';
   pintarMaterialesProceso();
+  calcularCostoProcesoEnVivo();
 }
 
 function quitarMaterialDeProceso(materialId) {
   filasMaterialesProcesoEnEdicion = filasMaterialesProcesoEnEdicion.filter(f => f.material_id !== materialId);
   pintarMaterialesProceso();
+  calcularCostoProcesoEnVivo();
 }
 
 function pintarMaterialesProceso() {
@@ -161,20 +166,27 @@ function tiempoProcesoEnMinutos() {
   return unidad === 'segundos' ? valor / 60 : valor;
 }
 
-// ---- Costo en vivo: tiempo × precio de hora global ----
+// ---- Costo en vivo: mano de obra (tiempo × precio de hora) + materiales ----
 function calcularCostoProcesoEnVivo() {
   const minutos = tiempoProcesoEnMinutos();
-  const costo = minutos * costoMinutoGlobalProceso;
+  const costoManoObra = minutos * costoMinutoGlobalProceso;
+  const costoMateriales = filasMaterialesProcesoEnEdicion.reduce((s, f) => {
+    const material = materialesParaProceso.find(m => m.id === f.material_id);
+    return s + (material ? Number(material.costo_unitario) * Number(f.cantidad) : 0);
+  }, 0);
   document.getElementById('resumenPrecioHoraProceso').textContent = formatearPesos(costoMinutoGlobalProceso * 60);
-  document.getElementById('resumenCostoProceso').textContent = formatearPesos(costo);
+  document.getElementById('resumenCostoProceso').textContent =
+    `${formatearPesos(costoManoObra + costoMateriales)} (mano de obra ${formatearPesos(costoManoObra)} + materiales ${formatearPesos(costoMateriales)})`;
 }
 
 // ---- Guardar ----
 async function guardarProceso() {
   const id = document.getElementById('campoProcesoId').value;
+  const valorOrden = document.getElementById('campoOrdenProceso').value;
   const datos = {
     producto_id: document.getElementById('selectorProductoProceso').value,
     nombre: document.getElementById('campoNombreProceso').value,
+    orden: valorOrden !== '' ? Number(valorOrden) : null,
     tiempo_minutos: tiempoProcesoEnMinutos(),
     descripcion: document.getElementById('campoDescripcionProceso').value,
     materiales: filasMaterialesProcesoEnEdicion.map(f => ({ material_id: f.material_id, cantidad: f.cantidad }))

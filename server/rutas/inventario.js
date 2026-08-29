@@ -4,11 +4,15 @@
 // - GET  /materiales   stock, punto de reorden y estado (semáforo)
 // - GET  /capacidad    cuántas unidades de cada producto se pueden
 //                      fabricar ahora + cuál material es el limitante
+// - GET  /wip          producción en proceso (unidades a medio hacer,
+//                      por producto y etapa) — de solo lectura, se
+//                      llena sola cuando se registran entregas en Nóminas
 // - POST /ajuste       ajuste manual tras un conteo físico (motivo obligatorio)
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const servicioInventario = require('../servicios/inventario');
+const { obtenerWIPParaInventario } = require('../servicios/produccion');
 const router = express.Router();
 
 // GET /api/inventario/materiales
@@ -16,6 +20,14 @@ router.get('/materiales', async (req, res, next) => {
   try {
     const inventario = await servicioInventario.obtenerInventarioMateriales(req.usuarioId);
     res.json(inventario);
+  } catch (err) { next(err); }
+});
+
+// GET /api/inventario/wip
+router.get('/wip', async (req, res, next) => {
+  try {
+    const wip = await obtenerWIPParaInventario(req.usuarioId);
+    res.json(wip);
   } catch (err) { next(err); }
 });
 

@@ -141,9 +141,29 @@ async function registrarAjusteManual(materialId, cantidadNueva, motivo) {
   }
 }
 
+// ---- WIP (producción en proceso) ----
+async function cargarWip() {
+  const cuerpo = document.getElementById('cuerpoWip');
+  try {
+    const wip = await API.obtener('/api/inventario/wip');
+    if (wip.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="3" class="tabla__vacio">No hay unidades a medio hacer ahora mismo</td></tr>';
+      return;
+    }
+    cuerpo.innerHTML = wip.map(f => `
+      <tr>
+        <td>${escaparHtml(f.producto)}</td>
+        <td>${escaparHtml(f.proceso)}</td>
+        <td>${f.cantidad}</td>
+      </tr>`).join('');
+  } catch (err) {
+    cuerpo.innerHTML = `<tr><td colspan="3" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
+  }
+}
+
 // ---- Refresco automático ----
 async function refrescarInventario() {
-  await Promise.all([cargarInventarioPorMaterial(), cargarCapacidadPorProducto()]);
+  await Promise.all([cargarInventarioPorMaterial(), cargarCapacidadPorProducto(), cargarWip()]);
   const ahora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   document.getElementById('indicadorActualizacion').textContent = `Actualizado ${ahora} · se refresca solo cada ${SEGUNDOS_REFRESCO}s`;
 }

@@ -39,6 +39,146 @@ async function cargarListaColaboradores() {
   }
 }
 
+// ---- 1b. Balanceo de producción: procesos pendientes (arriba, se
+// arrastran) + carga de cada colaborador (abajo, reciben el arrastre) ----
+let pendientesEnMemoria = [];
+let cargaColaboradoresEnMemoria = [];
+let asignacionEnCurso = null; // { encargoId, colaboradorId, maximo }
+
+async function cargarBalanceo() {
+  const seccion = document.getElementById('seccionBalanceo');
+  try {
+    const [pendientes, carga] = await Promise.all([
+      API.obtener('/api/colaboradores/encargos/pendientes'),
+      API.obtener('/api/colaboradores/carga')
+    ]);
+    pendientesEnMemoria = pendientes;
+    cargaColaboradoresEnMemoria = carga;
+
+    const hayAlgoQueMostrar = pendientes.length > 0 || carga.some(c => c.tareas.length > 0);
+    seccion.hidden = !hayAlgoQueMostrar;
+    if (!hayAlgoQueMostrar) return;
+
+    pintarChipsPendientes();
+    pintarBarrasColaboradores();
+  } catch (err) {
+    seccion.hidden = true;
+  }
+}
+
+function pintarChipsPendientes() {
+  const contenedor = document.getElementById('filaChipsPendientes');
+  if (pendientesEnMemoria.length === 0) {
+    contenedor.innerHTML = '<p class="tabla__vacio">No hay procesos pendientes por asignar ahora mismo.</p>';
+    return;
+  }
+  contenedor.innerHTML = pendientesEnMemoria.map(p => {
+    const pendiente = Math.round((p.cantidad_requerida - p.cantidad_entregada) * 10000) / 10000;
+    const minutos = Math.round(pendiente * p.tiempo_minutos);
+    return `
+      <div class="balanceo__chip" draggable="true"
+           ondragstart="arrastrarPendiente(event, '${p.id}')">
+        <strong>${escaparHtml(p.proceso)}</strong>
+        <span>${escaparHtml(p.producto)}</span>
+        <span class="texto-secundario">${pendiente} unidades · ${minutos} min</span>
+        ${p.wip_disponible_etapa_anterior != null
+          ? `<span class="texto-secundario">Disponible de la etapa anterior: ${p.wip_disponible_etapa_anterior}</span>`
+          : ''}
+      </div>`;
+  }).join('');
+}
+
+function pintarBarrasColaboradores() {
+  const contenedor = document.getElementById('filaBarrasColaboradores');
+  if (cargaColaboradoresEnMemoria.length === 0) {
+    contenedor.innerHTML = '<p class="tabla__vacio">Crea un colaborador para poder asignarle procesos.</p>';
+    return;
+  }
+  const maximo = Math.max(1, ...cargaColaboradoresEnMemoria.map(c => c.minutos_pendientes));
+  contenedor.innerHTML = cargaColaboradoresEnMemoria.map(c => `
+    <div class="balanceo__fila-colaborador"
+         ondragover="permitirSoltar(event)"
+         ondragleave="quitarResaltadoSoltar(event)"
+         ondrop="soltarSobreColaborador(event, '${c.colaborador_id}', '${escaparHtml(c.nombre).replace(/'/g, "&#39;")}')">
+      <div class="balanceo__colaborador-info">
+        <strong>${escaparHtml(c.nombre)}</strong>
+        <span class="texto-secundario">${c.minutos_pendientes} min pendientes</span>
+      </div>
+      <div class="balanceo__barra">
+        <div class="balanceo__barra__relleno" style="width:${Math.round((c.minutos_pendientes / maximo) * 100)}%"></div>
+      </div>
+      <div></div>
+      <div class="balanceo__tareas">
+        ${c.tareas.length === 0
+          ? '<span class="texto-secundario">Sin procesos pendientes</span>'
+          : c.tareas.map(t => `<span class="balanceo__tarea">${escaparHtml(t.proceso)} × ${t.cantidad_pendiente} (${escaparHtml(t.producto)})</span>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+let idEncargoArrastrado = null;
+function arrastrarPendiente(evento, encargoId) {
+  idEncargoArrastrado = encargoId;
+  evento.dataTransfer.setData('text/plain', encargoId);
+  evento.dataTransfer.effectAllowed = 'move';
+}
+
+function permitirSoltar(evento) {
+  evento.preventDefault();
+  evento.currentTarget.classList.add('balanceo__fila-colaborador--sobre');
+}
+
+function quitarResaltadoSoltar(evento) {
+  evento.currentTarget.classList.remove('balanceo__fila-colaborador--sobre');
+}
+
+function soltarSobreColaborador(evento, colaboradorId, nombreColaborador) {
+  evento.preventDefault();
+  evento.currentTarget.classList.remove('balanceo__fila-colaborador--sobre');
+  const encargoId = evento.dataTransfer.getData('text/plain') || idEncargoArrastrado;
+  if (!encargoId) return;
+
+  const pendiente = pendientesEnMemoria.find(p => p.id === encargoId);
+  if (!pendiente) return;
+  const maximo = Math.round((pendiente.cantidad_requerida - pendiente.cantidad_entregada) * 10000) / 10000;
+
+  asignacionEnCurso = { encargoId, colaboradorId, maximo };
+  document.getElementById('tituloAsignarCantidad').textContent = `Asignar a ${nombreColaborador}`;
+  document.getElementById('textoAsignarCantidad').textContent =
+    `${pendiente.proceso} — ${pendiente.producto} (máximo ${maximo} unidades)`;
+  const campo = document.getElementById('campoCantidadAsignar');
+  campo.max = maximo;
+  campo.value = maximo;
+  document.getElementById('modalAsignarCantidad').hidden = false;
+}
+
+function cerrarAsignarCantidad() {
+  document.getElementById('modalAsignarCantidad').hidden = true;
+  asignacionEnCurso = null;
+}
+
+async function confirmarAsignarCantidad() {
+  if (!asignacionEnCurso) return;
+  const cantidad = document.getElementById('campoCantidadAsignar').value;
+  if (!cantidad || Number(cantidad) <= 0) { mostrarAviso('La cantidad no es válida', 'error'); return; }
+  if (Number(cantidad) > asignacionEnCurso.maximo + 0.0001) {
+    mostrarAviso(`Solo hay ${asignacionEnCurso.maximo} unidades pendientes`, 'error');
+    return;
+  }
+
+  try {
+    await API.actualizar(`/api/colaboradores/encargos/${asignacionEnCurso.encargoId}/asignar`, {
+      colaborador_id: asignacionEnCurso.colaboradorId,
+      cantidad
+    });
+    mostrarAviso('Proceso asignado');
+    cerrarAsignarCantidad();
+    cargarBalanceo();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
 // ---- 2. Crear / editar colaborador ----
 function abrirFormularioColaborador(id) {
   const modal = document.getElementById('modalColaborador');
@@ -133,6 +273,7 @@ function volverAListaColaboradores() {
   document.getElementById('vistaDetalleColaborador').hidden = true;
   document.getElementById('vistaListaColaboradores').hidden = false;
   colaboradorActualId = null;
+  cargarBalanceo();
 }
 
 // Se mantiene por compatibilidad con el resto del archivo (ya no cierra
@@ -258,7 +399,7 @@ function pintarEncargos(encargos) {
       <td>${formatearPesos(e.costo_total_proceso)}</td>
       <td>${celdaPagoEncargo(e)}</td>
       <td class="tabla__acciones">
-        <button type="button" class="boton boton--pequeno" onclick="abrirEntregaEncargo('${e.id}', ${e.cantidad_entregada}, '${e.fecha_entrega || ''}')">Registrar entrega</button>
+        <button type="button" class="boton boton--pequeno" onclick="abrirEntregaEncargo('${e.id}', ${e.cantidad_requerida - e.cantidad_entregada})">Registrar entrega</button>
         <button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarEncargo('${e.id}')">Eliminar</button>
       </td>
     </tr>`).join('');
@@ -297,37 +438,87 @@ async function crearEncargo() {
   }
 }
 
-function abrirEntregaEncargo(encargoId, cantidadActual, fechaActual) {
+function abrirEntregaEncargo(encargoId, cantidadPendiente) {
   document.getElementById('campoEncargoEntregaId').value = encargoId;
-  document.getElementById('campoCantidadEntregadaFinal').value = cantidadActual || 0;
-  document.getElementById('campoFechaEntregaFinal').value = fechaActual || '';
+  document.getElementById('textoPendienteEntrega').textContent = `Quedan ${cantidadPendiente} unidades pendientes de este proceso.`;
+  document.getElementById('campoCantidadEntregaEvento').value = '';
+  document.getElementById('campoCantidadEntregaEvento').max = cantidadPendiente;
+  document.getElementById('campoFechaEntregaEvento').value = new Date().toISOString().slice(0, 10);
   document.getElementById('modalEntregaEncargo').hidden = false;
+  cargarHistorialEntregas(encargoId);
 }
 
 function cerrarEntregaEncargo() {
   document.getElementById('modalEntregaEncargo').hidden = true;
 }
 
-async function guardarEntregaEncargo() {
-  const id = document.getElementById('campoEncargoEntregaId').value;
-  const cantidad = document.getElementById('campoCantidadEntregadaFinal').value;
-  const fecha = document.getElementById('campoFechaEntregaFinal').value;
-
-  if (cantidad === '' || Number(cantidad) < 0) {
-    mostrarAviso('La cantidad entregada no es válida', 'error');
-    return;
-  }
-
+async function cargarHistorialEntregas(encargoId) {
+  const cuerpo = document.getElementById('cuerpoHistorialEntregas');
+  cuerpo.innerHTML = '<tr><td colspan="3" class="tabla__vacio">Cargando…</td></tr>';
   try {
-    await API.actualizar(`/api/colaboradores/encargos/${id}/entrega`, {
-      cantidad_entregada: cantidad, fecha_entrega: fecha || null
-    });
-    mostrarAviso('Entrega registrada');
-    cerrarEntregaEncargo();
+    const historial = await API.obtener(`/api/colaboradores/encargos/${encargoId}/entregas`);
+    if (historial.length === 0) {
+      cuerpo.innerHTML = '<tr><td colspan="3" class="tabla__vacio">Todavía no hay entregas registradas</td></tr>';
+      return;
+    }
+    cuerpo.innerHTML = historial.map(h => `
+      <tr>
+        <td>${formatearFechaNomina(h.fecha)}</td>
+        <td>${h.cantidad}</td>
+        <td><button type="button" class="boton boton--pequeno boton--peligro" onclick="borrarEntrega('${h.id}', '${encargoId}')">Borrar</button></td>
+      </tr>`).join('');
+  } catch (err) {
+    cuerpo.innerHTML = `<tr><td colspan="3" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function borrarEntrega(entregaId, encargoId) {
+  const confirmado = confirm('¿Borrar este registro de entrega? Se revierte el material y el WIP que había movido.');
+  if (!confirmado) return;
+  try {
+    await API.eliminar(`/api/colaboradores/entregas/${entregaId}`);
+    mostrarAviso('Registro borrado y revertido');
+    cargarHistorialEntregas(encargoId);
     cargarEncargosColaborador(colaboradorActualId);
     cargarRendimientoColaborador(colaboradorActualId);
   } catch (err) {
     mostrarAviso(err.message, 'error');
+  }
+}
+
+async function guardarEntregaEncargo(forzar = false) {
+  const id = document.getElementById('campoEncargoEntregaId').value;
+  const cantidad = document.getElementById('campoCantidadEntregaEvento').value;
+  const fecha = document.getElementById('campoFechaEntregaEvento').value;
+
+  if (cantidad === '' || Number(cantidad) <= 0) {
+    mostrarAviso('La cantidad no es válida', 'error');
+    return;
+  }
+  if (!fecha) {
+    mostrarAviso('Elige la fecha de esta entrega', 'error');
+    return;
+  }
+
+  try {
+    await API.actualizar(`/api/colaboradores/encargos/${id}/entrega`, { cantidad, fecha, forzar });
+    mostrarAviso(forzar ? 'Entrega registrada forzando el inventario. Recuerda corregirlo con un ajuste.' : 'Entrega registrada');
+    document.getElementById('campoCantidadEntregaEvento').value = '';
+    cargarHistorialEntregas(id);
+    cargarEncargosColaborador(colaboradorActualId);
+    cargarRendimientoColaborador(colaboradorActualId);
+  } catch (err) {
+    // El backend responde 409 con la lista de lo que falta (material o
+    // trabajo de la etapa anterior) — se ofrece forzar, igual que en Ventas.
+    if (err.message.includes('No hay suficiente material o trabajo')) {
+      const confirmado = confirm(
+        'No hay suficiente material o trabajo de la etapa anterior según el sistema.\n\n' +
+        '¿Registrar la entrega de todas formas? (Luego corriges con un ajuste de inventario.)'
+      );
+      if (confirmado) guardarEntregaEncargo(true);
+    } else {
+      mostrarAviso(err.message, 'error');
+    }
   }
 }
 
@@ -368,5 +559,8 @@ function escaparHtml(texto) {
   return div.innerHTML;
 }
 
-document.addEventListener('DOMContentLoaded', cargarListaColaboradores);
+document.addEventListener('DOMContentLoaded', async () => {
+  await cargarListaColaboradores();
+  cargarBalanceo();
+});
 // Buenas tardes

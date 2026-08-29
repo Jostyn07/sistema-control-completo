@@ -1,11 +1,22 @@
 // ============================================================
 // SERVICIO DE COSTOS — server/servicios/costos.js
-// Calcula el costo de un producto (materiales + mano de obra) usando
-// SIEMPRE el precio de hora global del usuario, nunca un valor guardado
-// por producto. Así, cambiar el precio de hora en un solo lugar
-// (configuracion_produccion) afecta a todos los productos.
-// Lo usan el módulo Productos y el módulo Materiales (cuando cambia
-// el costo de un material, hay que recalcular lo que lo usa).
+// Calcula el costo de un producto usando SIEMPRE el precio de hora
+// global del usuario, nunca un valor guardado por producto.
+//
+// Un producto tiene DOS formas posibles de costearse (campo
+// productos.usa_costeo_por_procesos):
+//   - null  → sin resolver todavía (ver resolverModoCosteo)
+//   - false → "por ficha técnica": productos_materiales + minutos × precio hora
+//             (el modo de siempre — para productos sin procesos)
+//   - true  → "por procesos": suma del costo de cada proceso activo
+//             (mano de obra + materiales de ESE proceso). La pestaña
+//             Materiales de la ficha técnica pasa a ser de solo lectura.
+//
+// procesos.costo_unitario = SOLO mano de obra (tiempo × precio hora).
+// procesos.costo_materiales = materiales de ese proceso (aparte).
+// Se mantienen separados porque costo_unitario también se usa para
+// pagarle al colaborador en Nóminas — ahí NUNCA debe incluir material,
+// solo lo que se le paga por su tiempo.
 // ============================================================
 const supabase = require('../supabase/cliente');
 
@@ -22,6 +33,7 @@ async function obtenerCostoMinutoManoObra(usuarioId) {
 }
 
 async function calcularCostoMateriales(materiales, usuarioId) {
+  if (!materiales || materiales.length === 0) return 0;
   const ids = materiales.map(m => m.material_id);
   const { data: filas, error } = await supabase
     .from('materiales')
@@ -40,7 +52,8 @@ async function calcularCostoMateriales(materiales, usuarioId) {
   return total;
 }
 
-// Costo total de un producto = materiales + (minutos de fabricación × precio de hora global ÷ 60)
+// Costo total de un producto en modo "por ficha técnica" = materiales
+// directos + (minutos de fabricación × precio de hora global ÷ 60)
 async function calcularCostoProducto({ materiales, minutosFabricacion, usuarioId }) {
   const costoMateriales = await calcularCostoMateriales(materiales, usuarioId);
   const costoMinuto = await obtenerCostoMinutoManoObra(usuarioId);
@@ -48,44 +61,32 @@ async function calcularCostoProducto({ materiales, minutosFabricacion, usuarioId
   return Math.round((costoMateriales + costoManoObra) * 100) / 100;
 }
 
-// Recalcula TODOS los productos activos de un usuario. Se usa cuando
-// cambia el precio de hora global (afecta a todos, no solo a uno).
-async function recalcularTodosLosProductos(usuarioId) {
-  const { data: productos, error } = await supabase
-    .from('productos')
-    .select('id, minutos_fabricacion')
-    .eq('usuario_id', usuarioId)
-    .eq('activo', true);
-  if (error) throw new Error(error.message);
+// Recalcula y guarda procesos.costo_materiales de UN proceso a partir de
+// su lista actual de procesos_materiales. Se llama cada vez que cambian
+// los materiales de un proceso, o cuando cambia el costo de un material
+// que algún proceso usa.
+async function recalcularCostoMaterialesDeProceso(procesoId, usuarioId) {
+  const { data: filas, error: eMat } = await supabase
+    .from('procesos_materiales')
+    .select('material_id, cantidad')
+    .eq('proceso_id', procesoId);
+  if (eMat) throw new Error(eMat.message);
 
-  let contador = 0;
-  for (const producto of productos || []) {
-    const { data: filas, error: eFilas } = await supabase
-      .from('productos_materiales')
-      .select('material_id, cantidad')
-      .eq('producto_id', producto.id);
-    if (eFilas) throw new Error(eFilas.message);
+  const costoMateriales = Math.round(
+    await calcularCostoMateriales((filas || []).map(f => ({ material_id: f.material_id, cantidad: f.cantidad })), usuarioId) * 100
+  ) / 100;
 
-    const costo = await calcularCostoProducto({
-      materiales: (filas || []).map(f => ({ material_id: f.material_id, cantidad: f.cantidad })),
-      minutosFabricacion: producto.minutos_fabricacion,
-      usuarioId
-    });
+  const { error: eUpd } = await supabase
+    .from('procesos')
+    .update({ costo_materiales: costoMateriales })
+    .eq('id', procesoId)
+    .eq('usuario_id', usuarioId);
+  if (eUpd) throw new Error(eUpd.message);
 
-    const { error: eUpd } = await supabase
-      .from('productos')
-      .update({ costo_calculado: costo, actualizado_en: new Date().toISOString() })
-      .eq('id', producto.id)
-      .eq('usuario_id', usuarioId);
-    if (eUpd) throw new Error(eUpd.message);
-    contador++;
-  }
-  return contador;
+  return costoMateriales;
 }
 
 // Suma el tiempo (minutos) de todos los procesos activos de un producto.
-// Los minutos de fabricación de una ficha técnica YA NO se escriben a
-// mano: son la suma de sus procesos.
 async function obtenerMinutosDesdeProcesos(productoId) {
   const { data, error } = await supabase
     .from('procesos')
@@ -96,41 +97,184 @@ async function obtenerMinutosDesdeProcesos(productoId) {
   return (data || []).reduce((s, p) => s + Number(p.tiempo_minutos || 0), 0);
 }
 
-// Recalcula minutos_fabricacion (= suma de sus procesos) y costo_calculado
-// (materiales + mano de obra) de UN producto, y guarda el resultado. Se
-// llama cada vez que se crea/edita/elimina un proceso de ese producto.
-async function recalcularProductoDesdeSusProcesos(productoId, usuarioId) {
-  const { data: filasMateriales, error: eMat } = await supabase
-    .from('productos_materiales')
-    .select('material_id, cantidad')
-    .eq('producto_id', productoId);
-  if (eMat) throw new Error(eMat.message);
+// Decide (y si hace falta, resuelve) el modo de costeo de un producto:
+//   - Si ya está resuelto (true/false), lo respeta.
+//   - Si está sin resolver (null): sin materiales propios en la ficha
+//     técnica → no hay conflicto posible, se resuelve solo en "por
+//     procesos". Con materiales propios → se deja pendiente (aparece en
+//     el reporte de conflictos) y, mientras tanto, se sigue costeando
+//     "por ficha técnica" para no romper el número que el usuario ya
+//     está viendo.
+// Devuelve { modo: true|false, resuelto_ahora: boolean }.
+async function resolverModoCosteo(producto, tieneProcesos) {
+  if (producto.usa_costeo_por_procesos != null) {
+    return { modo: producto.usa_costeo_por_procesos, resuelto_ahora: false };
+  }
+  if (!tieneProcesos) return { modo: false, resuelto_ahora: false };
 
-  const minutosFabricacion = await obtenerMinutosDesdeProcesos(productoId);
-  const costo = await calcularCostoProducto({
-    materiales: (filasMateriales || []).map(f => ({ material_id: f.material_id, cantidad: f.cantidad })),
-    minutosFabricacion,
-    usuarioId
-  });
+  const { count, error } = await supabase
+    .from('productos_materiales')
+    .select('id', { count: 'exact', head: true })
+    .eq('producto_id', producto.id);
+  if (error) throw new Error(error.message);
+
+  if (count === 0) return { modo: true, resuelto_ahora: true };
+  return { modo: false, resuelto_ahora: false }; // pendiente — queda en el reporte de conflictos
+}
+
+// Recalcula minutos_fabricacion y costo_calculado de UN producto, y
+// guarda el resultado. Se llama cada vez que se crea/edita/elimina un
+// proceso de ese producto, o cuando cambia el costo de un material que
+// afecta a ese producto (directo o vía procesos).
+async function recalcularProductoDesdeSusProcesos(productoId, usuarioId) {
+  const { data: producto, error: eProd } = await supabase
+    .from('productos')
+    .select('id, usa_costeo_por_procesos')
+    .eq('id', productoId)
+    .eq('usuario_id', usuarioId)
+    .single();
+  if (eProd || !producto) throw new Error('Producto no encontrado');
+
+  const { data: procesos, error: eProc } = await supabase
+    .from('procesos')
+    .select('tiempo_minutos, costo_unitario, costo_materiales')
+    .eq('producto_id', productoId)
+    .eq('activo', true);
+  if (eProc) throw new Error(eProc.message);
+
+  const minutosFabricacion = (procesos || []).reduce((s, p) => s + Number(p.tiempo_minutos || 0), 0);
+
+  const { modo: usaCosteoPorProcesos, resuelto_ahora } =
+    await resolverModoCosteo(producto, (procesos || []).length > 0);
+
+  let costo;
+  if (usaCosteoPorProcesos) {
+    costo = Math.round(
+      (procesos || []).reduce((s, p) => s + Number(p.costo_unitario || 0) + Number(p.costo_materiales || 0), 0) * 100
+    ) / 100;
+  } else {
+    const { data: filasMateriales, error: eMat } = await supabase
+      .from('productos_materiales')
+      .select('material_id, cantidad')
+      .eq('producto_id', productoId);
+    if (eMat) throw new Error(eMat.message);
+
+    costo = await calcularCostoProducto({
+      materiales: (filasMateriales || []).map(f => ({ material_id: f.material_id, cantidad: f.cantidad })),
+      minutosFabricacion,
+      usuarioId
+    });
+  }
+
+  const cambios = {
+    minutos_fabricacion: minutosFabricacion,
+    costo_calculado: costo,
+    actualizado_en: new Date().toISOString()
+  };
+  if (resuelto_ahora) cambios.usa_costeo_por_procesos = true;
 
   const { error: eUpd } = await supabase
     .from('productos')
-    .update({
-      minutos_fabricacion: minutosFabricacion,
-      costo_calculado: costo,
-      actualizado_en: new Date().toISOString()
-    })
+    .update(cambios)
     .eq('id', productoId)
     .eq('usuario_id', usuarioId);
   if (eUpd) throw new Error(eUpd.message);
 
-  return { minutos_fabricacion: minutosFabricacion, costo_calculado: costo };
+  return { minutos_fabricacion: minutosFabricacion, costo_calculado: costo, usa_costeo_por_procesos: usaCosteoPorProcesos };
+}
+
+// Recalcula TODOS los productos activos de un usuario (cuando cambia el
+// precio de hora global — afecta a todos, tengan o no procesos).
+async function recalcularTodosLosProductos(usuarioId) {
+  const { data: productos, error } = await supabase
+    .from('productos')
+    .select('id')
+    .eq('usuario_id', usuarioId)
+    .eq('activo', true);
+  if (error) throw new Error(error.message);
+
+  let contador = 0;
+  for (const producto of productos || []) {
+    await recalcularProductoDesdeSusProcesos(producto.id, usuarioId);
+    contador++;
+  }
+  return contador;
+}
+
+// Devuelve las filas de "material que necesita cada producto" listas
+// para chequear/descontar stock, combinando los dos modos posibles:
+//   - "por ficha técnica": productos_materiales tal cual
+//   - "por procesos": procesos_materiales de sus procesos activos,
+//     agregado por material (sumando lo que aparezca repetido en varios
+//     procesos del mismo producto)
+// Lo usa Ventas para no depender solo de productos_materiales — así el
+// descuento de inventario funciona igual sin importar cómo se costeó
+// el producto.
+async function obtenerFichasEfectivasParaProductos(productoIds, usuarioId) {
+  if (!productoIds || productoIds.length === 0) return [];
+  const idsUnicos = [...new Set(productoIds)];
+
+  const { data: productos, error: eProd } = await supabase
+    .from('productos')
+    .select('id, usa_costeo_por_procesos')
+    .eq('usuario_id', usuarioId)
+    .in('id', idsUnicos);
+  if (eProd) throw new Error(eProd.message);
+
+  const idsFicha = (productos || []).filter(p => !p.usa_costeo_por_procesos).map(p => p.id);
+  const idsProcesos = (productos || []).filter(p => p.usa_costeo_por_procesos).map(p => p.id);
+
+  const filas = [];
+
+  if (idsFicha.length > 0) {
+    const { data, error } = await supabase
+      .from('productos_materiales')
+      .select('producto_id, material_id, cantidad, materiales(id, nombre, unidad, stock_actual)')
+      .in('producto_id', idsFicha);
+    if (error) throw new Error(error.message);
+    filas.push(...(data || []));
+  }
+
+  if (idsProcesos.length > 0) {
+    const { data: procesos, error: eProc } = await supabase
+      .from('procesos')
+      .select('id, producto_id')
+      .eq('usuario_id', usuarioId)
+      .in('producto_id', idsProcesos)
+      .eq('activo', true);
+    if (eProc) throw new Error(eProc.message);
+    const productoDeProceso = new Map((procesos || []).map(p => [p.id, p.producto_id]));
+    const procesoIds = [...productoDeProceso.keys()];
+
+    if (procesoIds.length > 0) {
+      const { data: matsProcesos, error: eMatsP } = await supabase
+        .from('procesos_materiales')
+        .select('proceso_id, material_id, cantidad, materiales(id, nombre, unidad, stock_actual)')
+        .in('proceso_id', procesoIds);
+      if (eMatsP) throw new Error(eMatsP.message);
+
+      const agregadas = new Map();
+      for (const f of matsProcesos || []) {
+        const productoId = productoDeProceso.get(f.proceso_id);
+        const clave = productoId + '|' + f.material_id;
+        const actual = agregadas.get(clave) || { producto_id: productoId, material_id: f.material_id, cantidad: 0, materiales: f.materiales };
+        actual.cantidad += Number(f.cantidad);
+        agregadas.set(clave, actual);
+      }
+      filas.push(...agregadas.values());
+    }
+  }
+
+  return filas;
 }
 
 module.exports = {
   obtenerCostoMinutoManoObra,
   calcularCostoMateriales,
   calcularCostoProducto,
+  recalcularCostoMaterialesDeProceso,
+  obtenerMinutosDesdeProcesos,
+  obtenerFichasEfectivasParaProductos,
   recalcularTodosLosProductos,
   recalcularProductoDesdeSusProcesos
 };

@@ -43,6 +43,17 @@
       <button type="button" class="boton" onclick="abrirPrecioHora()">Cambiar</button>
     </section>
 
+    <!-- Productos con procesos cuya lista de materiales no coincide con
+         la ficha técnica manual — hay que decidir cuál usar -->
+    <section class="tarjeta" id="seccionConflictosMateriales" hidden>
+      <h2 style="margin-top:0">Materiales por resolver</h2>
+      <p class="texto-secundario">
+        Estos productos tienen procesos con su propia lista de materiales, distinta a la
+        de la ficha técnica. Elige cuál lista es la correcta para cada uno.
+      </p>
+      <div id="listaConflictosMateriales"></div>
+    </section>
+
     <!-- 1. Lista de productos (tarjetas con foto, precio y margen) -->
     <section class="tarjetas-productos" id="listaProductos">
       <p class="tabla__vacio">Cargando productos…</p>
@@ -86,16 +97,26 @@
         <p class="texto-secundario" id="textoPrecioHoraActual" style="margin:-4px 0 12px"></p>
 
         <h3>Materiales que usa</h3>
-        <div class="agregar-material">
-          <select id="selectorMaterial"></select>
-          <input type="number" id="cantidadMaterial" min="0.0001" step="0.01" placeholder="Cantidad" style="max-width:120px">
-          <button type="button" class="boton" onclick="agregarMaterialAFicha()">Agregar</button>
+        <p class="texto-secundario" id="avisoMaterialesSoloLectura" hidden>
+          Este producto se costea por sus procesos — la lista de materiales sale sola de lo
+          que configuraste en cada proceso (pestaña Procesos) y no se edita aquí.
+        </p>
+        <div id="bloqueMaterialesEditable">
+          <div class="agregar-material">
+            <select id="selectorMaterial"></select>
+            <input type="number" id="cantidadMaterial" min="0.0001" step="0.01" placeholder="Cantidad" style="max-width:120px">
+            <button type="button" class="boton" onclick="agregarMaterialAFicha()">Agregar</button>
+          </div>
+          <table class="tabla">
+            <thead><tr><th>Material</th><th>Cantidad</th><th>Costo unitario</th><th>Subtotal</th><th></th></tr></thead>
+            <tbody id="cuerpoTablaFicha">
+              <tr><td colspan="5" class="tabla__vacio">Aún no has agregado materiales</td></tr>
+            </tbody>
+          </table>
         </div>
-        <table class="tabla">
-          <thead><tr><th>Material</th><th>Cantidad</th><th>Costo unitario</th><th>Subtotal</th><th></th></tr></thead>
-          <tbody id="cuerpoTablaFicha">
-            <tr><td colspan="5" class="tabla__vacio">Aún no has agregado materiales</td></tr>
-          </tbody>
+        <table class="tabla" id="tablaMaterialesSoloLectura" hidden>
+          <thead><tr><th>Material</th><th>Cantidad</th><th>Costo unitario</th><th>Subtotal</th></tr></thead>
+          <tbody id="cuerpoTablaFichaSoloLectura"></tbody>
         </table>
 
         <!-- 3. Simulador de margen en vivo -->

@@ -208,6 +208,52 @@
         </div>
       </div>
     </div>
+    <!-- Entregas parciales de una venta: registrar una visita (uno o
+         varios productos) y ver/borrar el historial -->
+    <div class="modal" id="modalEntregasVenta" hidden>
+      <div class="modal__contenido tarjeta modal__contenido--ancho">
+        <h2>Entregas de este pedido</h2>
+        <input type="hidden" id="campoEntregaVentaId">
+
+        <h3 style="margin-top:0">Registrar una entrega</h3>
+        <p class="texto-secundario" style="margin-top:-8px">
+          Marca los productos que entregaste en esta visita — no hace falta que sea todo el pedido.
+        </p>
+        <table class="tabla">
+          <thead><tr><th></th><th>Producto</th><th>Total</th><th>Ya entregado</th><th>Entregar ahora</th></tr></thead>
+          <tbody id="cuerpoItemsEntregaVenta"></tbody>
+        </table>
+        <label class="campo" style="max-width:220px">
+          <span class="campo__etiqueta">Fecha de esta entrega *</span>
+          <input type="date" id="campoFechaEntregaVenta">
+        </label>
+        <div class="modal__acciones" style="justify-content:flex-start">
+          <button type="button" class="boton boton--primario" onclick="registrarEntregaVenta()">Registrar entrega</button>
+        </div>
+
+        <h3>Historial de entregas</h3>
+        <table class="tabla">
+          <thead><tr><th>Fecha</th><th>Productos entregados</th><th></th></tr></thead>
+          <tbody id="cuerpoHistorialEntregaVenta">
+            <tr><td colspan="3" class="tabla__vacio">Cargando…</td></tr>
+          </tbody>
+        </table>
+
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarEntregasVenta()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+    <!-- Comprobante de entrega (imprimible) -->
+    <div class="modal" id="modalComprobanteVenta" hidden>
+      <div class="modal__contenido tarjeta modal__contenido--ancho">
+        <div id="contenidoComprobante"></div>
+        <div class="modal__acciones modal__acciones--no-imprimir">
+          <button type="button" class="boton" onclick="cerrarComprobanteVenta()">Cerrar</button>
+          <button type="button" class="boton boton--primario" onclick="imprimirComprobanteVenta()">Imprimir / Guardar PDF</button>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script src="js/api.js"></script>

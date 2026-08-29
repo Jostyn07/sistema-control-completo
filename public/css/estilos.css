@@ -344,3 +344,34 @@ a:hover { color: var(--accent); }
   font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
   color: var(--ink-tenue); margin: 4px 0 12px; padding-top: 14px; border-top: 1px solid var(--hairline);
 }
+/* ---- Balanceo de producción (Nóminas): chips arriba, colaboradores abajo ---- */
+.balanceo__pendientes {
+  display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0 22px;
+}
+.balanceo__chip {
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--surface); border: 1px solid var(--accent); border-radius: 8px;
+  padding: 10px 14px; min-width: 180px; cursor: grab; user-select: none;
+}
+.balanceo__chip:active { cursor: grabbing; opacity: 0.7; }
+.balanceo__chip strong { color: var(--accent-texto); }
+
+.balanceo__colaboradores { display: flex; flex-direction: column; gap: 14px; }
+.balanceo__fila-colaborador {
+  display: grid; grid-template-columns: 160px 1fr; gap: 6px 16px; align-items: center;
+  border: 1px dashed transparent; border-radius: 8px; padding: 10px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.balanceo__fila-colaborador--sobre {
+  border-color: var(--accent); background: rgba(0, 136, 176, 0.06);
+}
+.balanceo__colaborador-info { display: flex; flex-direction: column; gap: 2px; }
+.balanceo__barra {
+  grid-column: 2; height: 10px; background: var(--hairline); border-radius: 5px; overflow: hidden;
+}
+.balanceo__barra__relleno { height: 100%; background: var(--accent); border-radius: 5px; min-width: 2px; }
+.balanceo__tareas { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; }
+.balanceo__tarea {
+  font-size: 0.8rem; background: var(--bg); border: 1px solid var(--hairline); border-radius: 12px;
+  padding: 2px 10px; color: var(--ink-suave);
+}

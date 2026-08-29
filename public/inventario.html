@@ -60,7 +60,29 @@
       </table>
     </section>
 
-    <!-- 2. Vista por producto (capacidad de fabricación) -->
+    <!-- 2. Producción en proceso (WIP) — de solo lectura, se llena
+         sola al registrar entregas en Nóminas -->
+    <section class="tarjeta seccion">
+      <h2>Producción en proceso</h2>
+      <p class="texto-secundario" style="margin-top:-8px">
+        Unidades que ya empezaron a fabricarse pero todavía no están terminadas. Se actualiza
+        sola cuando un colaborador registra una entrega en Nóminas — no se edita aquí.
+      </p>
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Etapa</th>
+            <th>Cantidad</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpoWip">
+          <tr><td colspan="3" class="tabla__vacio">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 3. Vista por producto (capacidad de fabricación) -->
     <section class="seccion">
       <h2>¿Cuánto puedes fabricar ahora?</h2>
       <div class="tarjetas-productos" id="listaCapacidad">
@@ -68,7 +90,7 @@
       </div>
     </section>
 
-    <!-- 3. Ajuste manual de inventario -->
+    <!-- 4. Ajuste manual de inventario -->
     <div class="modal" id="modalAjuste" hidden>
       <div class="modal__contenido tarjeta">
         <h2 id="tituloAjuste">Ajustar inventario</h2>
