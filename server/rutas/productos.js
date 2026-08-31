@@ -48,24 +48,35 @@ function conMargen(producto) {
 // lectura cuando usa_costeo_por_procesos = true.
 async function materialesAgregadosDesdeProcesos(productoId, usuarioId) {
   const { data: procesos, error: eProc } = await supabase
-    .from('procesos').select('id').eq('producto_id', productoId).eq('usuario_id', usuarioId).eq('activo', true);
+    .from('procesos').select('id, repeticiones_por_unidad').eq('producto_id', productoId).eq('usuario_id', usuarioId).eq('activo', true);
   if (eProc) throw new Error(eProc.message);
-  const procesoIds = (procesos || []).map(p => p.id);
-  if (procesoIds.length === 0) return [];
+  if ((procesos || []).length === 0) return [];
+  const repeticionesPorProceso = new Map(procesos.map(p => [p.id, Number(p.repeticiones_por_unidad || 1)]));
 
   const { data: filas, error: eMat } = await supabase
     .from('procesos_materiales')
-    .select('material_id, cantidad, materiales(id, nombre, unidad, costo_unitario)')
-    .in('proceso_id', procesoIds);
+    .select('proceso_id, material_id, cantidad, materiales(id, nombre, unidad, costo_unitario)')
+    .in('proceso_id', [...repeticionesPorProceso.keys()]);
   if (eMat) throw new Error(eMat.message);
 
+  // Cada material se multiplica por las repeticiones del proceso al que
+  // pertenece antes de sumarlo — un proceso que se repite 8 veces por
+  // unidad (ej: "pétalo" en una flor) gasta 8 veces lo que gasta UNA
+  // ejecución, aunque en procesos_materiales solo quede guardado el
+  // gasto de una sola vez.
   const porMaterial = new Map();
   for (const f of filas || []) {
+    const repeticiones = repeticionesPorProceso.get(f.proceso_id) || 1;
+    const cantidadReal = Number(f.cantidad) * repeticiones;
     const actual = porMaterial.get(f.material_id) || { material_id: f.material_id, nombre: f.materiales.nombre, unidad: f.materiales.unidad, costo_unitario: Number(f.materiales.costo_unitario), cantidad: 0 };
-    actual.cantidad += Number(f.cantidad);
+    actual.cantidad += cantidadReal;
     porMaterial.set(f.material_id, actual);
   }
-  return [...porMaterial.values()].map(m => ({ ...m, subtotal: Math.round(m.cantidad * m.costo_unitario * 100) / 100 }));
+  return [...porMaterial.values()].map(m => ({
+    ...m,
+    cantidad: Math.round(m.cantidad * 10000) / 10000,
+    subtotal: Math.round(m.cantidad * m.costo_unitario * 100) / 100
+  }));
 }
 
 // GET /api/productos
