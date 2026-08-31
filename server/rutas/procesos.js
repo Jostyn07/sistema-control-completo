@@ -49,6 +49,8 @@ function validarProceso(datos) {
   if (datos.materiales && !Array.isArray(datos.materiales)) errores.push('La lista de materiales no es válida');
   if (datos.orden != null && (isNaN(datos.orden) || Number(datos.orden) <= 0))
     errores.push('El orden debe ser un número mayor a 0');
+  if (datos.repeticiones_por_unidad != null && (isNaN(datos.repeticiones_por_unidad) || Number(datos.repeticiones_por_unidad) <= 0))
+    errores.push('Las repeticiones por unidad deben ser un número mayor a 0');
   return errores;
 }
 
@@ -109,6 +111,7 @@ router.post('/', async (req, res, next) => {
     const tiempoMinutos = Number(req.body.tiempo_minutos);
     const costoUnitario = Math.round(tiempoMinutos * costoMinuto * 100) / 100;
     const orden = req.body.orden != null ? Number(req.body.orden) : await siguienteOrden(req.body.producto_id, req.usuarioId);
+    const repeticiones = req.body.repeticiones_por_unidad != null ? Number(req.body.repeticiones_por_unidad) : 1;
 
     const { data: nuevo, error } = await supabase
       .from('procesos')
@@ -121,6 +124,7 @@ router.post('/', async (req, res, next) => {
         costo_unitario: costoUnitario,
         costo_materiales: 0,
         orden,
+        repeticiones_por_unidad: repeticiones,
         descripcion: (req.body.descripcion || '').trim() || null
       })
       .select().single();
@@ -156,6 +160,7 @@ router.put('/:id', async (req, res, next) => {
     const tiempoMinutos = Number(req.body.tiempo_minutos);
     const costoUnitario = Math.round(tiempoMinutos * costoMinuto * 100) / 100;
     const orden = req.body.orden != null ? Number(req.body.orden) : actual.orden;
+    const repeticiones = req.body.repeticiones_por_unidad != null ? Number(req.body.repeticiones_por_unidad) : 1;
 
     const { error } = await supabase
       .from('procesos')
@@ -165,6 +170,7 @@ router.put('/:id', async (req, res, next) => {
         tiempo_minutos: tiempoMinutos,
         costo_unitario: costoUnitario,
         orden,
+        repeticiones_por_unidad: repeticiones,
         descripcion: (req.body.descripcion || '').trim() || null,
         actualizado_en: new Date().toISOString()
       })

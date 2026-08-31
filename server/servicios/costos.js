@@ -129,7 +129,7 @@ async function resolverModoCosteo(producto, tieneProcesos) {
 async function recalcularProductoDesdeSusProcesos(productoId, usuarioId) {
   const { data: producto, error: eProd } = await supabase
     .from('productos')
-    .select('id, usa_costeo_por_procesos')
+    .select('id, usa_costeo_por_procesos, minutos_fabricacion')
     .eq('id', productoId)
     .eq('usuario_id', usuarioId)
     .single();
@@ -137,12 +137,26 @@ async function recalcularProductoDesdeSusProcesos(productoId, usuarioId) {
 
   const { data: procesos, error: eProc } = await supabase
     .from('procesos')
-    .select('tiempo_minutos, costo_unitario, costo_materiales')
+    .select('tiempo_minutos, costo_unitario, costo_materiales, repeticiones_por_unidad')
     .eq('producto_id', productoId)
     .eq('activo', true);
   if (eProc) throw new Error(eProc.message);
 
-  const minutosFabricacion = (procesos || []).reduce((s, p) => s + Number(p.tiempo_minutos || 0), 0);
+  const tieneProcesos = (procesos || []).length > 0;
+  // Los minutos SOLO se recalculan desde los procesos cuando el
+  // producto de verdad tiene procesos. Sin procesos, se respeta lo que
+  // ya había guardado (mano de obra puesta a mano en la ficha técnica)
+  // — antes esto se pisaba con 0 cada vez que esta función se llamaba
+  // por cualquier motivo (ej: cambiar el precio de un material), y así
+  // se perdía la mano de obra de productos que todavía no usan procesos.
+  //
+  // `repeticiones_por_unidad` es cuántas veces se repite ESE proceso
+  // por cada unidad del producto terminado (ej: 12 pétalos por
+  // girasol) — su tiempo/costo/material se cuenta esa misma cantidad
+  // de veces al sumarlo a la ficha técnica.
+  const minutosFabricacion = tieneProcesos
+    ? (procesos || []).reduce((s, p) => s + Number(p.tiempo_minutos || 0) * Number(p.repeticiones_por_unidad || 1), 0)
+    : Number(producto.minutos_fabricacion || 0);
 
   const { modo: usaCosteoPorProcesos, resuelto_ahora } =
     await resolverModoCosteo(producto, (procesos || []).length > 0);
@@ -150,7 +164,9 @@ async function recalcularProductoDesdeSusProcesos(productoId, usuarioId) {
   let costo;
   if (usaCosteoPorProcesos) {
     costo = Math.round(
-      (procesos || []).reduce((s, p) => s + Number(p.costo_unitario || 0) + Number(p.costo_materiales || 0), 0) * 100
+      (procesos || []).reduce((s, p) =>
+        s + (Number(p.costo_unitario || 0) + Number(p.costo_materiales || 0)) * Number(p.repeticiones_por_unidad || 1), 0
+      ) * 100
     ) / 100;
   } else {
     const { data: filasMateriales, error: eMat } = await supabase

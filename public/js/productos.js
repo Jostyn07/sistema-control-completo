@@ -4,6 +4,8 @@ let filasFichaEnEdicion = [];     // [{ material_id, nombre, unidad, costo_unita
 let costoMinutoGlobal = 0;        // se calcula a partir del precio de hora global
 let categoriasDisponibles = [];   // categorías de producto del usuario (ej: "Flores", "Panadería")
 let fichaEnEdicionUsaCosteoPorProcesos = false; // si true, "Materiales" es de solo lectura (viene de Procesos)
+let fichaEnEdicionTieneProcesos = false; // si true, "Minutos de fabricación" es de solo lectura (se derivan de Procesos)
+let minutosDerivadosActual = 0; // valor numérico de minutos cuando vienen derivados de procesos
 
 // ---- Categorías de producto ----
 async function cargarCategorias() {
@@ -182,10 +184,12 @@ async function abrirFichaProducto(id) {
       ? `<img src="${escaparHtml(p.foto_url)}" class="previsualizacion-foto__imagen" alt="Foto actual">`
       : '';
     document.getElementById('campoPrecioVenta').value = p.precio_venta;
-    document.getElementById('campoMinutos').value = p.minutos_fabricacion;
     document.getElementById('campoMinutosSoloLectura').value = `${p.minutos_fabricacion} min`;
+    document.getElementById('campoMinutosEditable').value = p.minutos_fabricacion;
+    minutosDerivadosActual = Number(p.minutos_fabricacion) || 0;
     pintarSelectorCategoria(p.categoria_id || '');
     fichaEnEdicionUsaCosteoPorProcesos = !!p.usa_costeo_por_procesos;
+    fichaEnEdicionTieneProcesos = !!p.tiene_procesos;
 
     // Trae el desglose para precargar las filas de materiales de la ficha
     // (en modo "por procesos" ya viene agregado desde ahí, de solo lectura)
@@ -207,16 +211,24 @@ async function abrirFichaProducto(id) {
     document.getElementById('previsualizacionFoto').innerHTML = '';
     document.getElementById('campoFotoArchivo').value = '';
     document.getElementById('campoPrecioVenta').value = '';
-    document.getElementById('campoMinutos').value = 0;
-    document.getElementById('campoMinutosSoloLectura').value = '0 min (crea el producto y luego agrégale procesos)';
+    document.getElementById('campoMinutosSoloLectura').value = '0 min';
+    document.getElementById('campoMinutosEditable').value = 0;
+    minutosDerivadosActual = 0;
     pintarSelectorCategoria('');
     filasFichaEnEdicion = [];
     fichaEnEdicionUsaCosteoPorProcesos = false;
+    fichaEnEdicionTieneProcesos = false;
   }
 
   document.getElementById('bloqueMaterialesEditable').hidden = fichaEnEdicionUsaCosteoPorProcesos;
   document.getElementById('avisoMaterialesSoloLectura').hidden = !fichaEnEdicionUsaCosteoPorProcesos;
   document.getElementById('tablaMaterialesSoloLectura').hidden = !fichaEnEdicionUsaCosteoPorProcesos;
+
+  // Minutos: editables a mano SOLO si el producto todavía no tiene
+  // procesos — en cuanto le asignas el primero, pasan a derivarse solos.
+  document.getElementById('campoMinutosEditable').hidden = fichaEnEdicionTieneProcesos;
+  document.getElementById('campoMinutosSoloLectura').hidden = !fichaEnEdicionTieneProcesos;
+  document.getElementById('textoMinutosOrigen').hidden = !fichaEnEdicionTieneProcesos;
 
   pintarFilasFicha();
   calcularCostoEnVivo();
@@ -288,7 +300,9 @@ function pintarFilasFicha() {
 
 // ---- 3. Simulador de margen: recalcula costo y margen sin guardar ----
 function calcularCostoEnVivo() {
-  const minutos = Number(document.getElementById('campoMinutos').value || 0);
+  const minutos = fichaEnEdicionTieneProcesos
+    ? minutosDerivadosActual
+    : Number(document.getElementById('campoMinutosEditable').value || 0);
   const precioVenta = Number(document.getElementById('campoPrecioVenta').value || 0);
 
   const costoMateriales = filasFichaEnEdicion.reduce((s, f) => s + f.costo_unitario * f.cantidad, 0);
@@ -335,6 +349,9 @@ async function guardarProducto() {
     categoria_id: document.getElementById('selectorCategoriaProducto').value || null,
     precio_venta: precioVenta
   };
+  if (!fichaEnEdicionTieneProcesos) {
+    datosFicha.minutos_fabricacion = document.getElementById('campoMinutosEditable').value || 0;
+  }
   // En modo "por procesos" no se manda `materiales`: esta ficha es de
   // solo lectura aquí, se edita desde Procesos.
   if (!fichaEnEdicionUsaCosteoPorProcesos) {

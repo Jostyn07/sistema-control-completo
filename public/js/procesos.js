@@ -56,22 +56,27 @@ async function cargarListaProcesos() {
 function pintarListaProcesos(lista) {
   const cuerpo = document.getElementById('cuerpoTablaProcesos');
   if (lista.length === 0) {
-    cuerpo.innerHTML = '<tr><td colspan="7" class="tabla__vacio">Aún no hay procesos. Agrega el primero con el botón de arriba.</td></tr>';
+    cuerpo.innerHTML = '<tr><td colspan="8" class="tabla__vacio">Aún no hay procesos. Agrega el primero con el botón de arriba.</td></tr>';
     return;
   }
-  cuerpo.innerHTML = lista.map(p => `
+  cuerpo.innerHTML = lista.map(p => {
+    const repeticiones = Number(p.repeticiones_por_unidad || 1);
+    const costoPorEjecucion = Number(p.costo_unitario) + Number(p.costo_materiales || 0);
+    return `
     <tr>
       <td>${p.orden != null ? p.orden : '—'}</td>
       <td>${p.productos ? escaparHtml(p.productos.nombre) : '—'}</td>
       <td>${escaparHtml(p.nombre)}</td>
+      <td>${repeticiones > 1 ? `×${repeticiones}` : '—'}</td>
       <td>${p.tiempo_minutos} min</td>
       <td>${(p.procesos_materiales || []).map(m => `${m.cantidad} ${escaparHtml(m.materiales.unidad)} de ${escaparHtml(m.materiales.nombre)}`).join(', ') || '—'}</td>
-      <td>${formatearPesos(Number(p.costo_unitario) + Number(p.costo_materiales || 0))}</td>
+      <td>${formatearPesos(costoPorEjecucion)}${repeticiones > 1 ? ` × ${repeticiones} = ${formatearPesos(costoPorEjecucion * repeticiones)}` : ''}</td>
       <td class="tabla__acciones">
         <button type="button" class="boton boton--pequeno" onclick="abrirFormularioProceso('${p.id}')">Editar</button>
         <button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarProceso('${p.id}')">Eliminar</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 // ---- 2. Formulario nuevo / editar ----
@@ -96,6 +101,7 @@ function abrirFormularioProceso(id) {
     document.getElementById('campoNombreProceso').value = p.nombre;
     document.getElementById('campoOrdenProceso').value = p.orden != null ? p.orden : '';
     document.getElementById('campoTiempoProceso').value = p.tiempo_minutos;
+    document.getElementById('campoRepeticionesProceso').value = p.repeticiones_por_unidad || 1;
     document.getElementById('campoDescripcionProceso').value = p.descripcion || '';
     filasMaterialesProcesoEnEdicion = (p.procesos_materiales || []).map(m => ({
       material_id: m.materiales.id, nombre: m.materiales.nombre, unidad: m.materiales.unidad, cantidad: m.cantidad
@@ -106,6 +112,7 @@ function abrirFormularioProceso(id) {
     document.getElementById('campoNombreProceso').value = '';
     document.getElementById('campoOrdenProceso').value = '';
     document.getElementById('campoTiempoProceso').value = '';
+    document.getElementById('campoRepeticionesProceso').value = 1;
     document.getElementById('campoDescripcionProceso').value = '';
     const productoPreseleccionado = document.getElementById('filtroProductoProcesos').value;
     document.getElementById('selectorProductoProceso').value = productoPreseleccionado || productosParaProceso[0].id;
@@ -166,17 +173,20 @@ function tiempoProcesoEnMinutos() {
   return unidad === 'segundos' ? valor / 60 : valor;
 }
 
-// ---- Costo en vivo: mano de obra (tiempo × precio de hora) + materiales ----
+// ---- Costo en vivo: (mano de obra + materiales) × repeticiones por unidad ----
 function calcularCostoProcesoEnVivo() {
   const minutos = tiempoProcesoEnMinutos();
+  const repeticiones = Number(document.getElementById('campoRepeticionesProceso').value || 1);
   const costoManoObra = minutos * costoMinutoGlobalProceso;
   const costoMateriales = filasMaterialesProcesoEnEdicion.reduce((s, f) => {
     const material = materialesParaProceso.find(m => m.id === f.material_id);
     return s + (material ? Number(material.costo_unitario) * Number(f.cantidad) : 0);
   }, 0);
+  const costoPorEjecucion = costoManoObra + costoMateriales;
   document.getElementById('resumenPrecioHoraProceso').textContent = formatearPesos(costoMinutoGlobalProceso * 60);
-  document.getElementById('resumenCostoProceso').textContent =
-    `${formatearPesos(costoManoObra + costoMateriales)} (mano de obra ${formatearPesos(costoManoObra)} + materiales ${formatearPesos(costoMateriales)})`;
+  document.getElementById('resumenCostoProceso').textContent = repeticiones > 1
+    ? `${formatearPesos(costoPorEjecucion * repeticiones)} — ${formatearPesos(costoPorEjecucion)} por ejecución × ${repeticiones} (mano de obra ${formatearPesos(costoManoObra)} + materiales ${formatearPesos(costoMateriales)}, por ejecución)`
+    : `${formatearPesos(costoPorEjecucion)} (mano de obra ${formatearPesos(costoManoObra)} + materiales ${formatearPesos(costoMateriales)})`;
 }
 
 // ---- Guardar ----
@@ -188,6 +198,7 @@ async function guardarProceso() {
     nombre: document.getElementById('campoNombreProceso').value,
     orden: valorOrden !== '' ? Number(valorOrden) : null,
     tiempo_minutos: tiempoProcesoEnMinutos(),
+    repeticiones_por_unidad: document.getElementById('campoRepeticionesProceso').value || 1,
     descripcion: document.getElementById('campoDescripcionProceso').value,
     materiales: filasMaterialesProcesoEnEdicion.map(f => ({ material_id: f.material_id, cantidad: f.cantidad }))
   };
@@ -196,6 +207,10 @@ async function guardarProceso() {
   if (!datos.nombre.trim()) { mostrarAviso('El nombre del proceso es obligatorio', 'error'); return; }
   if (!datos.tiempo_minutos || Number(datos.tiempo_minutos) <= 0) {
     mostrarAviso('El tiempo del proceso debe ser mayor a 0', 'error');
+    return;
+  }
+  if (!datos.repeticiones_por_unidad || Number(datos.repeticiones_por_unidad) <= 0) {
+    mostrarAviso('Las repeticiones por unidad deben ser mayor a 0', 'error');
     return;
   }
 

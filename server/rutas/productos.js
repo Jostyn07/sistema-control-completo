@@ -78,7 +78,13 @@ router.get('/', async (req, res, next) => {
       .eq('activo', true)
       .order('nombre');
     if (error) throw new Error(error.message);
-    res.json(data.map(conMargen));
+
+    const { data: procesos, error: eProc } = await supabase
+      .from('procesos').select('producto_id').eq('usuario_id', req.usuarioId).eq('activo', true);
+    if (eProc) throw new Error(eProc.message);
+    const idsConProcesos = new Set((procesos || []).map(p => p.producto_id));
+
+    res.json(data.map(p => ({ ...conMargen(p), tiene_procesos: idsConProcesos.has(p.id) })));
   } catch (err) { next(err); }
 });
 
@@ -152,9 +158,12 @@ router.post('/', async (req, res, next) => {
 
     // Los minutos de fabricación arrancan en 0: un producto recién
     // creado todavía no tiene procesos.
+    const minutosFabricacion = req.body.minutos_fabricacion != null && !isNaN(req.body.minutos_fabricacion)
+      ? Number(req.body.minutos_fabricacion) : 0;
+
     const costoCalculado = await calcularCostoProducto({
       materiales: req.body.materiales || [],
-      minutosFabricacion: 0,
+      minutosFabricacion,
       usuarioId: req.usuarioId
     });
 
@@ -166,7 +175,7 @@ router.post('/', async (req, res, next) => {
         foto_url: req.body.foto_url || null,
         categoria_id: req.body.categoria_id || null,
         precio_venta: Number(req.body.precio_venta),
-        minutos_fabricacion: 0,
+        minutos_fabricacion: minutosFabricacion,
         costo_calculado: costoCalculado
       })
       .select('*, categorias_productos(id, nombre)').single();
@@ -187,8 +196,9 @@ router.post('/', async (req, res, next) => {
 });
 
 // PUT /api/productos/:id
-// Los minutos de fabricación NO se editan acá — se derivan de los
-// procesos de esta ficha técnica (pestaña Procesos).
+// Los minutos de fabricación solo se editan a mano aquí cuando el
+// producto NO tiene procesos — si los tiene, se derivan solos de ellos
+// (pestaña Procesos) y lo que llegue en el body se ignora.
 router.put('/:id', async (req, res, next) => {
   try {
     const errores = validarProducto(req.body);
@@ -198,6 +208,17 @@ router.put('/:id', async (req, res, next) => {
       .from('productos').select('minutos_fabricacion, usa_costeo_por_procesos').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
     if (eActual || !actual) return res.status(404).json({ error: 'Producto no encontrado' });
 
+    const { count: countProcesos, error: eCountProc } = await supabase
+      .from('procesos').select('id', { count: 'exact', head: true })
+      .eq('producto_id', req.params.id).eq('usuario_id', req.usuarioId).eq('activo', true);
+    if (eCountProc) throw new Error(eCountProc.message);
+    const tieneProcesos = countProcesos > 0;
+
+    const minutosFabricacion = tieneProcesos
+      ? Number(actual.minutos_fabricacion) // se deriva de los procesos, no se toca aquí
+      : (req.body.minutos_fabricacion != null && !isNaN(req.body.minutos_fabricacion)
+          ? Number(req.body.minutos_fabricacion) : Number(actual.minutos_fabricacion));
+
     // En modo "por procesos" la ficha técnica de materiales es de solo
     // lectura: se ignora lo que venga en el body y no se toca la tabla.
     const editaMaterialesAqui = actual.usa_costeo_por_procesos !== true;
@@ -205,7 +226,7 @@ router.put('/:id', async (req, res, next) => {
     const costoCalculado = editaMaterialesAqui
       ? await calcularCostoProducto({
           materiales: req.body.materiales || [],
-          minutosFabricacion: actual.minutos_fabricacion,
+          minutosFabricacion,
           usuarioId: req.usuarioId
         })
       : null; // se recalcula abajo con recalcularProductoDesdeSusProcesos
@@ -215,6 +236,7 @@ router.put('/:id', async (req, res, next) => {
       foto_url: req.body.foto_url || null,
       categoria_id: req.body.categoria_id || null,
       precio_venta: Number(req.body.precio_venta),
+      minutos_fabricacion: minutosFabricacion,
       actualizado_en: new Date().toISOString()
     };
     if (costoCalculado != null) cambios.costo_calculado = costoCalculado;

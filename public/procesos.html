@@ -53,6 +53,7 @@
             <th>Orden</th>
             <th>Ficha técnica</th>
             <th>Nombre del proceso</th>
+            <th>Repite</th>
             <th>Tiempo</th>
             <th>Materiales que usa</th>
             <th>Costo del proceso</th>
@@ -60,7 +61,7 @@
           </tr>
         </thead>
         <tbody id="cuerpoTablaProcesos">
-          <tr><td colspan="7" class="tabla__vacio">Cargando procesos…</td></tr>
+          <tr><td colspan="8" class="tabla__vacio">Cargando procesos…</td></tr>
         </tbody>
       </table>
     </section>
@@ -99,6 +100,14 @@
           <span class="campo__etiqueta">Descripción (opcional)</span>
           <input type="text" id="campoDescripcionProceso" placeholder="Detalle de en qué consiste el proceso">
         </label>
+        <label class="campo" style="max-width:260px">
+          <span class="campo__etiqueta">Repeticiones por unidad</span>
+          <input type="number" id="campoRepeticionesProceso" min="0.01" step="1" value="1" oninput="calcularCostoProcesoEnVivo()">
+        </label>
+        <p class="texto-secundario" style="margin:-8px 0 12px">
+          Cuántas veces se repite este proceso por cada unidad del producto terminado. Ej: si un
+          girasol lleva 12 pétalos, el proceso "Pétalo" va en 12 — no hace falta crearlo 12 veces.
+        </p>
 
         <h3>Materiales que se usan en este proceso</h3>
         <div class="agregar-material">
