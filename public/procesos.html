@@ -41,7 +41,7 @@
 
     <!-- Filtro por ficha técnica -->
     <section class="tarjeta">
-      <label class="campo" style="max-width:320px">
+      <label class="campo campo--buscador" style="max-width:320px">
         <span class="campo__etiqueta">Buscar ficha técnica</span>
         <input type="text" id="buscadorFiltroFichaProcesos" placeholder="Nombre del producto…" oninput="filtrarSelectorFichaProcesos()">
       </label>
@@ -83,7 +83,9 @@
 
         <div id="bloqueFichasTecnicasMultiple">
           <span class="campo__etiqueta">Fichas técnicas que llevan este proceso *</span>
-          <input type="text" id="buscadorFichasProcesoNuevo" placeholder="Buscar ficha técnica…" oninput="pintarListaFichasProcesoNuevo()" style="margin:4px 0 8px">
+          <label class="campo campo--buscador" style="margin:4px 0 8px">
+            <input type="text" id="buscadorFichasProcesoNuevo" placeholder="Buscar ficha técnica…" oninput="pintarListaFichasProcesoNuevo()">
+          </label>
           <div id="listaFichasProcesoNuevo" style="max-height:180px;overflow:auto;border:1px solid var(--hairline);border-radius:8px;padding:8px 12px"></div>
           <p class="texto-secundario" style="margin:6px 0 16px">
             Se crea un proceso independiente en cada ficha técnica que marques, con el mismo nombre, tiempo y
@@ -125,7 +127,7 @@
         </p>
 
         <h3>Materiales que se usan en este proceso</h3>
-        <label class="campo" style="max-width:280px">
+        <label class="campo campo--buscador" style="max-width:280px">
           <span class="campo__etiqueta">Buscar material</span>
           <input type="text" id="buscadorMaterialProceso" placeholder="Nombre o unidad…" oninput="filtrarMaterialesProceso()">
         </label>
