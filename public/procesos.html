@@ -76,10 +76,21 @@
         <h2 id="tituloFormularioProceso">Nuevo proceso</h2>
         <input type="hidden" id="campoProcesoId">
 
-        <label class="campo">
+        <label class="campo" id="campoFichaTecnicaUnica">
           <span class="campo__etiqueta">Ficha técnica a la que pertenece *</span>
           <select id="selectorProductoProceso"></select>
         </label>
+
+        <div id="bloqueFichasTecnicasMultiple">
+          <span class="campo__etiqueta">Fichas técnicas que llevan este proceso *</span>
+          <input type="text" id="buscadorFichasProcesoNuevo" placeholder="Buscar ficha técnica…" oninput="pintarListaFichasProcesoNuevo()" style="margin:4px 0 8px">
+          <div id="listaFichasProcesoNuevo" style="max-height:180px;overflow:auto;border:1px solid var(--hairline);border-radius:8px;padding:8px 12px"></div>
+          <p class="texto-secundario" style="margin:6px 0 16px">
+            Se crea un proceso independiente en cada ficha técnica que marques, con el mismo nombre, tiempo y
+            materiales — después puedes ajustar cada uno por separado (por ejemplo, las repeticiones, si un
+            producto usa más o menos que otro).
+          </p>
+        </div>
         <div class="fila-campos">
           <label class="campo">
             <span class="campo__etiqueta">Nombre del proceso *</span>

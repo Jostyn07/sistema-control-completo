@@ -78,6 +78,33 @@ function filtrarMaterialesProceso() {
   // Si el material que ya estaba elegido sigue en la lista filtrada, se mantiene seleccionado.
   if (filtrados.some(m => m.id === seleccionActual)) selector.value = seleccionActual;
 }
+
+// ---- Checklist de fichas técnicas al CREAR un proceso (varias a la vez) ----
+function pintarListaFichasProcesoNuevo() {
+  const texto = normalizarTexto(document.getElementById('buscadorFichasProcesoNuevo').value);
+  const contenedor = document.getElementById('listaFichasProcesoNuevo');
+
+  const filtrados = texto
+    ? productosParaProceso.filter(p => normalizarTexto(p.nombre).includes(texto))
+    : productosParaProceso;
+
+  if (filtrados.length === 0) {
+    contenedor.innerHTML = '<p class="texto-secundario" style="margin:4px 0">Sin resultados</p>';
+    return;
+  }
+
+  contenedor.innerHTML = filtrados.map(p => `
+    <label style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer">
+      <input type="checkbox" value="${p.id}" ${idsProductosSeleccionadosNuevoProceso.has(p.id) ? 'checked' : ''}
+        onchange="alternarProductoProcesoNuevo('${p.id}', this.checked)">
+      ${escaparHtml(p.nombre)}
+    </label>`).join('');
+}
+
+function alternarProductoProcesoNuevo(productoId, marcado) {
+  if (marcado) idsProductosSeleccionadosNuevoProceso.add(productoId);
+  else idsProductosSeleccionadosNuevoProceso.delete(productoId);
+}
 // ---- 1. Lista de procesos ----
 async function cargarListaProcesos() {
   const cuerpo = document.getElementById('cuerpoTablaProcesos');
@@ -119,6 +146,8 @@ function pintarListaProcesos(lista) {
 }
 
 // ---- 2. Formulario nuevo / editar ----
+let idsProductosSeleccionadosNuevoProceso = new Set();
+
 function abrirFormularioProceso(id) {
   const modal = document.getElementById('modalProceso');
   const titulo = document.getElementById('tituloFormularioProceso');
@@ -138,6 +167,8 @@ function abrirFormularioProceso(id) {
     const p = procesosEnMemoria.find(x => x.id === id);
     if (!p) return;
     titulo.textContent = 'Editar proceso';
+    document.getElementById('campoFichaTecnicaUnica').hidden = false;
+    document.getElementById('bloqueFichasTecnicasMultiple').hidden = true;
     document.getElementById('campoProcesoId').value = p.id;
     document.getElementById('selectorProductoProceso').value = p.producto_id;
     document.getElementById('campoNombreProceso').value = p.nombre;
@@ -150,14 +181,20 @@ function abrirFormularioProceso(id) {
     }));
   } else {
     titulo.textContent = 'Nuevo proceso';
+    document.getElementById('campoFichaTecnicaUnica').hidden = true;
+    document.getElementById('bloqueFichasTecnicasMultiple').hidden = false;
     document.getElementById('campoProcesoId').value = '';
     document.getElementById('campoNombreProceso').value = '';
     document.getElementById('campoOrdenProceso').value = '';
     document.getElementById('campoTiempoProceso').value = '';
     document.getElementById('campoRepeticionesProceso').value = 1;
     document.getElementById('campoDescripcionProceso').value = '';
+
+    idsProductosSeleccionadosNuevoProceso = new Set();
     const productoPreseleccionado = document.getElementById('filtroProductoProcesos').value;
-    document.getElementById('selectorProductoProceso').value = productoPreseleccionado || productosParaProceso[0].id;
+    if (productoPreseleccionado) idsProductosSeleccionadosNuevoProceso.add(productoPreseleccionado);
+    document.getElementById('buscadorFichasProcesoNuevo').value = '';
+    pintarListaFichasProcesoNuevo();
   }
 
   pintarMaterialesProceso();
@@ -235,8 +272,7 @@ function calcularCostoProcesoEnVivo() {
 async function guardarProceso() {
   const id = document.getElementById('campoProcesoId').value;
   const valorOrden = document.getElementById('campoOrdenProceso').value;
-  const datos = {
-    producto_id: document.getElementById('selectorProductoProceso').value,
+  const datosBase = {
     nombre: document.getElementById('campoNombreProceso').value,
     orden: valorOrden !== '' ? Number(valorOrden) : null,
     tiempo_minutos: tiempoProcesoEnMinutos(),
@@ -245,30 +281,64 @@ async function guardarProceso() {
     materiales: filasMaterialesProcesoEnEdicion.map(f => ({ material_id: f.material_id, cantidad: f.cantidad }))
   };
 
-  if (!datos.producto_id) { mostrarAviso('Elige a qué ficha técnica pertenece este proceso', 'error'); return; }
-  if (!datos.nombre.trim()) { mostrarAviso('El nombre del proceso es obligatorio', 'error'); return; }
-  if (!datos.tiempo_minutos || Number(datos.tiempo_minutos) <= 0) {
+  if (!datosBase.nombre.trim()) { mostrarAviso('El nombre del proceso es obligatorio', 'error'); return; }
+  if (!datosBase.tiempo_minutos || Number(datosBase.tiempo_minutos) <= 0) {
     mostrarAviso('El tiempo del proceso debe ser mayor a 0', 'error');
     return;
   }
-  if (!datos.repeticiones_por_unidad || Number(datos.repeticiones_por_unidad) <= 0) {
+  if (!datosBase.repeticiones_por_unidad || Number(datosBase.repeticiones_por_unidad) <= 0) {
     mostrarAviso('Las repeticiones por unidad deben ser mayor a 0', 'error');
     return;
   }
 
-  try {
-    if (id) {
-      await API.actualizar(`/api/procesos/${id}`, datos);
+  if (id) {
+    // Editar: sigue siendo un solo proceso, en una sola ficha técnica.
+    const productoId = document.getElementById('selectorProductoProceso').value;
+    if (!productoId) { mostrarAviso('Elige a qué ficha técnica pertenece este proceso', 'error'); return; }
+
+    try {
+      await API.actualizar(`/api/procesos/${id}`, { ...datosBase, producto_id: productoId });
       mostrarAviso('Proceso actualizado — la ficha técnica se recalculó');
-    } else {
-      await API.enviar('/api/procesos', datos);
-      mostrarAviso('Proceso creado — la ficha técnica se recalculó');
+      cerrarFormularioProceso();
+      cargarListaProcesos();
+    } catch (err) {
+      mostrarAviso(err.message, 'error');
     }
-    cerrarFormularioProceso();
-    cargarListaProcesos();
-  } catch (err) {
-    mostrarAviso(err.message, 'error');
+    return;
   }
+
+  // Crear: un proceso independiente por cada ficha técnica marcada,
+  // todos con los mismos datos de arranque (nombre, tiempo, materiales…).
+  const idsProductos = [...idsProductosSeleccionadosNuevoProceso];
+  if (idsProductos.length === 0) {
+    mostrarAviso('Marca al menos una ficha técnica que lleve este proceso', 'error');
+    return;
+  }
+
+  let creados = 0;
+  const fallidos = [];
+  for (const productoId of idsProductos) {
+    try {
+      await API.enviar('/api/procesos', { ...datosBase, producto_id: productoId });
+      creados++;
+    } catch (err) {
+      const producto = productosParaProceso.find(p => p.id === productoId);
+      fallidos.push(`${producto ? producto.nombre : productoId}: ${err.message}`);
+    }
+  }
+
+  if (creados > 0) {
+    mostrarAviso(
+      idsProductos.length === 1
+        ? 'Proceso creado — la ficha técnica se recalculó'
+        : `Proceso creado en ${creados} ficha(s) técnica(s) — cada una se recalculó`
+    );
+  }
+  if (fallidos.length > 0) {
+    mostrarAviso(`No se pudo crear en: ${fallidos.join(' · ')}`, 'error');
+  }
+  if (creados > 0) cerrarFormularioProceso();
+  cargarListaProcesos();
 }
 
 // ---- Eliminar ----
