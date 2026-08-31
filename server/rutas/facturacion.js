@@ -8,6 +8,7 @@
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const proveedor = require('../servicios/facturacion-proveedor');
+const { validarYLimpiarMetodosPago } = require('../servicios/metodosPago');
 const router = express.Router();
 
 // GET /api/facturacion/configuracion
@@ -39,21 +40,8 @@ router.post('/configuracion', async (req, res, next) => {
 
     // Métodos de pago para mostrar en la factura (todos opcionales):
     // hasta 5, cada uno con tipo (cuenta/llave/nequi) y su valor.
-    const TIPOS_METODO_PAGO = ['cuenta', 'llave', 'nequi'];
-    const metodosPago = Array.isArray(c.metodos_pago) ? c.metodos_pago : [];
-    if (metodosPago.length > 5)
-      return res.status(400).json({ error: 'Puedes agregar máximo 5 métodos de pago' });
-    for (const m of metodosPago) {
-      if (!TIPOS_METODO_PAGO.includes(m.tipo))
-        return res.status(400).json({ error: 'Cada método de pago debe ser cuenta, llave o nequi' });
-      if (!m.valor || !String(m.valor).trim())
-        return res.status(400).json({ error: 'Cada método de pago necesita un valor (número de cuenta, llave o Nequi)' });
-    }
-    const metodosPagoLimpios = metodosPago.map(m => ({
-      tipo: m.tipo,
-      valor: String(m.valor).trim(),
-      etiqueta: (m.etiqueta || '').trim() || null // ej: nombre del banco, opcional
-    }));
+    const { error: errorMetodos, limpios: metodosPagoLimpios } = validarYLimpiarMetodosPago(c.metodos_pago);
+    if (errorMetodos) return res.status(400).json({ error: errorMetodos });
 
     // El NIT puede existir SIN resolución (persona natural con RUT que aún
     // no tramita una resolución de numeración ante la DIAN) — en ese caso

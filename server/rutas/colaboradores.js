@@ -2,6 +2,7 @@ const express = require('express');
 const supabase = require('../supabase/cliente');
 const { cifrar, descifrar } = require('../servicios/cifrado');
 const { registrarEntrega, eliminarEntrega, obtenerHistorial } = require('../servicios/entregas');
+const { validarYLimpiarMetodosPago } = require('../servicios/metodosPago');
 const router = express.Router();
 
 function validarColaborador(datos) {
@@ -46,11 +47,15 @@ router.post('/', async (req, res, next) => {
     const errores = validarColaborador(req.body);
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
+    const { error: errorMetodos, limpios: metodosPago } = validarYLimpiarMetodosPago(req.body.metodos_pago);
+    if (errorMetodos) return res.status(400).json({ error: errorMetodos });
+
     const nuevo = {
       usuario_id: req.usuarioId,
       nombre: req.body.nombre.trim(),
       cedula_cifrada: cifrar(req.body.cedula),
-      direccion_cifrada: cifrar(req.body.direccion)
+      direccion_cifrada: cifrar(req.body.direccion),
+      metodos_pago: metodosPago
     };
     const { data, error } = await supabase.from('colaboradores').insert(nuevo).select().single();
     if (error) throw new Error(error.message);
@@ -64,10 +69,14 @@ router.put('/:id', async (req, res, next) => {
     const errores = validarColaborador(req.body);
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
+    const { error: errorMetodos, limpios: metodosPago } = validarYLimpiarMetodosPago(req.body.metodos_pago);
+    if (errorMetodos) return res.status(400).json({ error: errorMetodos });
+
     const cambios = {
       nombre: req.body.nombre.trim(),
       cedula_cifrada: cifrar(req.body.cedula),
       direccion_cifrada: cifrar(req.body.direccion),
+      metodos_pago: metodosPago,
       actualizado_en: new Date().toISOString()
     };
     const { data, error } = await supabase

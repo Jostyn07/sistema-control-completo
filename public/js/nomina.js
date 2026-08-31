@@ -180,6 +180,9 @@ async function confirmarAsignarCantidad() {
 }
 
 // ---- 2. Crear / editar colaborador ----
+let metodosPagoColaboradorEnEdicion = [];
+const ETIQUETA_TIPO_PAGO_COLABORADOR = { cuenta: 'Número de cuenta', llave: 'Llave', nequi: 'Nequi' };
+
 function abrirFormularioColaborador(id) {
   const modal = document.getElementById('modalColaborador');
   const titulo = document.getElementById('tituloFormularioColaborador');
@@ -192,12 +195,15 @@ function abrirFormularioColaborador(id) {
     document.getElementById('campoNombreColaborador').value = c.nombre;
     document.getElementById('campoCedulaColaborador').value = c.cedula || '';
     document.getElementById('campoDireccionColaborador').value = c.direccion || '';
+    metodosPagoColaboradorEnEdicion = Array.isArray(c.metodos_pago) ? c.metodos_pago.map(m => ({ ...m })) : [];
   } else {
     titulo.textContent = 'Crear colaborador';
     document.getElementById('campoColaboradorId').value = '';
     ['campoNombreColaborador', 'campoCedulaColaborador', 'campoDireccionColaborador']
       .forEach(c2 => document.getElementById(c2).value = '');
+    metodosPagoColaboradorEnEdicion = [];
   }
+  pintarMetodosPagoColaborador();
   modal.hidden = false;
 }
 
@@ -205,14 +211,68 @@ function cerrarFormularioColaborador() {
   document.getElementById('modalColaborador').hidden = true;
 }
 
+function agregarMetodoPagoColaborador() {
+  if (metodosPagoColaboradorEnEdicion.length >= 5) {
+    mostrarAviso('Máximo 5 métodos de pago', 'error');
+    return;
+  }
+  metodosPagoColaboradorEnEdicion.push({ tipo: 'cuenta', valor: '', etiqueta: '' });
+  pintarMetodosPagoColaborador();
+}
+
+function quitarMetodoPagoColaborador(indice) {
+  metodosPagoColaboradorEnEdicion.splice(indice, 1);
+  pintarMetodosPagoColaborador();
+}
+
+function actualizarMetodoPagoColaborador(indice, campo, valor) {
+  metodosPagoColaboradorEnEdicion[indice][campo] = valor;
+}
+
+function pintarMetodosPagoColaborador() {
+  const contenedor = document.getElementById('listaMetodosPagoColaborador');
+  if (metodosPagoColaboradorEnEdicion.length === 0) {
+    contenedor.innerHTML = '<p class="texto-secundario">Sin métodos de pago agregados.</p>';
+  } else {
+    contenedor.innerHTML = metodosPagoColaboradorEnEdicion.map((m, i) => `
+      <div class="agregar-material" style="align-items:flex-end">
+        <label class="campo" style="margin:0;max-width:160px">
+          <span class="campo__etiqueta">Tipo</span>
+          <select onchange="actualizarMetodoPagoColaborador(${i}, 'tipo', this.value)">
+            <option value="cuenta" ${m.tipo === 'cuenta' ? 'selected' : ''}>Número de cuenta</option>
+            <option value="llave" ${m.tipo === 'llave' ? 'selected' : ''}>Llave</option>
+            <option value="nequi" ${m.tipo === 'nequi' ? 'selected' : ''}>Nequi</option>
+          </select>
+        </label>
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Valor</span>
+          <input type="text" value="${escaparHtml(m.valor || '')}" placeholder="Ej: 123-456789-00"
+            oninput="actualizarMetodoPagoColaborador(${i}, 'valor', this.value)">
+        </label>
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Detalle (opcional)</span>
+          <input type="text" value="${escaparHtml(m.etiqueta || '')}" placeholder="Ej: Bancolombia ahorros"
+            oninput="actualizarMetodoPagoColaborador(${i}, 'etiqueta', this.value)">
+        </label>
+        <button type="button" class="boton boton--pequeno boton--peligro" onclick="quitarMetodoPagoColaborador(${i})">Quitar</button>
+      </div>`).join('');
+  }
+  document.getElementById('botonAgregarMetodoPagoColaborador').disabled = metodosPagoColaboradorEnEdicion.length >= 5;
+}
+
 async function guardarColaborador() {
   const id = document.getElementById('campoColaboradorId').value;
   const datos = {
     nombre: document.getElementById('campoNombreColaborador').value,
     cedula: document.getElementById('campoCedulaColaborador').value,
-    direccion: document.getElementById('campoDireccionColaborador').value
+    direccion: document.getElementById('campoDireccionColaborador').value,
+    metodos_pago: metodosPagoColaboradorEnEdicion
   };
   if (!datos.nombre.trim()) { mostrarAviso('El nombre es obligatorio', 'error'); return; }
+  if (metodosPagoColaboradorEnEdicion.some(m => !m.valor || !m.valor.trim())) {
+    mostrarAviso('Completa el valor de cada método de pago (o quítalo si no lo vas a usar)', 'error');
+    return;
+  }
 
   try {
     if (id) {
@@ -256,6 +316,12 @@ async function abrirDetalleColaborador(id) {
   colaboradorActualId = id;
   const c = colaboradoresEnMemoria.find(x => x.id === id);
   document.getElementById('tituloDetalleColaborador').textContent = c ? c.nombre : 'Colaborador';
+
+  const resumenPago = document.getElementById('resumenMetodosPagoColaborador');
+  const metodos = c && Array.isArray(c.metodos_pago) ? c.metodos_pago : [];
+  resumenPago.textContent = metodos.length > 0
+    ? 'Pago: ' + metodos.map(m => `${ETIQUETA_TIPO_PAGO_COLABORADOR[m.tipo] || m.tipo} ${m.valor}${m.etiqueta ? ` (${m.etiqueta})` : ''}`).join(' · ')
+    : '';
 
   document.getElementById('vistaListaColaboradores').hidden = true;
   document.getElementById('vistaDetalleColaborador').hidden = false;

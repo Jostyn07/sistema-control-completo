@@ -90,6 +90,8 @@
         </div>
       </header>
 
+      <div id="resumenMetodosPagoColaborador" class="texto-secundario" style="margin:-8px 0 16px"></div>
+
       <!-- Las dos divisiones de esta pestaña -->
       <div class="modal__acciones" style="justify-content:flex-start;margin-bottom:16px">
         <button type="button" class="boton" id="pestanaRendimientoBtn" onclick="cambiarPestanaColaborador('rendimiento')">1. Análisis de rendimiento</button>
@@ -174,6 +176,12 @@
         <p class="texto-secundario" style="margin:-8px 0 4px">
           Cédula y dirección se guardan cifradas; nadie puede leerlas directo desde la base de datos.
         </p>
+
+        <h4 style="margin-bottom:6px">Métodos de pago (máximo 5)</h4>
+        <div id="listaMetodosPagoColaborador"></div>
+        <button type="button" class="boton boton--pequeno" id="botonAgregarMetodoPagoColaborador" onclick="agregarMetodoPagoColaborador()" style="margin:8px 0 4px">
+          Agregar método de pago
+        </button>
 
         <div class="modal__acciones">
           <button type="button" class="boton" onclick="cerrarFormularioColaborador()">Cancelar</button>
