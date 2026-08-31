@@ -35,34 +35,17 @@ async function cargarDatosBaseProcesos() {
   const filtro = document.getElementById('filtroProductoProcesos');
   filtro.innerHTML = '<option value="">Todas</option>' + opcionesProducto;
 
-  document.getElementById('selectorMaterialProceso').innerHTML = materialesParaProceso
-    .map(m => `<option value="${m.id}">${escaparHtml(m.nombre)} (${escaparHtml(m.unidad)})</option>`).join('');
+  // El datalist filtra solo mientras el usuario escribe en el input —
+  // el texto de cada opción es "Nombre (unidad)", igual que antes se
+  // veía en el <select>. Como <input list> no guarda un id aparte (solo
+  // copia el texto al campo), agregarMaterialAProceso() busca el
+  // material por ese mismo texto (ver etiquetaMaterial()).
+  document.getElementById('datalistMaterialesProceso').innerHTML = materialesParaProceso
+    .map(m => `<option value="${escaparHtml(etiquetaMaterial(m))}"></option>`).join('');
 }
 
-// ---- Búsqueda de materiales dentro del selector (la lista puede ser larga) ----
-function normalizarTexto(texto) {
-  return (texto ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-}
-
-function filtrarMaterialesProceso() {
-  const texto = normalizarTexto(document.getElementById('buscadorMaterialProceso').value);
-  const selector = document.getElementById('selectorMaterialProceso');
-  const seleccionActual = selector.value;
-
-  const filtrados = texto
-    ? materialesParaProceso.filter(m => normalizarTexto(m.nombre).includes(texto) || normalizarTexto(m.unidad).includes(texto))
-    : materialesParaProceso;
-
-  if (filtrados.length === 0) {
-    selector.innerHTML = '<option value="">Sin resultados</option>';
-    return;
-  }
-
-  selector.innerHTML = filtrados
-    .map(m => `<option value="${m.id}">${escaparHtml(m.nombre)} (${escaparHtml(m.unidad)})</option>`).join('');
-
-  // Si el material que ya estaba elegido sigue en la lista filtrada, se mantiene seleccionado.
-  if (filtrados.some(m => m.id === seleccionActual)) selector.value = seleccionActual;
+function etiquetaMaterial(m) {
+  return `${m.nombre} (${m.unidad})`;
 }
 
 // ---- 1. Lista de procesos ----
@@ -110,8 +93,7 @@ function abrirFormularioProceso(id) {
   const modal = document.getElementById('modalProceso');
   const titulo = document.getElementById('tituloFormularioProceso');
 
-  document.getElementById('buscadorMaterialProceso').value = '';
-  filtrarMaterialesProceso();
+  document.getElementById('selectorMaterialProceso').value = '';
 
   if (productosParaProceso.length === 0) {
     mostrarAviso('Primero crea al menos una ficha técnica en Productos — un proceso siempre debe pertenecer a una.', 'error');
@@ -158,18 +140,26 @@ function cerrarFormularioProceso() {
 
 // ---- Materiales del proceso en construcción ----
 function agregarMaterialAProceso() {
-  const materialId = document.getElementById('selectorMaterialProceso').value;
+  const campoMaterial = document.getElementById('selectorMaterialProceso');
+  const textoEscrito = campoMaterial.value.trim();
   const cantidad = Number(document.getElementById('cantidadMaterialProceso').value);
-  if (!materialId) { mostrarAviso('Elige un material', 'error'); return; }
+  if (!textoEscrito) { mostrarAviso('Elige un material', 'error'); return; }
   if (!cantidad || cantidad <= 0) { mostrarAviso('La cantidad debe ser mayor a 0', 'error'); return; }
 
-  const material = materialesParaProceso.find(m => m.id === materialId);
-  if (!material) return;
+  // El input con datalist solo copia el TEXTO de la opción elegida (no
+  // hay un id aparte como en un <select>) — se busca el material por
+  // esa misma etiqueta "Nombre (unidad)".
+  const material = materialesParaProceso.find(m => etiquetaMaterial(m) === textoEscrito);
+  if (!material) {
+    mostrarAviso('Elige un material de la lista sugerida (no coincide ninguno con lo escrito)', 'error');
+    return;
+  }
 
-  const existente = filasMaterialesProcesoEnEdicion.find(f => f.material_id === materialId);
+  const existente = filasMaterialesProcesoEnEdicion.find(f => f.material_id === material.id);
   if (existente) existente.cantidad = cantidad;
-  else filasMaterialesProcesoEnEdicion.push({ material_id: materialId, nombre: material.nombre, unidad: material.unidad, cantidad });
+  else filasMaterialesProcesoEnEdicion.push({ material_id: material.id, nombre: material.nombre, unidad: material.unidad, cantidad });
 
+  campoMaterial.value = '';
   document.getElementById('cantidadMaterialProceso').value = '';
   pintarMaterialesProceso();
   calcularCostoProcesoEnVivo();
