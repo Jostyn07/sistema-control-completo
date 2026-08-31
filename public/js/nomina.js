@@ -90,8 +90,14 @@ function pintarChipsPendientes() {
 
 function pintarBarrasColaboradores() {
   const contenedor = document.getElementById('filaBarrasColaboradores');
-  if (cargaColaboradoresEnMemoria.length === 0) {
+  if (colaboradoresEnMemoria.length === 0) {
     contenedor.innerHTML = '<p class="tabla__vacio">Crea un colaborador para poder asignarle procesos.</p>';
+    return;
+  }
+  if (cargaColaboradoresEnMemoria.length === 0) {
+    // Sí hay colaboradores (ver arriba) pero /carga no trajo nada —
+    // no se les echa la culpa a ellos con el mensaje de "crea uno".
+    contenedor.innerHTML = '<p class="tabla__vacio">No se pudo cargar la carga de los colaboradores. Intenta recargar la página.</p>';
     return;
   }
   const maximo = Math.max(1, ...cargaColaboradoresEnMemoria.map(c => c.minutos_pendientes));
@@ -627,6 +633,5 @@ function escaparHtml(texto) {
 
 document.addEventListener('DOMContentLoaded', async () => {
   await cargarListaColaboradores();
-  cargarBalanceo();
+  await cargarBalanceo();
 });
-// Buenas tardes

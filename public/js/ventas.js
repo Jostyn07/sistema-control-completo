@@ -482,7 +482,7 @@ function pintarPedidos(lista) {
       <td>${formatearFecha(v.fecha)}</td>
       <td>${escaparHtml(v.cliente || '—')}</td>
       <td>${celdaFechaEntrega(v)}</td>
-      <td>${resumenProductos(v)}</td>
+      <td>${resumenProductosCompacto(v)}</td>
       <td>${formatearPesos(v.total)}</td>
       <td><span class="etiqueta-estado etiqueta-estado--${v.estado}">${ETIQUETA_ESTADO[v.estado]}</span></td>
       <td>${celdaPago(v)}</td>
@@ -580,7 +580,7 @@ function pintarHistorial(lista) {
       <td>${escaparHtml(v.cliente || '—')}</td>
       <td>${contactoCliente(v)}</td>
       <td>${v.fecha_entrega ? formatearFechaCortaVenta(v.fecha_entrega) : '—'}</td>
-      <td>${resumenProductos(v)}</td>
+      <td>${resumenProductosCompacto(v)}</td>
       <td>${formatearPesos(v.total)}</td>
       <td>${formatearPesos(v.costo_total)}</td>
       <td>${formatearPesos(v.total - v.costo_total)}</td>
@@ -630,6 +630,33 @@ function resumenProductos(venta) {
       return `${i.cantidad}× ${escaparHtml(i.productos ? i.productos.nombre : 'Producto')}${i.categoria ? ` (${escaparHtml(i.categoria)})` : ''}${progreso}`;
     })
     .join(', ');
+}
+
+// Igual que resumenProductos(), pero si hay más de 2 productos los
+// colapsa detrás de un "y N más" — evita que una venta con 8-10
+// productos vuelva la fila altísima. Se puede expandir con un clic sin
+// salir de la tabla ni abrir un modal aparte.
+function resumenProductosCompacto(venta) {
+  const items = venta.ventas_items || [];
+  if (items.length <= 2) return resumenProductos(venta);
+
+  const idBase = `productosVenta-${venta.id}`;
+  const primeros = items.slice(0, 2)
+    .map(i => `${i.cantidad}× ${escaparHtml(i.productos ? i.productos.nombre : 'Producto')}`)
+    .join(', ');
+  const resto = items.length - 2;
+
+  return `
+    <span id="${idBase}-corto">${primeros} <a href="#" onclick="event.preventDefault(); alternarProductosVenta('${venta.id}')">y ${resto} más</a></span>
+    <span id="${idBase}-completo" hidden>${resumenProductos(venta)} <a href="#" onclick="event.preventDefault(); alternarProductosVenta('${venta.id}')">(ver menos)</a></span>`;
+}
+
+function alternarProductosVenta(ventaId) {
+  const corto = document.getElementById(`productosVenta-${ventaId}-corto`);
+  const completo = document.getElementById(`productosVenta-${ventaId}-completo`);
+  if (!corto || !completo) return;
+  corto.hidden = !corto.hidden;
+  completo.hidden = !completo.hidden;
 }
 
 // ---- Entregas parciales de un pedido ----
