@@ -29,3 +29,5 @@ function validarYLimpiarMetodosPago(metodosPago) {
 }
 
 module.exports = { TIPOS_METODO_PAGO, validarYLimpiarMetodosPago };
+
+// Mayuscula
