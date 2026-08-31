@@ -39,6 +39,32 @@ async function cargarDatosBaseProcesos() {
     .map(m => `<option value="${m.id}">${escaparHtml(m.nombre)} (${escaparHtml(m.unidad)})</option>`).join('');
 }
 
+// ---- Búsqueda de materiales dentro del selector (la lista puede ser larga) ----
+function normalizarTexto(texto) {
+  return (texto ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function filtrarMaterialesProceso() {
+  const texto = normalizarTexto(document.getElementById('buscadorMaterialProceso').value);
+  const selector = document.getElementById('selectorMaterialProceso');
+  const seleccionActual = selector.value;
+
+  const filtrados = texto
+    ? materialesParaProceso.filter(m => normalizarTexto(m.nombre).includes(texto) || normalizarTexto(m.unidad).includes(texto))
+    : materialesParaProceso;
+
+  if (filtrados.length === 0) {
+    selector.innerHTML = '<option value="">Sin resultados</option>';
+    return;
+  }
+
+  selector.innerHTML = filtrados
+    .map(m => `<option value="${m.id}">${escaparHtml(m.nombre)} (${escaparHtml(m.unidad)})</option>`).join('');
+
+  // Si el material que ya estaba elegido sigue en la lista filtrada, se mantiene seleccionado.
+  if (filtrados.some(m => m.id === seleccionActual)) selector.value = seleccionActual;
+}
+
 // ---- 1. Lista de procesos ----
 async function cargarListaProcesos() {
   const cuerpo = document.getElementById('cuerpoTablaProcesos');
@@ -83,6 +109,9 @@ function pintarListaProcesos(lista) {
 function abrirFormularioProceso(id) {
   const modal = document.getElementById('modalProceso');
   const titulo = document.getElementById('tituloFormularioProceso');
+
+  document.getElementById('buscadorMaterialProceso').value = '';
+  filtrarMaterialesProceso();
 
   if (productosParaProceso.length === 0) {
     mostrarAviso('Primero crea al menos una ficha técnica en Productos — un proceso siempre debe pertenecer a una.', 'error');
