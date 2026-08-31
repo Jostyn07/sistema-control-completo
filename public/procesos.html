@@ -42,6 +42,10 @@
     <!-- Filtro por ficha técnica -->
     <section class="tarjeta">
       <label class="campo" style="max-width:320px">
+        <span class="campo__etiqueta">Buscar ficha técnica</span>
+        <input type="text" id="buscadorFiltroFichaProcesos" placeholder="Nombre del producto…" oninput="filtrarSelectorFichaProcesos()">
+      </label>
+      <label class="campo" style="max-width:320px">
         <span class="campo__etiqueta">Filtrar por ficha técnica</span>
         <select id="filtroProductoProcesos" onchange="cargarListaProcesos()">
           <option value="">Todas</option>
@@ -110,9 +114,12 @@
         </p>
 
         <h3>Materiales que se usan en este proceso</h3>
+        <label class="campo" style="max-width:280px">
+          <span class="campo__etiqueta">Buscar material</span>
+          <input type="text" id="buscadorMaterialProceso" placeholder="Nombre o unidad…" oninput="filtrarMaterialesProceso()">
+        </label>
         <div class="agregar-material">
-          <input type="text" id="selectorMaterialProceso" list="datalistMaterialesProceso" placeholder="Escribe para buscar un material…" autocomplete="off">
-          <datalist id="datalistMaterialesProceso"></datalist>
+          <select id="selectorMaterialProceso"></select>
           <input type="number" id="cantidadMaterialProceso" min="0.0001" step="0.01" placeholder="Cantidad" style="max-width:120px">
           <button type="button" class="boton" onclick="agregarMaterialAProceso()">Agregar</button>
         </div>
