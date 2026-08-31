@@ -2,7 +2,7 @@ const express = require('express');
 const supabase = require('../supabase/cliente');
 const { cifrar, descifrar } = require('../servicios/cifrado');
 const { registrarEntrega, eliminarEntrega, obtenerHistorial } = require('../servicios/entregas');
-const { validarYLimpiarMetodosPago } = require('../servicios/metodosPago');
+const { validarYLimpiarMetodosPago } = require('../servicios/metodospago');
 const router = express.Router();
 
 function validarColaborador(datos) {

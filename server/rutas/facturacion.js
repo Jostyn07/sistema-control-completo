@@ -8,7 +8,7 @@
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const proveedor = require('../servicios/facturacion-proveedor');
-const { validarYLimpiarMetodosPago } = require('../servicios/metodosPago');
+const { validarYLimpiarMetodosPago } = require('../servicios/metodospago');
 const router = express.Router();
 
 // GET /api/facturacion/configuracion
