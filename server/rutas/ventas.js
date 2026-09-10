@@ -741,10 +741,16 @@ router.post('/:id/entregas', async (req, res, next) => {
 router.get('/:id/entregas', async (req, res, next) => {
   try {
     const { data: venta, error: eVenta } = await supabase
-      .from('ventas').select('id, ventas_items(id, producto_id, productos(nombre))').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('ventas').select('id, ventas_items(id, producto_id, categoria, productos(nombre))').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
     if (eVenta || !venta) return res.status(404).json({ error: 'Venta no encontrada' });
 
-    const nombrePorItem = new Map((venta.ventas_items || []).map(i => [i.id, i.productos ? i.productos.nombre : 'Producto']));
+    // Nombre Y categoría de cada línea (la categoría es la que tenía el
+    // producto al momento de la venta) — permite luego imprimir el
+    // comprobante de la entrega agrupado por categoría o por producto.
+    const infoPorItem = new Map((venta.ventas_items || []).map(i => [
+      i.id,
+      { nombre: i.productos ? i.productos.nombre : 'Producto', categoria: i.categoria || null }
+    ]));
     const idsItems = (venta.ventas_items || []).map(i => i.id);
     if (idsItems.length === 0) return res.json([]);
 
@@ -762,10 +768,12 @@ router.get('/:id/entregas', async (req, res, next) => {
     for (const fila of filas || []) {
       const clave = fila.grupo_id || fila.id; // por si alguna quedó sin grupo
       if (!porGrupo.has(clave)) porGrupo.set(clave, { grupo_id: fila.grupo_id, fecha: fila.fecha, items: [] });
+      const info = infoPorItem.get(fila.referencia_id) || {};
       porGrupo.get(clave).items.push({
         entrega_id: fila.id,
         venta_item_id: fila.referencia_id,
-        producto: nombrePorItem.get(fila.referencia_id) || 'Producto',
+        producto: info.nombre || 'Producto',
+        categoria: info.categoria || null,
         cantidad: Number(fila.cantidad)
       });
     }

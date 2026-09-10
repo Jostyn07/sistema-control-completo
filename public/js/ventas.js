@@ -704,7 +704,12 @@ async function cargarHistorialEntregaVenta(ventaId) {
         <td>${formatearFechaCortaVenta(g.fecha)}</td>
         <td>${g.items.map(it => `${it.cantidad}× ${escaparHtml(it.producto)}`).join(', ')}</td>
         <td class="tabla__acciones">
-          <button type="button" class="boton boton--pequeno" onclick="abrirComprobanteGrupo(${indice})">Comprobante</button>
+          <select id="modoComprobanteGrupo-${indice}" class="selector-pequeno">
+            <option value="unico">Comprobante completo</option>
+            <option value="categoria">Por categoría</option>
+            <option value="individual">Individual (por producto)</option>
+          </select>
+          <button type="button" class="boton boton--pequeno" onclick="generarComprobanteGrupo(${indice})">Generar</button>
           <button type="button" class="boton boton--pequeno boton--peligro" onclick="borrarGrupoEntregaVenta('${g.grupo_id}', '${ventaId}')">Borrar</button>
         </td>
       </tr>`).join('');
@@ -783,7 +788,12 @@ async function abrirComprobanteVenta(venta) {
   document.getElementById('modalComprobanteVenta').hidden = false;
 }
 
-async function abrirComprobanteGrupo(indice) {
+function generarComprobanteGrupo(indice) {
+  const selector = document.getElementById(`modoComprobanteGrupo-${indice}`);
+  abrirComprobanteGrupo(indice, selector ? selector.value : 'unico');
+}
+
+async function abrirComprobanteGrupo(indice, modo = 'unico') {
   const grupo = gruposEntregaEnMemoria[indice];
   if (!grupo) return;
   const ventaId = document.getElementById('campoEntregaVentaId').value;
@@ -794,25 +804,45 @@ async function abrirComprobanteGrupo(indice) {
   pintarComprobante({
     cliente: venta ? venta.cliente : '',
     fecha: grupo.fecha,
-    items: grupo.items.map(it => ({ producto: it.producto, cantidad: it.cantidad })),
+    items: grupo.items.map(it => ({ producto: it.producto, categoria: it.categoria || null, cantidad: it.cantidad })),
     conFirma,
     esParcial: true,
-    config
+    config,
+    modo
   });
   document.getElementById('modalComprobanteVenta').hidden = false;
 }
 
-function pintarComprobante({ cliente, fecha, items, conFirma, esParcial, config }) {
-  const filas = items.map(i => `
-    <tr>
-      <td>${escaparHtml(i.producto)}</td>
-      <td>${i.cantidad}</td>
-    </tr>`).join('');
+function agruparItemsParaComprobante(items, modo) {
+  if (modo === 'individual') {
+    return items.map(i => ({ etiqueta: i.producto, items: [i] }));
+  }
+  if (modo === 'categoria') {
+    const grupos = new Map();
+    for (const i of items) {
+      const clave = i.categoria || 'Sin categoría';
+      if (!grupos.has(clave)) grupos.set(clave, []);
+      grupos.get(clave).push(i);
+    }
+    return [...grupos.entries()].map(([etiqueta, itemsGrupo]) => ({ etiqueta, items: itemsGrupo }));
+  }
+  return [{ etiqueta: null, items }];
+}
 
+function pintarComprobante({ cliente, fecha, items, conFirma, esParcial, config, modo = 'unico' }) {
+  const grupos = agruparItemsParaComprobante(items, modo);
+  const tituloBase = esParcial ? 'Comprobante de entrega parcial' : 'Comprobante de entrega';
   const tieneNit = !!(config && config.nit);
 
-  document.getElementById('contenidoComprobante').innerHTML = `
-    <div class="factura" id="areaImprimible">
+  const bloques = grupos.map(grupo => {
+    const filas = grupo.items.map(i => `
+      <tr>
+        <td>${escaparHtml(i.producto)}</td>
+        <td>${i.cantidad}</td>
+      </tr>`).join('');
+
+    return `
+    <div class="factura">
       <header class="factura__encabezado">
         <div>
           <h2 style="margin:0">${escaparHtml(config ? config.razon_social || '' : '')}</h2>
@@ -820,7 +850,8 @@ function pintarComprobante({ cliente, fecha, items, conFirma, esParcial, config 
           ${tieneNit && config.regimen ? `<p class="texto-secundario" style="margin:2px 0">${escaparHtml(config.regimen)}</p>` : ''}
         </div>
         <div style="text-align:right">
-          <h3 style="margin:0">${esParcial ? 'Comprobante de entrega parcial' : 'Comprobante de entrega'}</h3>
+          <h3 style="margin:0">${tituloBase}</h3>
+          ${grupo.etiqueta ? `<p style="margin:2px 0"><strong>${escaparHtml(grupo.etiqueta)}</strong></p>` : ''}
           <p class="texto-secundario" style="margin:2px 0">${formatearFecha(fecha)}</p>
         </div>
       </header>
@@ -835,6 +866,9 @@ function pintarComprobante({ cliente, fecha, items, conFirma, esParcial, config 
       ${bloqueDatosPersonaYPagoComprobante(config)}
       ${conFirma ? bloqueFirmaComprobante() : ''}
     </div>`;
+  }).join('');
+
+  document.getElementById('contenidoComprobante').innerHTML = `<div id="areaImprimible">${bloques}</div>`;
 }
 
 // Mismo bloque que ya se usa en la factura DIAN (persona + hasta 5

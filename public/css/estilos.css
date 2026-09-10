@@ -385,3 +385,5 @@ a:hover { color: var(--accent); }
   font-size: 0.8rem; background: var(--bg); border: 1px solid var(--hairline); border-radius: 12px;
   padding: 2px 10px; color: var(--ink-suave);
 }
+.factura + .factura { margin-top: 40px; padding-top: 24px; border-top: 2px dashed var(--hairline); page-break-before: always; }
+.selector-pequeno { padding: 4px 8px; font-size: 0.85rem; }
