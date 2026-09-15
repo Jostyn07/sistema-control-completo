@@ -23,12 +23,15 @@
     <a href="./finanzas.html" class="navegacion__enlace">Finanzas</a>
     <a href="./facturacion.html" class="navegacion__enlace">Facturación</a>
     <a href="./nomina.html" class="navegacion__enlace">Nóminas</a>
+    <a href="./importar-exportar.html" class="navegacion__enlace">Importar/Exportar</a>
+    <a href="./index.html?recorrido=1" class="navegacion__enlace">❓ Ayuda</a>
     <a href="./suscripcion.html" class="navegacion__enlace">Suscripción</a>
   </nav>
 
   <main class="pagina">
     <header class="pagina__encabezado">
       <h1>Resumen del negocio</h1>
+      <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('inicio')" title="¿Cómo funciona esta sección?">❓ ¿Cómo funciona?</button>
       <span class="texto-secundario" id="indicadorFecha"></span>
     </header>
 
@@ -174,9 +177,12 @@
   <script src="js/api.js"></script>
   <script src="js/tema.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/ayuda-contextual.js"></script>
   <script src="js/inicio.js"></script>
+  <script src="js/recorrido.js"></script>
+  <script src="js/recorrido-inicial.js"></script>
   <script>
-    if (exigirSesion()) { mostrarUsuarioActual(); }
+    if (exigirSesion()) { mostrarUsuarioActual(); revisarSiMostrarRecorridoInicial(); }
   </script>
 </body>
 </html>

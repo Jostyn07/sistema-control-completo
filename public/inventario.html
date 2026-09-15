@@ -23,12 +23,16 @@
     <a href="./finanzas.html" class="navegacion__enlace">Finanzas</a>
     <a href="./facturacion.html" class="navegacion__enlace">Facturación</a>
     <a href="./nomina.html" class="navegacion__enlace">Nóminas</a>
+    <a href="./importar-exportar.html" class="navegacion__enlace">Importar/Exportar</a>
+    <a href="./index.html?recorrido=1" class="navegacion__enlace">❓ Ayuda</a>
     <a href="./suscripcion.html" class="navegacion__enlace">Suscripción</a>
   </nav>
 
   <main class="pagina">
     <header class="pagina__encabezado">
       <h1>Inventario en tiempo real</h1>
+      <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('inventario')" title="¿Cómo funciona esta sección?">❓ ¿Cómo funciona?</button>
+      <a href="./importar-exportar.html" class="boton boton--pequeno">📊 Trabajar con Excel</a>
       <div class="tabla__acciones">
         <span class="texto-secundario" id="indicadorActualizacion"></span>
         <button type="button" class="boton" onclick="refrescarInventario()">Actualizar ahora</button>
@@ -117,9 +121,12 @@
   <script src="js/api.js"></script>
   <script src="js/tema.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/ayuda-contextual.js"></script>
+  <script src="js/recorrido.js"></script>
+  <script src="js/recorrido-progresivo.js"></script>
   <script src="js/inventario.js"></script>
   <script>
-    if (exigirSesion()) { mostrarUsuarioActual(); }
+    if (exigirSesion()) { mostrarUsuarioActual(); iniciarRecorridoProgresivoSiPrimeraVez('inventario'); }
   </script>
 </body>
 </html>

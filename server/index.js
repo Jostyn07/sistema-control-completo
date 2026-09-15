@@ -59,6 +59,7 @@ app.use('/api/dashboard', require('./rutas/dashboard'));
 app.use('/api/facturacion', require('./rutas/facturacion'));
 app.use('/api/configuracion', require('./rutas/configuracion'));
 app.use('/api/almacenamiento', require('./rutas/almacenamiento'));
+app.use('/api/excel', require('./rutas/excel'));
 
 // Manejador de errores único: cualquier ruta que haga next(error) cae aquí
 app.use((err, req, res, next) => {

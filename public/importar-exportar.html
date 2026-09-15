@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Importar y exportar — Sistema de Control</title>
+  <link rel="stylesheet" href="css/estilos.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tema-panel-oscuro.css">
+</head>
+<body>
+
+  <!-- Navegación entre pestañas (misma en todas las páginas) -->
+  <nav class="navegacion">
+    <a href="./index.html" class="navegacion__enlace">Inicio</a>
+    <a href="./materiales.html" class="navegacion__enlace">Materiales</a>
+    <a href="./productos.html" class="navegacion__enlace">Productos</a>
+    <a href="./procesos.html" class="navegacion__enlace">Procesos</a>
+    <a href="./inventario.html" class="navegacion__enlace">Inventario</a>
+    <a href="./compras.html" class="navegacion__enlace">Compras</a>
+    <a href="./ventas.html" class="navegacion__enlace">Ventas</a>
+    <a href="./finanzas.html" class="navegacion__enlace">Finanzas</a>
+    <a href="./facturacion.html" class="navegacion__enlace">Facturación</a>
+    <a href="./nomina.html" class="navegacion__enlace">Nóminas</a>
+    <a href="./importar-exportar.html" class="navegacion__enlace navegacion__enlace--activo">Importar/Exportar</a>
+    <a href="./index.html?recorrido=1" class="navegacion__enlace">❓ Ayuda</a>
+    <a href="./suscripcion.html" class="navegacion__enlace">Suscripción</a>
+  </nav>
+
+  <main class="pagina">
+    <header class="pagina__encabezado">
+      <h1>Importar y exportar información</h1>
+      <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('excel')" title="¿Cómo funciona esta sección?">❓ ¿Cómo funciona?</button>
+    </header>
+
+    <section class="tarjeta">
+      <p>Descarga la plantilla de cada módulo, complétala en Excel y vuelve a subirla aquí para cargar grandes
+        cantidades de información de una sola vez. También puedes descargar tu información actual para editarla
+        y volver a subirla.</p>
+    </section>
+
+    <!-- 1. Descarga masiva -->
+    <section class="tarjeta">
+      <h2>Descargar todo</h2>
+      <p class="texto-secundario">Un solo archivo .zip con la plantilla (o la información actual) de los 9 módulos.</p>
+      <div class="modulo-excel__acciones">
+        <button type="button" class="boton" onclick="descargarTodo('plantillas')">Descargar todas las plantillas</button>
+        <button type="button" class="boton" onclick="descargarTodo('exportar')">Descargar toda mi información</button>
+      </div>
+    </section>
+
+    <!-- 2. Un módulo por tarjeta (el contenido lo arma js/importar-exportar.js) -->
+    <section class="tarjeta">
+      <h2>Por módulo</h2>
+      <div class="modulos-excel" id="listaModulosExcel">
+        <p class="tabla__vacio">Cargando módulos…</p>
+      </div>
+    </section>
+
+    <!-- 3. Modal: subir → analizar → previsualizar → confirmar -->
+    <div class="modal" id="modalExcel" hidden>
+      <div class="modal__contenido modal__contenido--ancho tarjeta">
+        <h2 id="tituloModalExcel">Subir Excel</h2>
+
+        <div id="pasoSeleccionArchivo">
+          <label class="campo">
+            <span class="campo__etiqueta">Elige el archivo (.xlsx) ya completado</span>
+            <input type="file" id="campoArchivoExcel" accept=".xlsx" onchange="alSeleccionarArchivo(event)">
+          </label>
+        </div>
+
+        <p id="lineaCargandoExcel" class="cargando-linea" hidden>Analizando el archivo…</p>
+
+        <div id="contenidoReporteExcel"></div>
+
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarModalExcel()">Cancelar</button>
+          <button type="button" class="boton boton--primario" id="botonConfirmarImportacion" onclick="confirmarImportacion()" hidden>
+            Confirmar importación
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/tema.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/ayuda-contextual.js"></script>
+  <script src="js/importar-exportar.js"></script>
+  <script>
+    if (exigirSesion()) { mostrarUsuarioActual(); inicializarPaginaExcel(); }
+  </script>
+</body>
+</html>

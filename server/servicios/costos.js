@@ -284,6 +284,43 @@ async function obtenerFichasEfectivasParaProductos(productoIds, usuarioId) {
   return filas;
 }
 
+// Recalcula TODO lo que depende de un material que acaba de cambiar de
+// costo: primero los procesos que lo usan (su costo_materiales) y,
+// con eso ya actualizado, los productos afectados — tanto los que lo
+// usan directo en su ficha técnica (productos_materiales) como los
+// que lo usan indirecto a través de sus procesos. La usan tanto la
+// edición manual de un material (rutas/materiales.js) como la
+// importación masiva por Excel (servicios/importadores/materiales.js),
+// para no mantener esta lógica duplicada en dos lugares.
+// Devuelve cuántos productos distintos se recalcularon.
+async function recalcularProductosQueUsanMaterial(materialId, usuarioId) {
+  const productoIds = new Set();
+
+  const { data: directos, error: e1 } = await supabase
+    .from('productos_materiales')
+    .select('producto_id, productos!inner(usuario_id)')
+    .eq('material_id', materialId)
+    .eq('productos.usuario_id', usuarioId);
+  if (e1) throw new Error(e1.message);
+  for (const f of directos || []) productoIds.add(f.producto_id);
+
+  const { data: procesosQueLoUsan, error: e2 } = await supabase
+    .from('procesos_materiales')
+    .select('proceso_id, procesos!inner(id, producto_id, usuario_id)')
+    .eq('material_id', materialId)
+    .eq('procesos.usuario_id', usuarioId);
+  if (e2) throw new Error(e2.message);
+  for (const f of procesosQueLoUsan || []) {
+    await recalcularCostoMaterialesDeProceso(f.proceso_id, usuarioId);
+    productoIds.add(f.procesos.producto_id);
+  }
+
+  for (const productoId of productoIds) {
+    await recalcularProductoDesdeSusProcesos(productoId, usuarioId);
+  }
+  return productoIds.size;
+}
+
 module.exports = {
   obtenerCostoMinutoManoObra,
   calcularCostoMateriales,
@@ -292,5 +329,6 @@ module.exports = {
   obtenerMinutosDesdeProcesos,
   obtenerFichasEfectivasParaProductos,
   recalcularTodosLosProductos,
-  recalcularProductoDesdeSusProcesos
+  recalcularProductoDesdeSusProcesos,
+  recalcularProductosQueUsanMaterial
 };

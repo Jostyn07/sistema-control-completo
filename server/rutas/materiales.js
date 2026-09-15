@@ -11,7 +11,7 @@
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
-const { recalcularCostoMaterialesDeProceso, recalcularProductoDesdeSusProcesos } = require('../servicios/costos');
+const { recalcularProductosQueUsanMaterial } = require('../servicios/costos');
 const { procesarComprasVencidas } = require('../servicios/compras');
 const router = express.Router();
 
@@ -26,39 +26,6 @@ function validarMaterial(datos) {
   if (datos.tiempo_entrega_dias != null && (isNaN(datos.tiempo_entrega_dias) || Number(datos.tiempo_entrega_dias) < 0))
     errores.push('El tiempo de entrega debe ser un número de días válido');
   return errores;
-}
-
-// Recalcula el costo de todo lo que usa un material que acaba de
-// cambiar de precio: primero los procesos que lo usan (su
-// costo_materiales), y con eso ya actualizado, los productos — tanto
-// los que lo usan directo en su ficha técnica (productos_materiales)
-// como los que lo usan indirecto a través de sus procesos.
-async function recalcularProductosQueUsan(materialId, usuarioId) {
-  const productoIds = new Set();
-
-  const { data: directos, error: e1 } = await supabase
-    .from('productos_materiales')
-    .select('producto_id, productos!inner(usuario_id)')
-    .eq('material_id', materialId)
-    .eq('productos.usuario_id', usuarioId);
-  if (e1) throw new Error(e1.message);
-  for (const f of directos || []) productoIds.add(f.producto_id);
-
-  const { data: procesosQueLoUsan, error: e2 } = await supabase
-    .from('procesos_materiales')
-    .select('proceso_id, procesos!inner(id, producto_id, usuario_id)')
-    .eq('material_id', materialId)
-    .eq('procesos.usuario_id', usuarioId);
-  if (e2) throw new Error(e2.message);
-  for (const f of procesosQueLoUsan || []) {
-    await recalcularCostoMaterialesDeProceso(f.proceso_id, usuarioId);
-    productoIds.add(f.procesos.producto_id);
-  }
-
-  for (const productoId of productoIds) {
-    await recalcularProductoDesdeSusProcesos(productoId, usuarioId);
-  }
-  return productoIds.size;
 }
 
 // GET /api/materiales — solo los del usuario que hace la petición
@@ -134,7 +101,7 @@ router.put('/:id', async (req, res, next) => {
         origen: 'edicion'
       });
       if (eHist) throw new Error(eHist.message);
-      productosRecalculados = await recalcularProductosQueUsan(req.params.id, req.usuarioId);
+      productosRecalculados = await recalcularProductosQueUsanMaterial(req.params.id, req.usuarioId);
     }
 
     res.json({ ...data, productos_recalculados: productosRecalculados });
