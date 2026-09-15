@@ -113,4 +113,37 @@ router.put('/fecha-inicio-roi', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/configuracion/onboarding — ¿ya vio el recorrido inicial?
+router.get('/onboarding', async (req, res, next) => {
+  try {
+    const data = await obtenerConfiguracion(req.usuarioId);
+    res.json({ completado: !!(data && data.onboarding_completado) });
+  } catch (err) { next(err); }
+});
+
+// PUT /api/configuracion/onboarding — cuerpo: { completado }
+// Se llama al terminar (o saltar) el recorrido inicial, para no
+// volver a mostrarlo solo cada vez que la persona entra.
+router.put('/onboarding', async (req, res, next) => {
+  try {
+    const completado = req.body.completado !== false; // por defecto true
+    const existente = await obtenerConfiguracion(req.usuarioId);
+    let resultado;
+    if (existente) {
+      resultado = await supabase
+        .from('configuracion_produccion')
+        .update({ onboarding_completado: completado, actualizado_en: new Date().toISOString() })
+        .eq('usuario_id', req.usuarioId)
+        .select().single();
+    } else {
+      resultado = await supabase
+        .from('configuracion_produccion')
+        .insert({ usuario_id: req.usuarioId, onboarding_completado: completado })
+        .select().single();
+    }
+    if (resultado.error) throw new Error(resultado.error.message);
+    res.json({ completado: !!resultado.data.onboarding_completado });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
