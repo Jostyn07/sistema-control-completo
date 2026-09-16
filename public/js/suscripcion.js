@@ -3,9 +3,11 @@
 // Funciones:
 //   cargarEstadoActual()
 //   cargarPlanes()
-//   elegirPlan(planId)   → abre el modal con el Brick de tarjeta
-// La activación real NUNCA pasa por aquí — solo por el webhook del
-// backend, que valida la firma de Mercado Pago antes de activar nada.
+//   elegirPlan(planId)   → abre el Widget de pago de Wompi
+// La activación real NUNCA se decide aquí — el navegador solo avisa
+// qué transacción se cerró; quien confirma y activa es el backend
+// (en /confirmar-pago, reconsultando contra la API de Wompi, y por el
+// webhook, que valida el checksum antes de activar nada).
 // ============================================================
 
 const ETIQUETA_ESTADO_SUSCRIPCION = {
@@ -163,93 +165,57 @@ async function cargarPlanes() {
   }
 }
 
-// ---- Pago con el Brick de tarjeta de Mercado Pago ----
-// Se muestra dentro de un modal en esta misma página.
-// El SDK (mp) se crea una sola vez; el Brick sí hay que destruirlo
-// y volver a crearlo cada vez que se abre el modal, o Mercado Pago
-// termina montando formularios encima unos de otros.
-let clienteMercadoPago = null;
-let brickTarjetaActual = null;
-
-async function obtenerClienteMercadoPago() {
-  if (clienteMercadoPago) return clienteMercadoPago;
-  const { public_key: llavePublica } = await API.obtener('/api/suscripcion/llave-publica-mercadopago');
-  clienteMercadoPago = new MercadoPago(llavePublica, { locale: 'es-CO' });
-  return clienteMercadoPago;
-}
-
+// ---- Pago con el Widget de Wompi ----
+// El Widget abre su propio overlay encima de esta misma página (no
+// navega a otro sitio) y soporta tarjeta, PSE, Nequi, etc. sin que
+// nosotros tengamos que construir un formulario para cada uno.
 async function elegirPlan(planId) {
   try {
     const datos = await API.enviar('/api/suscripcion/iniciar-pago', { plan_id: planId });
 
-    document.getElementById('modalPagoResumen').textContent = datos.descuento_aplicado
-      ? `${datos.descripcion} — ${formatearPesos(datos.monto)} con 50% de descuento tu primer mes (normalmente ${formatearPesos(datos.monto_original)})`
-      : `${datos.descripcion} — ${formatearPesos(datos.monto)}/mes`;
-    document.getElementById('modalPagoError').hidden = true;
+    const checkout = new WidgetCheckout({
+      currency: datos.moneda,
+      amountInCents: datos.monto_en_centavos,
+      reference: datos.referencia,
+      publicKey: datos.public_key,
+      signature: { integrity: datos.firma },
+      customerData: { email: datos.correo }
+    });
 
-    const modal = document.getElementById('modalPago');
-    modal.hidden = false;
-
-    if (brickTarjetaActual) {
-      await brickTarjetaActual.unmount();
-      brickTarjetaActual = null;
-    }
-
-    const mp = await obtenerClienteMercadoPago();
-    brickTarjetaActual = await mp.bricks().create('cardPayment', 'brickTarjeta', {
-      initialization: { amount: datos.monto },
-      callbacks: {
-        onReady: () => {
-          // El Brick ya terminó de renderizar su formulario — no hay
-          // nada más que hacer aquí, pero Mercado Pago exige el
-          // callback igual, aunque quede vacío.
-        },
-        onSubmit: (formularioTarjeta) => new Promise((resolve, reject) => {
-          API.enviar('/api/suscripcion/procesar-pago', {
-            plan_id: planId,
-            token: formularioTarjeta.token,
-            payment_method_id: formularioTarjeta.payment_method_id,
-            installments: formularioTarjeta.installments
-          }).then((resultado) => {
-            manejarResultadoPago(resultado);
-            resolve();
-          }).catch((err) => {
-            mostrarErrorEnModal(err.message);
-            reject(err);
-          });
-        }),
-        onError: () => mostrarErrorEnModal('No se pudo validar la tarjeta. Revisa los datos e intenta de nuevo.')
+    checkout.open((resultado) => {
+      const transaccion = resultado && resultado.transaction;
+      if (!transaccion || !transaccion.id) {
+        // El usuario cerró el Widget sin completar el pago — no hay
+        // nada que confirmar.
+        return;
       }
+      confirmarPago(planId, transaccion.id);
     });
   } catch (err) {
     mostrarAviso(err.message, 'error');
   }
 }
 
-function mostrarErrorEnModal(mensaje) {
-  const error = document.getElementById('modalPagoError');
-  error.textContent = mensaje;
-  error.hidden = false;
-}
-
-function manejarResultadoPago(resultado) {
-  if (resultado.status === 'approved') {
-    cerrarModalPago();
-    mostrarAviso('¡Pago aprobado! Tu suscripción ya está activa.');
-    cargarEstadoActual();
-  } else if (resultado.status === 'in_process' || resultado.status === 'pending') {
-    cerrarModalPago();
-    mostrarAviso('Tu pago está en proceso de confirmación. Te avisamos aquí en cuanto se apruebe.');
-  } else {
-    mostrarErrorEnModal('El pago fue rechazado. Intenta con otra tarjeta.');
+async function confirmarPago(planId, transactionId) {
+  try {
+    const resultado = await API.enviar('/api/suscripcion/confirmar-pago', {
+      plan_id: planId,
+      transaction_id: transactionId
+    });
+    manejarResultadoPago(resultado);
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
   }
 }
 
-async function cerrarModalPago() {
-  document.getElementById('modalPago').hidden = true;
-  if (brickTarjetaActual) {
-    await brickTarjetaActual.unmount();
-    brickTarjetaActual = null;
+function manejarResultadoPago(resultado) {
+  if (resultado.status === 'APPROVED') {
+    mostrarAviso('¡Pago aprobado! Tu suscripción ya está activa.');
+    cargarEstadoActual();
+  } else if (resultado.status === 'PENDING') {
+    mostrarAviso('Tu pago está en proceso de confirmación. Te avisamos aquí en cuanto se apruebe.');
+  } else {
+    mostrarAviso('El pago fue rechazado o no se pudo completar. Intenta de nuevo.', 'error');
   }
 }
 
