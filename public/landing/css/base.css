@@ -1,0 +1,93 @@
+/* ==========================================================================
+   FINCIL — Base (Fase 0)
+   Reset ligero + aplicación de tokens a elementos HTML + utilidades de layout.
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font-family: var(--fuente-texto);
+  font-size: var(--tam-cuerpo);
+  line-height: 1.6;
+  color: var(--azul-profundo);
+  background: var(--blanco);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--fuente-titulos);
+  color: var(--azul-profundo);
+  line-height: 1.15;
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+h1 { font-size: var(--tam-h1); }
+h2 { font-size: var(--tam-h2); }
+h3 { font-size: var(--tam-h3); }
+h4 { font-size: var(--tam-h4); font-weight: 600; }
+
+p { margin: 0; }
+p + p { margin-top: var(--esp-3); }
+
+.texto-cuerpo-grande { font-size: var(--tam-cuerpo-grande); }
+.texto-secundario { color: var(--gris-texto); }
+.texto-eyebrow {
+  font-family: var(--fuente-texto);
+  font-size: var(--tam-eyebrow);
+  font-weight: 600;
+  color: var(--azul-fincil);
+}
+
+a {
+  color: var(--azul-fincil);
+  text-decoration: none;
+}
+a:hover { color: var(--azul-fincil-hover); }
+
+:focus-visible {
+  outline: 2px solid var(--azul-fincil);
+  outline-offset: 3px;
+  border-radius: var(--radio-sm);
+}
+
+img, svg { max-width: 100%; display: block; }
+
+/* ---- Layout ---- */
+.envoltura {
+  max-width: var(--ancho-maximo);
+  margin: 0 auto;
+  padding: 0 var(--esp-6);
+}
+
+.seccion {
+  padding: var(--esp-9) 0;
+}
+.seccion--claro { background: var(--azul-claro); }
+.seccion--profundo { background: var(--azul-profundo); color: var(--blanco); }
+.seccion--profundo h1,
+.seccion--profundo h2,
+.seccion--profundo h3,
+.seccion--profundo h4 { color: var(--blanco); }
+
+.grid {
+  display: grid;
+  gap: var(--esp-5);
+}
+.grid--2 { grid-template-columns: repeat(2, 1fr); }
+.grid--3 { grid-template-columns: repeat(3, 1fr); }
+.grid--4 { grid-template-columns: repeat(4, 1fr); }
+
+@media (max-width: 900px) {
+  .grid--3, .grid--4 { grid-template-columns: repeat(2, 1fr); }
+  .envoltura { padding: 0 var(--esp-5); }
+  .seccion { padding: var(--esp-7) 0; }
+  h1 { font-size: var(--tam-h2); }
+  h2 { font-size: var(--tam-h3); }
+}
+@media (max-width: 600px) {
+  .grid--2, .grid--3, .grid--4 { grid-template-columns: 1fr; }
+}

@@ -1,0 +1,88 @@
+/* ==========================================================================
+   FINCIL — Tokens de diseño (Fase 0)
+   Paleta, tipografía y escalas base para toda la experiencia pública.
+   No se deben declarar colores, radios ni tipografías fuera de estas
+   variables: cualquier página nueva de la landing consume de aquí.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Caveat:wght@600;700&display=swap');
+
+:root {
+  /* ---- Paleta de marca (Documento de estructura, sección 0.3) ---- */
+  --azul-fincil: #168FF0;      /* CTA, enlaces, acentos, estados activos */
+  --azul-profundo: #123B68;    /* Títulos, navegación, textos destacados */
+  --azul-claro: #EEF6FF;       /* Fondos de secciones y bloques informativos */
+  --blanco: #FFFFFF;           /* Fondos principales y tarjetas */
+  --gris-texto: #66727F;       /* Textos secundarios */
+  --verde: #1D7A5A;            /* Éxito, procesos completados */
+  --rosa-acento: #E96B86;      /* Detalles puntuales, promociones */
+
+  /* ---- Colores de módulo (Fase 1, tarjetas de funcionalidades) ----
+     Extensión de apoyo sobre la paleta base para distinguir los 10
+     módulos del grid 1.5 y los nodos del diagrama 1.4. No sustituyen
+     la paleta de marca: solo se usan como fondo suave + ícono. */
+  --mod-1-fondo: rgba(22, 143, 240, 0.12);  --mod-1-icono: #168FF0; /* Productos */
+  --mod-2-fondo: rgba(29, 122, 90, 0.12);   --mod-2-icono: #1D7A5A; /* Materiales / Inventario */
+  --mod-3-fondo: rgba(124, 92, 219, 0.12);  --mod-3-icono: #7C5CDB; /* Procesos / Producción */
+  --mod-4-fondo: rgba(233, 154, 43, 0.14);  --mod-4-icono: #C97A1E; /* Compras */
+  --mod-5-fondo: rgba(233, 107, 134, 0.14); --mod-5-icono: #C74C6B; /* Ventas / acento */
+  --mod-6-fondo: rgba(22, 143, 240, 0.10);  --mod-6-icono: #123B68; /* Finanzas */
+  --mod-7-fondo: rgba(233, 154, 43, 0.12);  --mod-7-icono: #A6660B; /* Facturación */
+  --mod-8-fondo: rgba(29, 122, 90, 0.10);   --mod-8-icono: #0E5A41; /* Nóminas */
+  --mod-9-fondo: rgba(102, 114, 127, 0.14); --mod-9-icono: #4A5560; /* Importar / Exportar */
+  --mod-10-fondo: rgba(124, 92, 219, 0.10); --mod-10-icono: #5B3FB0; /* de reserva */
+
+  /* ---- Variantes derivadas (interacción, no rompen la paleta base) ---- */
+  --azul-fincil-hover: #1279CB;
+  --azul-fincil-suave: rgba(22, 143, 240, 0.10);
+  --azul-profundo-suave: rgba(18, 59, 104, 0.06);
+  --borde: rgba(18, 59, 104, 0.12);
+  --borde-fuerte: rgba(18, 59, 104, 0.20);
+  --sombra-tarjeta: 0 1px 2px rgba(18, 59, 104, 0.06), 0 8px 24px rgba(18, 59, 104, 0.08);
+  --sombra-tarjeta-hover: 0 4px 10px rgba(18, 59, 104, 0.08), 0 16px 32px rgba(18, 59, 104, 0.12);
+
+  /* ---- Tipografía ---- */
+  --fuente-titulos: "Sora", "Segoe UI", sans-serif;
+  --fuente-texto: "Inter", "Segoe UI", sans-serif;
+  --fuente-manuscrita: "Caveat", cursive; /* anotaciones hechas a mano sobre el mockup */
+
+  /* Escala tipográfica (base 16px, ratio ~1.25) */
+  --tam-eyebrow: 0.8125rem;   /* 13px */
+  --tam-cuerpo: 1rem;         /* 16px */
+  --tam-cuerpo-grande: 1.125rem; /* 18px */
+  --tam-h4: 1.375rem;         /* 22px */
+  --tam-h3: 1.75rem;          /* 28px */
+  --tam-h2: 2.25rem;          /* 36px */
+  --tam-h1: 3rem;             /* 48px */
+  --tam-display: 3.75rem;     /* 60px */
+
+  /* ---- Espaciado (múltiplos de 4px) ---- */
+  --esp-1: 4px;
+  --esp-2: 8px;
+  --esp-3: 12px;
+  --esp-4: 16px;
+  --esp-5: 24px;
+  --esp-6: 32px;
+  --esp-7: 48px;
+  --esp-8: 64px;
+  --esp-9: 96px;
+  --esp-10: 128px;
+
+  /* ---- Forma ---- */
+  --radio-sm: 8px;
+  --radio-md: 14px;
+  --radio-lg: 20px;
+  --radio-pill: 999px;
+
+  /* ---- Contenedor ---- */
+  --ancho-maximo: 1160px;
+
+  /* ---- Movimiento ---- */
+  --duracion-rapida: 150ms;
+  --duracion-media: 320ms;
+  --curva: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --duracion-rapida: 0ms; --duracion-media: 0ms; }
+}
