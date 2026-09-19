@@ -18,6 +18,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // por si algún formulario manda datos así, no en JSON
 
 // Archivos estáticos (HTML, CSS, JS del navegador)
+// La raíz sirve la landing pública, no el dashboard — debe ir antes de
+// express.static para que este no resuelva '/' contra public/index.html.
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'landing', 'index.html'));
+});
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ---- Rutas públicas de autenticación (sin token todavía) ----

@@ -14,7 +14,9 @@ async function redirigirTrasLogin() {
   // La prueba de 7 días corre libre, sin pedir método de pago por
   // adelantado. Cuando la persona quiera pagar (durante la prueba o
   // al vencer), lo hace desde Suscripción con el checkout normal.
-  window.location.href = '/';
+  // Nota: '/' ahora sirve la landing pública (public/landing/index.html),
+  // por eso aquí se apunta explícitamente al dashboard.
+  window.location.href = '/index.html';
 }
 
 // Crea (una sola vez) el cliente de Supabase del navegador, usando SOLO la

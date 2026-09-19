@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fincil — Controla tu negocio desde un solo lugar</title>
 <meta name="description" content="Fincil reúne productos, inventario, compras, ventas, producción y finanzas en una sola plataforma. Prueba gratis 7 días.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/componentes.css">
@@ -17,8 +18,7 @@
   <div class="nav__fila">
     <a href="index.html" class="marca-fincil">
       <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-11 10Z" fill="var(--azul-fincil)"/>
-        <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" stroke="var(--verde)" stroke-width="2" stroke-linecap="round"/>
+        <path d="M12,22 C21,17 21,8 15,4 C13,8.5 12,14 12,22 Z" fill="var(--azul-fincil)"/><path d="M12,22 C3,17 3,8 9,4 C11,8.5 12,14 12,22 Z" fill="var(--azul-fincil-oscuro)"/>
       </svg>
       <span class="marca-fincil__texto">
         <span class="marca-fincil__nombre">Fincil</span>
@@ -28,7 +28,7 @@
 
     <ul class="nav__enlaces">
       <li><a href="#todo-conectado">Cómo funciona</a></li>
-      <li><a href="#funcionalidades">Funcionalidades</a></li>
+      <li><a href="funcionalidades.html">Funcionalidades</a></li>
       <li><a href="planes.html">Planes</a></li>
       <li><a href="faq.html">Preguntas frecuentes</a></li>
     </ul>
@@ -43,7 +43,7 @@
   </div>
   <nav class="nav__menu-movil">
     <a href="#todo-conectado">Cómo funciona</a>
-    <a href="#funcionalidades">Funcionalidades</a>
+    <a href="funcionalidades.html">Funcionalidades</a>
     <a href="planes.html">Planes</a>
     <a href="faq.html">Preguntas frecuentes</a>
     <a href="login.html">Iniciar sesión</a>
@@ -86,7 +86,7 @@
 
     <div class="hero__visual">
       <svg class="hero__hoja-decorativa" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-11 10Z" fill="currentColor"/>
+        <path d="M12,22 C21,17 21,8 15,4 C13,8.5 12,14 12,22 Z" fill="currentColor"/><path d="M12,22 C3,17 3,8 9,4 C11,8.5 12,14 12,22 Z" fill="currentColor"/>
       </svg>
 
       <span class="manuscrito manuscrito--hero">Tu negocio<br>siempre contigo
@@ -104,7 +104,7 @@
         <div class="mockup__pantalla">
           <div class="mockup__lateral">
             <span class="mockup__lateral-marca">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--blanco)"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-11 10Z"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--blanco)"><path d="M12,22 C21,17 21,8 15,4 C13,8.5 12,14 12,22 Z"/><path d="M12,22 C3,17 3,8 9,4 C11,8.5 12,14 12,22 Z"/></svg>
               Fincil
             </span>
             <span class="mockup__enlace mockup__enlace--activo">
@@ -112,16 +112,17 @@
               Inicio
             </span>
             <span class="mockup__enlace">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
-              Productos
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/></svg>
+              Ventas
             </span>
             <span class="mockup__enlace">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               Inventario
             </span>
+            <span class="mockup__grupo-titulo">Productos</span>
             <span class="mockup__enlace">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/></svg>
-              Ventas
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+              Productos
             </span>
             <span class="mockup__enlace">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
@@ -133,6 +134,19 @@
             </span>
           </div>
           <div class="mockup__contenido">
+            <div class="mockup__topbar">
+              <span class="mockup__buscador">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                Buscar en Fincil…
+              </span>
+              <span class="mockup__topbar-acciones">
+                <span class="mockup__campana">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  <span class="mockup__campana-punto"></span>
+                </span>
+                <span class="mockup__avatar">MG</span>
+              </span>
+            </div>
             <div class="mockup__saludo">
               <div>
                 <h5>¡Hola, María! 👋</h5>
@@ -205,7 +219,7 @@
 
       <div class="flotante flotante--nota">
         <span class="flotante__icono" style="background:transparent;color:var(--verde);">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-11 10Z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12,22 C21,17 21,8 15,4 C13,8.5 12,14 12,22 Z"/><path d="M12,22 C3,17 3,8 9,4 C11,8.5 12,14 12,22 Z"/></svg>
         </span>
         <span>Más tiempo para<br>lo que te importa</span>
       </div>
@@ -218,7 +232,7 @@
   <div class="envoltura que-es__cuadricula">
     <div>
       <span class="que-es__badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-11 10Z"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12,22 C21,17 21,8 15,4 C13,8.5 12,14 12,22 Z"/><path d="M12,22 C3,17 3,8 9,4 C11,8.5 12,14 12,22 Z"/></svg>
         ¿Qué es Fincil?
       </span>
       <h2>Todo tu negocio, <span class="acento">en un solo lugar</span></h2>
@@ -229,7 +243,7 @@
       </p>
       <div class="que-es__callout">
         <span class="que-es__callout-icono">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-11 10Z"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12,22 C21,17 21,8 15,4 C13,8.5 12,14 12,22 Z"/><path d="M12,22 C3,17 3,8 9,4 C11,8.5 12,14 12,22 Z"/></svg>
         </span>
         <p><strong>Más que un sistema,</strong><br>un aliado para tu crecimiento.</p>
       </div>
@@ -265,7 +279,7 @@
     <div class="radial">
       <svg class="radial__lineas" viewBox="0 0 100 100"></svg>
       <div class="radial__centro">
-        <svg viewBox="0 0 24 24" width="100%" style="filter:drop-shadow(0 8px 20px rgba(18,59,104,.25))"><rect width="24" height="24" rx="6" fill="var(--azul-profundo)"/><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-11 10Z" fill="var(--blanco)"/></svg>
+        <svg viewBox="0 0 24 24" width="100%" style="filter:drop-shadow(0 8px 20px rgba(18,59,104,.25))"><rect width="24" height="24" rx="6" fill="var(--azul-profundo)"/><path d="M12,22 C21,17 21,8 15,4 C13,8.5 12,14 12,22 Z" fill="var(--blanco)"/><path d="M12,22 C3,17 3,8 9,4 C11,8.5 12,14 12,22 Z" fill="var(--blanco)"/></svg>
       </div>
       <div class="radial__nodo" data-x="50" data-y="6" style="top:6%; left:50%;">
         <span class="radial__nodo-icono" style="background:var(--mod-1-fondo);color:var(--mod-1-icono);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
@@ -324,7 +338,7 @@
       <div class="ciclo__nota">Tu negocio más simple y conectado 🌿</div>
       <svg class="ciclo__flechas" viewBox="0 0 100 100"></svg>
       <div class="ciclo__centro">
-        <svg viewBox="0 0 24 24" fill="var(--blanco)"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-11 10Z"/></svg>
+        <svg viewBox="0 0 24 24" fill="var(--blanco)"><path d="M12,22 C21,17 21,8 15,4 C13,8.5 12,14 12,22 Z"/><path d="M12,22 C3,17 3,8 9,4 C11,8.5 12,14 12,22 Z"/></svg>
         <span>Fincil</span>
       </div>
 
@@ -415,7 +429,7 @@
         </span>
         <h4>Productos</h4>
         <p class="texto-secundario">Crea productos, define precios y organiza su información.</p>
-        <a href="funcionalidades/productos.html" class="tarjeta__enlace">Ver más →</a>
+        <a href="funcionalidades.html#productos" class="tarjeta__enlace">Ver más →</a>
       </div>
 
       <div class="tarjeta tarjeta--interactiva tarjeta-modulo">
@@ -425,7 +439,7 @@
         </span>
         <h4>Materiales</h4>
         <p class="texto-secundario">Controla insumos, costos y existencias.</p>
-        <a href="funcionalidades/materiales.html" class="tarjeta__enlace">Ver más →</a>
+        <a href="funcionalidades.html#materiales" class="tarjeta__enlace">Ver más →</a>
       </div>
 
       <div class="tarjeta tarjeta--interactiva tarjeta-modulo">
@@ -435,7 +449,7 @@
         </span>
         <h4>Procesos</h4>
         <p class="texto-secundario">Relaciona procesos de producción con productos y materiales.</p>
-        <a href="funcionalidades/procesos.html" class="tarjeta__enlace">Ver más →</a>
+        <a href="funcionalidades.html#procesos" class="tarjeta__enlace">Ver más →</a>
       </div>
 
       <div class="tarjeta tarjeta--interactiva tarjeta-modulo">
@@ -445,7 +459,7 @@
         </span>
         <h4>Inventario</h4>
         <p class="texto-secundario">Conoce existencias, alertas y capacidad de producción.</p>
-        <a href="funcionalidades/inventario.html" class="tarjeta__enlace">Ver más →</a>
+        <a href="funcionalidades.html#inventario" class="tarjeta__enlace">Ver más →</a>
       </div>
 
       <div class="tarjeta tarjeta--interactiva tarjeta-modulo">
@@ -455,7 +469,7 @@
         </span>
         <h4>Compras</h4>
         <p class="texto-secundario">Identifica necesidades y registra reposiciones.</p>
-        <a href="funcionalidades/compras.html" class="tarjeta__enlace">Ver más →</a>
+        <a href="funcionalidades.html#compras" class="tarjeta__enlace">Ver más →</a>
       </div>
 
       <div class="tarjeta tarjeta--interactiva tarjeta-modulo">
@@ -465,7 +479,7 @@
         </span>
         <h4>Ventas</h4>
         <p class="texto-secundario">Registra pedidos, estados, entregas y resultados.</p>
-        <a href="funcionalidades/ventas.html" class="tarjeta__enlace">Ver más →</a>
+        <a href="funcionalidades.html#ventas" class="tarjeta__enlace">Ver más →</a>
       </div>
 
       <div class="tarjeta tarjeta--interactiva tarjeta-modulo">
@@ -475,7 +489,7 @@
         </span>
         <h4>Finanzas</h4>
         <p class="texto-secundario">Consulta ingresos, costos, utilidad y punto de equilibrio.</p>
-        <a href="funcionalidades/finanzas.html" class="tarjeta__enlace">Ver más →</a>
+        <a href="funcionalidades.html#finanzas" class="tarjeta__enlace">Ver más →</a>
       </div>
 
       <div class="tarjeta tarjeta--interactiva tarjeta-modulo">
@@ -485,7 +499,7 @@
         </span>
         <h4>Facturación</h4>
         <p class="texto-secundario">Gestiona la información de facturación desde el sistema.</p>
-        <a href="funcionalidades/facturacion.html" class="tarjeta__enlace">Ver más →</a>
+        <a href="funcionalidades.html#facturacion" class="tarjeta__enlace">Ver más →</a>
       </div>
 
       <div class="tarjeta tarjeta--interactiva tarjeta-modulo">
@@ -495,7 +509,7 @@
         </span>
         <h4>Nóminas</h4>
         <p class="texto-secundario">Gestiona el módulo de colaboradores y nómina disponible en Fincil.</p>
-        <a href="funcionalidades/nominas.html" class="tarjeta__enlace">Ver más →</a>
+        <a href="funcionalidades.html#nominas" class="tarjeta__enlace">Ver más →</a>
       </div>
 
       <div class="tarjeta tarjeta--interactiva tarjeta-modulo">
@@ -505,7 +519,7 @@
         </span>
         <h4>Importar / Exportar</h4>
         <p class="texto-secundario">Mueve información hacia y desde Fincil.</p>
-        <a href="funcionalidades/importar-exportar.html" class="tarjeta__enlace">Ver más →</a>
+        <a href="funcionalidades.html#importar-exportar" class="tarjeta__enlace">Ver más →</a>
       </div>
     </div>
 

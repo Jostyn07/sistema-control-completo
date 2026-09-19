@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Identidad visual — Fincil</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/componentes.css">
+<style>
+  .muestra-color {
+    border-radius: var(--radio-md);
+    overflow: hidden;
+    border: 1px solid var(--borde);
+  }
+  .muestra-color__bloque { height: 96px; }
+  .muestra-color__info { padding: var(--esp-4); background: var(--blanco); }
+  .muestra-color__hex { font-family: monospace; color: var(--gris-texto); font-size: 0.875rem; }
+  .fila-tipo { display: flex; align-items: baseline; gap: var(--esp-5); padding: var(--esp-4) 0; border-bottom: 1px solid var(--borde); }
+  .fila-tipo:last-child { border-bottom: none; }
+  .fila-tipo__etiqueta { width: 90px; flex-shrink: 0; color: var(--gris-texto); font-size: 0.8125rem; }
+  .tira-botones { display: flex; flex-wrap: wrap; gap: var(--esp-4); align-items: center; }
+  .lienzo-oscuro { background: var(--azul-profundo); border-radius: var(--radio-md); padding: var(--esp-5); }
+  .flujo-modulos { display: flex; align-items: center; gap: var(--esp-3); flex-wrap: wrap; }
+  .flujo-modulos .tarjeta { flex: 1; min-width: 140px; text-align: center; padding: var(--esp-4); }
+  .flujo-modulos .conector { flex: 0 0 40px; }
+  @media (max-width: 700px) {
+    .flujo-modulos { flex-direction: column; }
+    .flujo-modulos .conector { width: 2px; height: 32px; flex-basis: 32px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav__fila">
+    <div class="nav__marca">Fincil<span class="nav__punto">.</span></div>
+    <ul class="nav__enlaces">
+      <li><a href="#paleta">Paleta</a></li>
+      <li><a href="#tipografia">Tipografía</a></li>
+      <li><a href="#componentes">Componentes</a></li>
+      <li><a href="#movimiento">Movimiento</a></li>
+    </ul>
+    <div class="nav__acciones">
+      <a href="#" class="boton boton--secundario">Iniciar sesión</a>
+      <a href="#" class="boton boton--primario">Probar gratis</a>
+    </div>
+  </div>
+</nav>
+
+<header class="envoltura" style="padding-top: var(--esp-8); padding-bottom: var(--esp-8);">
+  <span class="texto-eyebrow">Fase 0 · Documento de estructura</span>
+  <h1 style="margin-top: var(--esp-3); max-width: 720px;">Identidad visual de Fincil</h1>
+  <p class="texto-cuerpo-grande texto-secundario" style="max-width: 620px; margin-top: var(--esp-4);">
+    Esta página reúne la paleta, la tipografía y los componentes base que van a
+    sostener toda la experiencia pública — Home, funcionalidades, planes, registro
+    y FAQ deben construirse a partir de estas mismas piezas, sin variaciones.
+  </p>
+</header>
+
+<section class="envoltura" id="paleta" style="padding-bottom: var(--esp-9);">
+  <h2>Paleta base</h2>
+  <p class="texto-secundario" style="margin-top: var(--esp-2); max-width: 560px;">
+    Azul Fincil es el único color de acción. Azul profundo lleva la voz de la marca
+    en títulos y navegación. El resto son apoyos: fondos, éxito y un acento cálido
+    que se usa con moderación.
+  </p>
+  <div class="grid grid--4" style="margin-top: var(--esp-6);">
+    <div class="muestra-color">
+      <div class="muestra-color__bloque" style="background: var(--azul-fincil);"></div>
+      <div class="muestra-color__info"><strong>Azul Fincil</strong><br><span class="muestra-color__hex">#168FF0</span><br><span class="texto-secundario" style="font-size:0.8125rem">CTA · enlaces · estados activos</span></div>
+    </div>
+    <div class="muestra-color">
+      <div class="muestra-color__bloque" style="background: var(--azul-profundo);"></div>
+      <div class="muestra-color__info"><strong>Azul profundo</strong><br><span class="muestra-color__hex">#123B68</span><br><span class="texto-secundario" style="font-size:0.8125rem">Títulos · navegación</span></div>
+    </div>
+    <div class="muestra-color">
+      <div class="muestra-color__bloque" style="background: var(--azul-claro);"></div>
+      <div class="muestra-color__info"><strong>Azul claro</strong><br><span class="muestra-color__hex">#EEF6FF</span><br><span class="texto-secundario" style="font-size:0.8125rem">Fondos de sección</span></div>
+    </div>
+    <div class="muestra-color">
+      <div class="muestra-color__bloque" style="background: var(--blanco); border-bottom: 1px solid var(--borde);"></div>
+      <div class="muestra-color__info"><strong>Blanco</strong><br><span class="muestra-color__hex">#FFFFFF</span><br><span class="texto-secundario" style="font-size:0.8125rem">Fondos · tarjetas</span></div>
+    </div>
+    <div class="muestra-color">
+      <div class="muestra-color__bloque" style="background: var(--gris-texto);"></div>
+      <div class="muestra-color__info"><strong>Gris texto</strong><br><span class="muestra-color__hex">#66727F</span><br><span class="texto-secundario" style="font-size:0.8125rem">Textos secundarios</span></div>
+    </div>
+    <div class="muestra-color">
+      <div class="muestra-color__bloque" style="background: var(--verde);"></div>
+      <div class="muestra-color__info"><strong>Verde</strong><br><span class="muestra-color__hex">#1D7A5A</span><br><span class="texto-secundario" style="font-size:0.8125rem">Éxito · completado</span></div>
+    </div>
+    <div class="muestra-color">
+      <div class="muestra-color__bloque" style="background: var(--rosa-acento);"></div>
+      <div class="muestra-color__info"><strong>Rosa / acento</strong><br><span class="muestra-color__hex">#E96B86</span><br><span class="texto-secundario" style="font-size:0.8125rem">Detalles puntuales</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="seccion seccion--claro" id="tipografia">
+  <div class="envoltura">
+    <h2>Tipografía</h2>
+    <p class="texto-secundario" style="margin-top: var(--esp-2); max-width: 560px;">
+      Sora en los títulos aporta presencia sin volverse frío; Inter en el cuerpo
+      mantiene la lectura simple en pantallas pequeñas.
+    </p>
+    <div class="tarjeta" style="margin-top: var(--esp-6); max-width: 720px;">
+      <div class="fila-tipo"><span class="fila-tipo__etiqueta">Display</span><span style="font-family: var(--fuente-titulos); font-size: var(--tam-display); font-weight: 800;">Fincil</span></div>
+      <div class="fila-tipo"><span class="fila-tipo__etiqueta">H1</span><span style="font-family: var(--fuente-titulos); font-size: var(--tam-h1); font-weight: 700;">Controla tu negocio</span></div>
+      <div class="fila-tipo"><span class="fila-tipo__etiqueta">H2</span><span style="font-family: var(--fuente-titulos); font-size: var(--tam-h2); font-weight: 700;">Todo está conectado</span></div>
+      <div class="fila-tipo"><span class="fila-tipo__etiqueta">H3</span><span style="font-family: var(--fuente-titulos); font-size: var(--tam-h3); font-weight: 700;">Principales funcionalidades</span></div>
+      <div class="fila-tipo"><span class="fila-tipo__etiqueta">H4</span><span style="font-family: var(--fuente-titulos); font-size: var(--tam-h4); font-weight: 600;">Productos</span></div>
+      <div class="fila-tipo"><span class="fila-tipo__etiqueta">Cuerpo</span><span style="font-family: var(--fuente-texto); font-size: var(--tam-cuerpo-grande);">Productos, inventario, compras, ventas, producción y finanzas conectados en una sola plataforma.</span></div>
+      <div class="fila-tipo"><span class="fila-tipo__etiqueta">Eyebrow</span><span class="texto-eyebrow">7 días gratis</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="envoltura" id="componentes" style="padding: var(--esp-9) 0;">
+  <h2>Componentes</h2>
+
+  <h3 style="margin-top: var(--esp-7); font-size: var(--tam-h4);">Botones</h3>
+  <div class="tira-botones" style="margin-top: var(--esp-4);">
+    <a href="#" class="boton boton--primario">Probar Fincil gratis</a>
+    <a href="#" class="boton boton--secundario">Ver cómo funciona</a>
+    <a href="#" class="boton boton--texto">Ver más →</a>
+  </div>
+  <div class="lienzo-oscuro" style="margin-top: var(--esp-4);">
+    <a href="#" class="boton boton--sobre-oscuro">Organiza tu negocio con Fincil</a>
+  </div>
+
+  <h3 style="margin-top: var(--esp-8); font-size: var(--tam-h4);">Badges de estado</h3>
+  <div class="tira-botones" style="margin-top: var(--esp-4);">
+    <span class="badge badge--info">7 días gratis</span>
+    <span class="badge badge--exito">Prueba activa</span>
+    <span class="badge badge--acento">Nuevo módulo</span>
+  </div>
+
+  <h3 style="margin-top: var(--esp-8); font-size: var(--tam-h4);">Tarjeta de módulo</h3>
+  <div class="grid grid--3" style="margin-top: var(--esp-4); max-width: 760px;">
+    <div class="tarjeta tarjeta--interactiva">
+      <div class="tarjeta__icono">📦</div>
+      <h4>Productos</h4>
+      <p class="texto-secundario">Crea productos, define precios y organiza su información.</p>
+      <a href="#" class="tarjeta__enlace">Ver más →</a>
+    </div>
+    <div class="tarjeta tarjeta--interactiva">
+      <div class="tarjeta__icono">📊</div>
+      <h4>Finanzas</h4>
+      <p class="texto-secundario">Consulta ingresos, costos, utilidad y punto de equilibrio.</p>
+      <a href="#" class="tarjeta__enlace">Ver más →</a>
+    </div>
+    <div class="tarjeta tarjeta--interactiva">
+      <div class="tarjeta__icono">🧾</div>
+      <h4>Facturación</h4>
+      <p class="texto-secundario">Gestiona la información de facturación desde el sistema.</p>
+      <a href="#" class="tarjeta__enlace">Ver más →</a>
+    </div>
+  </div>
+
+  <h3 style="margin-top: var(--esp-8); font-size: var(--tam-h4);">KPI animado (cuenta al entrar en pantalla)</h3>
+  <div class="tarjeta" style="margin-top: var(--esp-4); max-width: 220px;">
+    <div class="kpi__numero" data-hasta="482" data-prefijo="$" data-sufijo="k">$482k</div>
+    <div class="kpi__etiqueta">Ingresos del mes</div>
+  </div>
+</section>
+
+<section class="seccion seccion--claro" id="movimiento">
+  <div class="envoltura">
+    <h2>Flujo conectado</h2>
+    <p class="texto-secundario" style="margin-top: var(--esp-2); max-width: 560px;">
+      El conector punteado es el motivo visual central del sitio: muestra cómo
+      la información se mueve entre módulos (se usa en Home, sección 1.4).
+    </p>
+    <div class="flujo-modulos" style="margin-top: var(--esp-6);">
+      <div class="tarjeta"><strong>Producto</strong></div>
+      <div class="conector"></div>
+      <div class="tarjeta"><strong>Inventario</strong></div>
+      <div class="conector"></div>
+      <div class="tarjeta"><strong>Venta</strong></div>
+      <div class="conector"></div>
+      <div class="tarjeta"><strong>Finanzas</strong></div>
+    </div>
+  </div>
+</section>
+
+<footer class="envoltura" style="padding: var(--esp-7) 0; color: var(--gris-texto); font-size: 0.875rem;">
+  Fincil · Documento de estructura pública · Fase 0
+</footer>
+
+<script src="js/interacciones.js"></script>
+</body>
+</html>

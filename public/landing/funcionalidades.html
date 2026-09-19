@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Funcionalidades — Fincil</title>
+<meta name="description" content="Explora cada módulo de Fincil y descubre cómo trabaja junto con los demás para darte el control total de tu negocio.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/componentes.css">
+<link rel="stylesheet" href="css/home.css">
+<link rel="stylesheet" href="css/funcionalidades.css">
+</head>
+<body>
+
+<!-- ======================= HEADER (igual que Home) ======================= -->
+<header class="nav">
+  <div class="nav__fila">
+    <a href="index.html" class="marca-fincil">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M12,22 C21,17 21,8 15,4 C13,8.5 12,14 12,22 Z" fill="var(--azul-fincil)"/><path d="M12,22 C3,17 3,8 9,4 C11,8.5 12,14 12,22 Z" fill="var(--azul-fincil-oscuro)"/>
+      </svg>
+      <span class="marca-fincil__texto">
+        <span class="marca-fincil__nombre">Fincil</span>
+        <span class="marca-fincil__eslogan">Tu negocio en orden</span>
+      </span>
+    </a>
+
+    <ul class="nav__enlaces">
+      <li><a href="index.html#todo-conectado">Cómo funciona</a></li>
+      <li><a href="funcionalidades.html" class="nav__enlace--activo">Funcionalidades</a></li>
+      <li><a href="planes.html">Planes</a></li>
+      <li><a href="faq.html">Preguntas frecuentes</a></li>
+    </ul>
+
+    <div class="nav__acciones">
+      <a href="login.html" class="boton boton--secundario">Iniciar sesión</a>
+      <a href="registro.html" class="boton boton--primario">Probar gratis</a>
+      <button type="button" class="nav__boton-menu" aria-label="Abrir menú" aria-expanded="false">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+  <nav class="nav__menu-movil">
+    <a href="index.html#todo-conectado">Cómo funciona</a>
+    <a href="funcionalidades.html">Funcionalidades</a>
+    <a href="planes.html">Planes</a>
+    <a href="faq.html">Preguntas frecuentes</a>
+    <a href="login.html">Iniciar sesión</a>
+  </nav>
+</header>
+
+<!-- ======================= 2.1 ENCABEZADO ======================= -->
+<section class="enc-func">
+  <div class="envoltura">
+    <span class="enc-func__badge">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--azul-fincil)"><path d="M12,22 C21,17 21,8 15,4 C13,8.5 12,14 12,22 Z"/><path d="M12,22 C3,17 3,8 9,4 C11,8.5 12,14 12,22 Z"/></svg>
+      Funcionalidades
+    </span>
+    <h1>Conoce todo lo que puedes hacer con Fincil</h1>
+    <p class="texto-cuerpo-grande texto-secundario">
+      Explora cada módulo y descubre cómo trabaja junto con los demás.
+    </p>
+  </div>
+</section>
+
+<!-- ---- Navegación por módulos (acceso rápido) ---- -->
+<nav class="nav-modulos" aria-label="Navegación por módulos">
+  <div class="nav-modulos__fila">
+    <a href="#productos" class="nav-modulos__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+      Productos
+    </a>
+    <a href="#materiales" class="nav-modulos__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.5 7.3 12 12l-8.5-4.7"/><path d="M12 22V12"/><path d="m3.3 7 8.2-4.5a1 1 0 0 1 1 0L20.7 7a1 1 0 0 1 .5.9v8.2a1 1 0 0 1-.5.9l-8.2 4.5a1 1 0 0 1-1 0L3.3 17a1 1 0 0 1-.5-.9V7.9a1 1 0 0 1 .5-.9Z"/></svg>
+      Materiales
+    </a>
+    <a href="#procesos" class="nav-modulos__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg>
+      Procesos
+    </a>
+    <a href="#inventario" class="nav-modulos__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+      Inventario
+    </a>
+    <a href="#compras" class="nav-modulos__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+      Compras
+    </a>
+    <a href="#ventas" class="nav-modulos__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/></svg>
+      Ventas
+    </a>
+    <a href="#finanzas" class="nav-modulos__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+      Finanzas
+    </a>
+    <a href="#facturacion" class="nav-modulos__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+      Facturación
+    </a>
+    <a href="#nominas" class="nav-modulos__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Nóminas
+    </a>
+    <a href="#importar-exportar" class="nav-modulos__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      Importar / Exportar
+    </a>
+  </div>
+</nav>
+
+<!-- Las secciones 2.2, 2.3 y 2.4 (plantilla de cada módulo, contenido
+     detallado y el caso de uso completo) se agregan en la siguiente fase. -->
+
+<footer style="padding: var(--esp-6) 0; text-align:center;">
+  <p class="texto-secundario" style="font-size:0.8125rem;">Fincil · Tu negocio en orden — Fase 2 en construcción</p>
+</footer>
+
+<script src="js/interacciones.js"></script>
+<script src="js/home.js"></script>
+</body>
+</html>

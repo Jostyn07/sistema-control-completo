@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await API.enviar('/api/suscripcion/agregar-metodo-pago', { token });
 
       mostrarAviso('Método de pago guardado');
-      window.location.href = '/';
+      window.location.href = '/index.html';
     } catch (err) {
       mostrarAviso(err.message || 'La tarjeta no pudo validarse', 'error');
       boton.disabled = false;

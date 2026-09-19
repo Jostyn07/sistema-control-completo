@@ -1,0 +1,62 @@
+/* ==========================================================================
+   FINCIL — Funcionalidades (Fase 2)
+   Estilos específicos de public/landing/funcionalidades.html.
+   ========================================================================== */
+
+.enc-func {
+  padding: var(--esp-8) 0 var(--esp-6);
+  background: linear-gradient(180deg, var(--azul-claro) 0%, var(--blanco) 100%);
+  text-align: center;
+}
+.enc-func__badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--blanco); color: var(--azul-fincil);
+  padding: 6px 16px; border-radius: var(--radio-pill);
+  font-size: 0.8125rem; font-weight: 600; margin-bottom: var(--esp-5);
+  box-shadow: var(--sombra-tarjeta);
+}
+.enc-func h1 { max-width: 680px; margin: 0 auto; }
+.enc-func p.texto-cuerpo-grande { max-width: 520px; margin: var(--esp-4) auto 0; }
+
+/* ---- Nav de módulos: barra pegajosa con acceso rápido a cada sección ---- */
+.nav-modulos {
+  position: sticky;
+  top: 83px; /* debajo del header principal */
+  z-index: 90;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--borde);
+}
+.nav-modulos__fila {
+  display: flex;
+  gap: var(--esp-2);
+  overflow-x: auto;
+  padding: var(--esp-3) var(--esp-6);
+  max-width: var(--ancho-maximo);
+  margin: 0 auto;
+  scrollbar-width: thin;
+}
+.nav-modulos__fila::-webkit-scrollbar { height: 4px; }
+.nav-modulos__fila::-webkit-scrollbar-thumb { background: var(--borde-fuerte); border-radius: var(--radio-pill); }
+
+.nav-modulos__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-radius: var(--radio-pill);
+  background: var(--azul-claro);
+  color: var(--azul-profundo);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background var(--duracion-rapida) var(--curva), color var(--duracion-rapida) var(--curva);
+}
+.nav-modulos__item:hover { background: var(--azul-fincil-suave); color: var(--azul-fincil); }
+.nav-modulos__item svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+@media (max-width: 900px) {
+  .nav-modulos { top: 0; }
+  .nav-modulos__fila { padding: var(--esp-3) var(--esp-5); }
+}
