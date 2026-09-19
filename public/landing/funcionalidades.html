@@ -36,8 +36,8 @@
     </ul>
 
     <div class="nav__acciones">
-      <a href="/login.html" class="boton boton--secundario">Iniciar sesión</a>
-      <a href="/login.html?modo=registro" class="boton boton--primario">Probar gratis</a>
+      <a href="../login.html" class="boton boton--secundario">Iniciar sesión</a>
+      <a href="../login.html?modo=registro" class="boton boton--primario">Probar gratis</a>
       <button type="button" class="nav__boton-menu" aria-label="Abrir menú" aria-expanded="false">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
@@ -48,7 +48,7 @@
     <a href="funcionalidades.html">Funcionalidades</a>
     <a href="planes.html">Planes</a>
     <a href="faq.html">Preguntas frecuentes</a>
-    <a href="/login.html">Iniciar sesión</a>
+    <a href="../login.html">Iniciar sesión</a>
   </nav>
 </header>
 
@@ -178,7 +178,7 @@
         producto se actualizan sin que tengas que tocar nada aquí.
       </div>
 
-      <a href="/login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
+      <a href="../login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
     </div>
 
     <!-- Demostración visual 7 — mockup de la pantalla de Productos -->
@@ -261,9 +261,284 @@
   </div>
 </section>
 
-<!-- Las secciones de Materiales, Procesos, Inventario, Compras, Ventas,
-     Finanzas, Facturación, Nóminas e Importar/Exportar, más el caso de
-     uso completo (2.4), se agregan en la siguiente fase. -->
+<!-- ======================= 2.3 — MÓDULO: MATERIALES (sin demo visual propia) ======================= -->
+<section class="modulo" id="materiales">
+  <div class="envoltura modulo__grid modulo__grid--sin-visual">
+    <div class="modulo__texto">
+      <div class="modulo__cabecera">
+        <span class="tarjeta__icono" style="background:var(--mod-2-fondo); color:var(--mod-2-icono);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.5 7.3 12 12l-8.5-4.7"/><path d="M12 22V12"/><path d="m3.3 7 8.2-4.5a1 1 0 0 1 1 0L20.7 7a1 1 0 0 1 .5.9v8.2a1 1 0 0 1-.5.9l-8.2 4.5a1 1 0 0 1-1 0L3.3 17a1 1 0 0 1-.5-.9V7.9a1 1 0 0 1 .5-.9Z"/></svg>
+        </span>
+        <h2>Materiales</h2>
+      </div>
+
+      <p class="modulo__problema texto-cuerpo-grande texto-secundario">
+        Sin control sobre tus insumos, no sabes cuánto cuesta realmente producir ni cuándo se
+        te va a acabar la materia prima a mitad de un pedido. Materiales controla insumos,
+        costos y existencias en un solo lugar.
+      </p>
+
+      <div class="modulo__bloque">
+        <h3>Qué puedes hacer</h3>
+        <ul class="modulo__lista-check">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Registrar materiales</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Definir unidad y proveedor</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver historial de precios</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Definir stock de seguridad</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Definir tiempo de entrega</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver costo siempre actualizado</li>
+        </ul>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué información maneja</h3>
+        <p class="texto-secundario">
+          Nombre, unidad de medida, costo unitario, proveedor, tiempo de entrega, stock actual,
+          stock de seguridad e historial de precios.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué resultados genera</h3>
+        <p class="texto-secundario">
+          El costo actualizado de cada producto o proceso que use ese material, y el punto de
+          reorden que activa las alertas de Inventario y Compras.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Se conecta con</h3>
+        <div class="modulo__conexiones">
+          <span class="modulo__chip">Productos</span>
+          <span class="modulo__chip">Procesos</span>
+          <span class="modulo__chip">Inventario</span>
+          <span class="modulo__chip">Compras</span>
+        </div>
+      </div>
+
+      <div class="modulo__ejemplo">
+        <strong>Ejemplo de flujo real: </strong>
+        actualizas el precio de las rosas en Materiales — el costo y el margen de "Ramo de
+        Rosas" en Productos se recalculan solos, sin que tengas que tocar nada allá.
+      </div>
+
+      <a href="../login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 2.3 — MÓDULO: PROCESOS (sin demo visual propia) ======================= -->
+<section class="modulo" id="procesos">
+  <div class="envoltura modulo__grid modulo__grid--sin-visual">
+    <div class="modulo__texto">
+      <div class="modulo__cabecera">
+        <span class="tarjeta__icono" style="background:var(--mod-3-fondo); color:var(--mod-3-icono);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg>
+        </span>
+        <h2>Procesos</h2>
+      </div>
+
+      <p class="modulo__problema texto-cuerpo-grande texto-secundario">
+        Cuando fabricar algo toma varios pasos y mano de obra, calcular el costo real de
+        producción a mano es un caos. Procesos relaciona la producción con los productos y
+        materiales que usa.
+      </p>
+
+      <div class="modulo__bloque">
+        <h3>Qué puedes hacer</h3>
+        <ul class="modulo__lista-check">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Crear procesos de producción</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Asociar materiales y tiempo</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Definir repeticiones por unidad</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Asociar un proceso a un producto</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver el costo de mano de obra</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Seguir producción en curso</li>
+        </ul>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué información maneja</h3>
+        <p class="texto-secundario">
+          Nombre del proceso, materiales que usa, tiempo en minutos, costo por hora de mano de
+          obra y repeticiones por unidad producida.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué resultados genera</h3>
+        <p class="texto-secundario">
+          El costo total de producción (materiales + mano de obra), que se suma automáticamente
+          al costo calculado del producto.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Se conecta con</h3>
+        <div class="modulo__conexiones">
+          <span class="modulo__chip">Productos</span>
+          <span class="modulo__chip">Materiales</span>
+          <span class="modulo__chip">Inventario</span>
+        </div>
+      </div>
+
+      <div class="modulo__ejemplo">
+        <strong>Ejemplo de flujo real: </strong>
+        defines el proceso de armado de un ramo con su tiempo y materiales — cada vez que
+        fabricas uno, Fincil descuenta los materiales y suma la mano de obra al costo real.
+      </div>
+
+      <a href="../login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 2.2 / 2.3 — MÓDULO: INVENTARIO (demo visual 8) ======================= -->
+<section class="modulo" id="inventario">
+  <div class="envoltura modulo__grid">
+
+    <div class="modulo__texto">
+      <div class="modulo__cabecera">
+        <span class="tarjeta__icono" style="background:rgba(233,154,43,0.14); color:#C97A1E;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </span>
+        <h2>Inventario</h2>
+      </div>
+
+      <p class="modulo__problema texto-cuerpo-grande texto-secundario">
+        Sin visibilidad en tiempo real, te quedas sin materiales a mitad de un pedido o compras
+        de más y dejas capital inmovilizado. Inventario te muestra existencias, alertas y
+        capacidad de producción al instante.
+      </p>
+
+      <div class="modulo__bloque">
+        <h3>Qué puedes hacer</h3>
+        <ul class="modulo__lista-check">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver existencias en tiempo real</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Semáforo por punto de reorden</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Saber cuánto puedes fabricar hoy</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Hacer ajustes manuales con motivo</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver historial de movimientos</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Recibir alertas de stock bajo</li>
+        </ul>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué información maneja</h3>
+        <p class="texto-secundario">
+          Stock actual, stock de seguridad, punto de reorden, consumo promedio, tiempo de
+          entrega del proveedor e historial de entradas y salidas.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué resultados genera</h3>
+        <p class="texto-secundario">
+          Alertas de materiales en rojo o amarillo, la capacidad de producción real del momento
+          y sugerencias de compra listas para Compras.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Se conecta con</h3>
+        <div class="modulo__conexiones">
+          <span class="modulo__chip">Materiales</span>
+          <span class="modulo__chip">Compras</span>
+          <span class="modulo__chip">Procesos</span>
+          <span class="modulo__chip">Productos</span>
+        </div>
+      </div>
+
+      <div class="modulo__ejemplo">
+        <strong>Ejemplo de flujo real: </strong>
+        vendes un ramo y Fincil descuenta las rosas usadas de Inventario. Si el stock queda
+        bajo el punto de reorden, ese material aparece listo para reponer en Compras.
+      </div>
+
+      <a href="../login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
+    </div>
+
+    <!-- Demostración visual 8 — mockup de la pantalla de Inventario -->
+    <div class="pantalla-modulo">
+      <div class="pantalla-modulo__topbar">
+        <div class="pantalla-modulo__titulo">
+          <h4>Inventario</h4>
+          <a href="#">¿Cómo funciona?</a>
+        </div>
+        <div class="pantalla-modulo__acciones">
+          <span class="pantalla-modulo__boton">Exportar</span>
+          <span class="pantalla-modulo__boton pantalla-modulo__boton--primario">Ajustar stock</span>
+        </div>
+      </div>
+      <div class="pantalla-modulo__cuerpo">
+        <div class="pantalla-modulo__principal">
+          <div class="pantalla-modulo__kpis">
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:rgba(29,122,90,0.12);color:var(--verde);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <b>68%</b><span>En stock</span>
+            </div>
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:rgba(233,154,43,0.16);color:#A6660B;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></span>
+              <b>12</b><span>Stock bajo</span>
+            </div>
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:rgba(233,107,134,0.14);color:var(--rosa-acento);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></span>
+              <b>3</b><span>Sin stock</span>
+            </div>
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:var(--azul-fincil-suave);color:var(--azul-fincil);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
+              <b>84</b><span>Materiales</span>
+            </div>
+          </div>
+
+          <table class="pantalla-modulo__tabla">
+            <thead>
+              <tr><th>Material</th><th>Stock</th><th>Reorden</th><th>Estado</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="pantalla-modulo__producto"><span class="pantalla-modulo__miniatura" style="background:#F3D6DE;"></span>Rosas rojas</div></td>
+                <td>18 un.</td><td>40 un.</td>
+                <td><span class="pantalla-modulo__estado pantalla-modulo__estado--bajo">Stock bajo</span></td>
+              </tr>
+              <tr>
+                <td><div class="pantalla-modulo__producto"><span class="pantalla-modulo__miniatura" style="background:#E3EAF6;"></span>Papel Kraft</div></td>
+                <td>120 un.</td><td>50 un.</td>
+                <td><span class="pantalla-modulo__estado pantalla-modulo__estado--activo">En stock</span></td>
+              </tr>
+              <tr>
+                <td><div class="pantalla-modulo__producto"><span class="pantalla-modulo__miniatura" style="background:#F5E1A4;"></span>Floral foam</div></td>
+                <td>0 un.</td><td>25 un.</td>
+                <td><span class="pantalla-modulo__estado" style="background:rgba(233,107,134,0.14); color:var(--rosa-acento);">Sin stock</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pantalla-modulo__panel">
+          <h5>Inventario</h5>
+          <p>Conoce tus existencias y tu capacidad real de producción al instante.</p>
+
+          <div class="pantalla-modulo__panel-titulo">Con este módulo puedes</div>
+          <ul class="pantalla-modulo__panel-lista">
+            <li><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver alertas por semáforo</li>
+            <li><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ajustar stock con motivo</li>
+            <li><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver capacidad de producción</li>
+          </ul>
+
+          <div class="pantalla-modulo__panel-titulo">Se conecta con</div>
+          <div class="pantalla-modulo__conexion">→ Materiales</div>
+          <div class="pantalla-modulo__conexion">→ Compras</div>
+          <div class="pantalla-modulo__conexion">→ Procesos</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Las secciones de Compras, Ventas, Finanzas, Facturación, Nóminas e
+     Importar/Exportar, más el caso de uso completo (2.4), se agregan
+     en la siguiente fase. -->
 
 <footer style="padding: var(--esp-6) 0; text-align:center;">
   <p class="texto-secundario" style="font-size:0.8125rem;">Fincil · Tu negocio en orden — Fase 2 en construcción</p>
