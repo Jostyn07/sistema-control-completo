@@ -101,7 +101,7 @@
 
 .pie__grid {
   display: grid;
-  grid-template-columns: minmax(0, 2.6fr) repeat(3, minmax(0, 1.4fr)) minmax(0, 2.4fr);
+  grid-template-columns: minmax(0, 2.6fr) minmax(0, 1.4fr) minmax(0, 2.4fr);
   gap: var(--esp-6);
   padding-bottom: var(--esp-7);
 }
@@ -112,6 +112,13 @@
 @media (max-width: 600px) {
   .pie__grid { grid-template-columns: 1fr; }
 }
+
+/* Los botones dentro del pie deben conservar su propio color (blanco sobre
+   fondo oscuro): sin esto, la regla ".pie a" (más específica que una sola
+   clase) pisaba el color del botón y lo dejaba invisible. */
+.pie a.boton,
+.pie a.boton:hover { color: var(--azul-profundo); }
+.pie a.boton--sobre-oscuro:hover { color: var(--azul-profundo); }
 
 .pie__descripcion { margin-top: var(--esp-4); font-size: 0.875rem; max-width: 320px; }
 .pie__redes { display: flex; gap: 10px; margin-top: var(--esp-5); }
