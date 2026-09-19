@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="css/componentes.css">
 <link rel="stylesheet" href="css/home.css">
 <link rel="stylesheet" href="css/funcionalidades.css">
+<link rel="stylesheet" href="css/modulos.css">
 </head>
 <body>
 
@@ -35,8 +36,8 @@
     </ul>
 
     <div class="nav__acciones">
-      <a href="login.html" class="boton boton--secundario">Iniciar sesión</a>
-      <a href="registro.html" class="boton boton--primario">Probar gratis</a>
+      <a href="/login.html" class="boton boton--secundario">Iniciar sesión</a>
+      <a href="/login.html?modo=registro" class="boton boton--primario">Probar gratis</a>
       <button type="button" class="nav__boton-menu" aria-label="Abrir menú" aria-expanded="false">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
@@ -47,7 +48,7 @@
     <a href="funcionalidades.html">Funcionalidades</a>
     <a href="planes.html">Planes</a>
     <a href="faq.html">Preguntas frecuentes</a>
-    <a href="login.html">Iniciar sesión</a>
+    <a href="/login.html">Iniciar sesión</a>
   </nav>
 </header>
 
@@ -55,7 +56,7 @@
 <section class="enc-func">
   <div class="envoltura">
     <span class="enc-func__badge">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--azul-fincil)"><path d="M12,22 C21,17 21,8 15,4 C13,8.5 12,14 12,22 Z"/><path d="M12,22 C3,17 3,8 9,4 C11,8.5 12,14 12,22 Z"/></svg>
+      <img src="img/logo-toolkap.png" alt="" width="14" height="14" style="border-radius:4px;">
       Funcionalidades
     </span>
     <h1>Conoce todo lo que puedes hacer con Fincil</h1>
@@ -111,8 +112,158 @@
   </div>
 </nav>
 
-<!-- Las secciones 2.2, 2.3 y 2.4 (plantilla de cada módulo, contenido
-     detallado y el caso de uso completo) se agregan en la siguiente fase. -->
+<!-- ======================= 2.2 / 2.3 — MÓDULO: PRODUCTOS ======================= -->
+<section class="modulo" id="productos">
+  <div class="envoltura modulo__grid">
+
+    <div class="modulo__texto">
+      <div class="modulo__cabecera">
+        <span class="tarjeta__icono" style="background:var(--mod-1-fondo); color:var(--mod-1-icono);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+        </span>
+        <h2>Productos</h2>
+      </div>
+
+      <p class="modulo__problema texto-cuerpo-grande texto-secundario">
+        Sin un lugar único para tus productos, terminas calculando precios y costos a mano y
+        perdiendo de vista cuánto te deja realmente cada venta. Productos centraliza esa
+        información para que precio, costo y margen estén siempre a la vista.
+      </p>
+
+      <div class="modulo__bloque">
+        <h3>Qué puedes hacer</h3>
+        <ul class="modulo__lista-check">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Crear y editar productos</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Definir precios de venta</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Agregar fotografías</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Asociar materiales</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Calcular costos</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Gestionar categorías</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Controlar stock</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver margen de ganancia</li>
+        </ul>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué información maneja</h3>
+        <p class="texto-secundario">
+          Nombre, fotos, categoría, precio de venta, materiales asociados (y su costo), y el
+          estado del stock de cada producto.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué resultados genera</h3>
+        <p class="texto-secundario">
+          El costo y el margen real de cada producto, calculados automáticamente a partir de
+          los materiales que usa — sin hojas de cálculo aparte.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Se conecta con</h3>
+        <div class="modulo__conexiones">
+          <span class="modulo__chip">Materiales</span>
+          <span class="modulo__chip">Procesos</span>
+          <span class="modulo__chip">Inventario</span>
+          <span class="modulo__chip">Ventas</span>
+          <span class="modulo__chip">Finanzas</span>
+        </div>
+      </div>
+
+      <div class="modulo__ejemplo">
+        <strong>Ejemplo de flujo real: </strong>
+        creas "Ramo de Rosas" y asocias sus materiales — Fincil calcula el costo solo.
+        Cuando ajustas el precio de una rosa en Materiales, el costo y el margen de este
+        producto se actualizan sin que tengas que tocar nada aquí.
+      </div>
+
+      <a href="/login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
+    </div>
+
+    <!-- Demostración visual 7 — mockup de la pantalla de Productos -->
+    <div class="pantalla-modulo">
+      <div class="pantalla-modulo__topbar">
+        <div class="pantalla-modulo__titulo">
+          <h4>Productos</h4>
+          <a href="#">¿Cómo funciona?</a>
+        </div>
+        <div class="pantalla-modulo__acciones">
+          <span class="pantalla-modulo__boton">Importar</span>
+          <span class="pantalla-modulo__boton pantalla-modulo__boton--primario">+ Nuevo</span>
+        </div>
+      </div>
+      <div class="pantalla-modulo__cuerpo">
+        <div class="pantalla-modulo__principal">
+          <div class="pantalla-modulo__kpis">
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:var(--mod-1-fondo);color:var(--mod-1-icono);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
+              <b>28</b><span>Activos</span>
+            </div>
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:rgba(29,122,90,0.12);color:var(--verde);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></span>
+              <b>6</b><span>Categorías</span>
+            </div>
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:rgba(233,107,134,0.14);color:var(--rosa-acento);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></span>
+              <b>3</b><span>Stock bajo</span>
+            </div>
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:var(--azul-fincil-suave);color:var(--azul-fincil);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+              <b>$2.84M</b><span>En inventario</span>
+            </div>
+          </div>
+
+          <table class="pantalla-modulo__tabla">
+            <thead>
+              <tr><th>Producto</th><th>Precio</th><th>Margen</th><th>Estado</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="pantalla-modulo__producto"><span class="pantalla-modulo__miniatura" style="background:#F3D6DE;"></span>Ramo Clásico de Rosas</div></td>
+                <td>$85.000</td><td style="color:var(--verde)">61.5%</td>
+                <td><span class="pantalla-modulo__estado pantalla-modulo__estado--activo">Activo</span></td>
+              </tr>
+              <tr>
+                <td><div class="pantalla-modulo__producto"><span class="pantalla-modulo__miniatura" style="background:#F5E1A4;"></span>Ramo de Girasoles</div></td>
+                <td>$65.000</td><td style="color:var(--verde)">54.0%</td>
+                <td><span class="pantalla-modulo__estado pantalla-modulo__estado--activo">Activo</span></td>
+              </tr>
+              <tr>
+                <td><div class="pantalla-modulo__producto"><span class="pantalla-modulo__miniatura" style="background:#E3EAF6;"></span>Orquídea Blanca</div></td>
+                <td>$95.000</td><td style="color:var(--verde)">61.6%</td>
+                <td><span class="pantalla-modulo__estado pantalla-modulo__estado--bajo">Stock bajo</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pantalla-modulo__panel">
+          <h5>Productos</h5>
+          <p>Organiza todo lo que vendes y conoce cuánto cuesta realmente producirlo.</p>
+
+          <div class="pantalla-modulo__panel-titulo">Con este módulo puedes</div>
+          <ul class="pantalla-modulo__panel-lista">
+            <li><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Calcular costos</li>
+            <li><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Controlar stock</li>
+            <li><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver margen</li>
+          </ul>
+
+          <div class="pantalla-modulo__panel-titulo">Se conecta con</div>
+          <div class="pantalla-modulo__conexion">→ Materiales</div>
+          <div class="pantalla-modulo__conexion">→ Inventario</div>
+          <div class="pantalla-modulo__conexion">→ Ventas</div>
+          <div class="pantalla-modulo__conexion">→ Finanzas</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Las secciones de Materiales, Procesos, Inventario, Compras, Ventas,
+     Finanzas, Facturación, Nóminas e Importar/Exportar, más el caso de
+     uso completo (2.4), se agregan en la siguiente fase. -->
 
 <footer style="padding: var(--esp-6) 0; text-align:center;">
   <p class="texto-secundario" style="font-size:0.8125rem;">Fincil · Tu negocio en orden — Fase 2 en construcción</p>

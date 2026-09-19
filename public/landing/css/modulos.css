@@ -1,0 +1,122 @@
+/* ==========================================================================
+   FINCIL — Plantilla de módulo (Fase 2, sección 2.2)
+   Reutilizable para los 10 módulos: solo cambia el contenido, no la
+   estructura. Vive en public/landing/funcionalidades.html.
+   ========================================================================== */
+
+.modulo {
+  padding: var(--esp-9) 0;
+  border-bottom: 1px solid var(--borde);
+  scroll-margin-top: 160px; /* para que el anchor no quede tapado por los navs pegajosos */
+}
+.modulo:nth-child(even) { background: var(--azul-claro); }
+
+.modulo__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: var(--esp-8);
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .modulo__grid { grid-template-columns: 1fr; }
+}
+
+.modulo__cabecera { display: flex; align-items: center; gap: var(--esp-3); margin-bottom: var(--esp-4); }
+.modulo__cabecera .tarjeta__icono { margin-bottom: 0; width: 44px; height: 44px; }
+.modulo__cabecera h2 { margin: 0; }
+
+.modulo__problema { max-width: 480px; }
+
+.modulo__bloque { margin-top: var(--esp-6); }
+.modulo__bloque h3 { font-size: 1.0625rem; margin-bottom: var(--esp-3); }
+
+.modulo__lista-check { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+.modulo__lista-check li { display: flex; align-items: center; gap: 8px; font-size: 0.9375rem; color: var(--azul-profundo); }
+.modulo__lista-check svg { color: var(--verde); flex-shrink: 0; }
+@media (max-width: 480px) { .modulo__lista-check { grid-template-columns: 1fr; } }
+
+.modulo__conexiones { display: flex; flex-wrap: wrap; gap: 8px; }
+.modulo__chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--blanco); border: 1px solid var(--borde);
+  padding: 6px 12px; border-radius: var(--radio-pill);
+  font-size: 0.8125rem; font-weight: 600; color: var(--azul-profundo);
+}
+.modulo__chip svg { width: 13px; height: 13px; }
+
+.modulo__ejemplo {
+  margin-top: var(--esp-6);
+  background: var(--blanco);
+  border-left: 3px solid var(--azul-fincil);
+  border-radius: var(--radio-sm);
+  padding: var(--esp-4) var(--esp-5);
+  font-size: 0.9375rem;
+}
+.modulo__ejemplo strong { color: var(--azul-profundo); }
+
+.modulo__cta { margin-top: var(--esp-6); }
+
+/* ---- Visual: mockup de la pantalla del módulo ---- */
+.pantalla-modulo {
+  background: var(--blanco);
+  border-radius: var(--radio-lg);
+  box-shadow: var(--sombra-tarjeta-hover);
+  overflow: hidden;
+  font-size: 0.75rem;
+}
+.pantalla-modulo__topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--esp-3) var(--esp-4);
+  border-bottom: 1px solid var(--borde);
+}
+.pantalla-modulo__titulo { display: flex; align-items: baseline; gap: 10px; }
+.pantalla-modulo__titulo h4 { font-size: 1rem; margin: 0; }
+.pantalla-modulo__titulo a { font-size: 0.75rem; color: var(--azul-fincil); }
+.pantalla-modulo__acciones { display: flex; gap: 8px; }
+.pantalla-modulo__boton {
+  font-size: 0.6875rem; font-weight: 600; padding: 6px 10px; border-radius: var(--radio-sm);
+  border: 1px solid var(--borde-fuerte); color: var(--azul-profundo); white-space: nowrap;
+}
+.pantalla-modulo__boton--primario { background: var(--azul-fincil); color: var(--blanco); border-color: transparent; }
+
+.pantalla-modulo__cuerpo { display: flex; }
+.pantalla-modulo__principal { flex: 1; min-width: 0; padding: var(--esp-4); }
+.pantalla-modulo__panel {
+  width: 220px; flex-shrink: 0;
+  background: var(--azul-claro);
+  padding: var(--esp-4);
+  border-left: 1px solid var(--borde);
+}
+
+.pantalla-modulo__kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: var(--esp-3); }
+.pantalla-modulo__kpi { background: var(--azul-claro); border-radius: var(--radio-sm); padding: 8px; }
+.pantalla-modulo__kpi-icono { width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+.pantalla-modulo__kpi b { display: block; font-family: var(--fuente-titulos); font-size: 0.8125rem; color: var(--azul-profundo); }
+.pantalla-modulo__kpi span { color: var(--gris-texto); font-size: 0.625rem; }
+
+.pantalla-modulo__tabla { width: 100%; border-collapse: collapse; }
+.pantalla-modulo__tabla th {
+  text-align: left; font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.03em;
+  color: var(--gris-texto); padding: 6px 8px; border-bottom: 1px solid var(--borde);
+}
+.pantalla-modulo__tabla td { padding: 8px; border-bottom: 1px solid var(--borde); vertical-align: middle; }
+.pantalla-modulo__miniatura { width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0; }
+.pantalla-modulo__producto { display: flex; align-items: center; gap: 8px; }
+.pantalla-modulo__estado { padding: 2px 8px; border-radius: var(--radio-pill); font-size: 0.625rem; font-weight: 600; }
+.pantalla-modulo__estado--activo { background: rgba(29,122,90,0.12); color: var(--verde); }
+.pantalla-modulo__estado--bajo { background: rgba(233,154,43,0.16); color: #A6660B; }
+
+.pantalla-modulo__panel h5 { font-size: 0.8125rem; margin-bottom: 4px; }
+.pantalla-modulo__panel p { color: var(--gris-texto); font-size: 0.75rem; margin-bottom: var(--esp-3); }
+.pantalla-modulo__panel-lista { list-style: none; margin: 0 0 var(--esp-4); padding: 0; }
+.pantalla-modulo__panel-lista li { display: flex; gap: 6px; align-items: flex-start; font-size: 0.6875rem; color: var(--azul-profundo); padding: 3px 0; }
+.pantalla-modulo__panel-lista svg { color: var(--verde); flex-shrink: 0; margin-top: 2px; }
+.pantalla-modulo__panel-titulo { font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--gris-texto); margin: var(--esp-3) 0 6px; }
+.pantalla-modulo__conexion { display: flex; align-items: center; gap: 6px; font-size: 0.6875rem; color: var(--azul-profundo); padding: 3px 0; }
+
+@media (max-width: 700px) {
+  .pantalla-modulo__cuerpo { flex-direction: column; }
+  .pantalla-modulo__panel { width: auto; border-left: none; border-top: 1px solid var(--borde); }
+  .pantalla-modulo__kpis { grid-template-columns: repeat(2, 1fr); }
+  .pantalla-modulo__tabla th:nth-child(3), .pantalla-modulo__tabla td:nth-child(3) { display: none; }
+}

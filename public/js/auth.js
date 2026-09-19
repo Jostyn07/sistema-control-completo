@@ -164,3 +164,14 @@ function escaparHtmlAuth(texto) {
   div.textContent = texto ?? '';
   return div.innerHTML;
 }
+
+// Permite que enlaces externos (como los CTA "Probar gratis" de la
+// landing) abran login.html directamente en modo registro con
+// login.html?modo=registro, sin que la persona tenga que hacer clic
+// en "Crear una" manualmente.
+document.addEventListener('DOMContentLoaded', () => {
+  const parametros = new URLSearchParams(window.location.search);
+  if (parametros.get('modo') === 'registro' && document.getElementById('camposRegistro') && !modoRegistro) {
+    alternarModo();
+  }
+});
