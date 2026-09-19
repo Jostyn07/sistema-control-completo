@@ -13,12 +13,20 @@
 
 .modulo__grid {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
   gap: var(--esp-8);
   align-items: start;
 }
 @media (max-width: 980px) {
   .modulo__grid { grid-template-columns: 1fr; }
+}
+
+/* Módulos sin demostración visual propia: una sola columna, más angosta
+   para que el texto siga siendo fácil de leer. */
+.modulo__grid--sin-visual {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 720px;
+  margin: 0 auto;
 }
 
 .modulo__cabecera { display: flex; align-items: center; gap: var(--esp-3); margin-bottom: var(--esp-4); }
@@ -56,14 +64,26 @@
 
 .modulo__cta { margin-top: var(--esp-6); }
 
-/* ---- Visual: mockup de la pantalla del módulo ---- */
+/* ---- Visual: mockup de la pantalla del módulo ----
+   Un solo lenguaje visual para todas las demostraciones: la pantalla
+   completa de Fincil con su barra lateral, reutilizando los estilos de
+   navegación del mockup del Home (mockup__lateral, mockup__enlace, etc.
+   de home.css, ya cargado en esta página). */
 .pantalla-modulo {
+  display: flex;
   background: var(--blanco);
   border-radius: var(--radio-lg);
   box-shadow: var(--sombra-tarjeta-hover);
   overflow: hidden;
   font-size: 0.75rem;
 }
+.pantalla-modulo .mockup__lateral { flex-shrink: 0; width: 130px; }
+.pantalla-modulo .mockup__enlace { font-size: 0.6875rem; padding: 6px 6px; gap: 6px; }
+.pantalla-modulo .mockup__enlace svg { width: 13px; height: 13px; }
+.pantalla-modulo .mockup__lateral-marca { font-size: 0.8125rem; margin-bottom: var(--esp-3); }
+.pantalla-modulo .mockup__grupo-titulo { padding: 8px 6px 3px; }
+.pantalla-modulo__derecha { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
 .pantalla-modulo__topbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: var(--esp-3) var(--esp-4);
@@ -82,13 +102,13 @@
 .pantalla-modulo__cuerpo { display: flex; }
 .pantalla-modulo__principal { flex: 1; min-width: 0; padding: var(--esp-4); }
 .pantalla-modulo__panel {
-  width: 220px; flex-shrink: 0;
+  width: 190px; flex-shrink: 0;
   background: var(--azul-claro);
   padding: var(--esp-4);
   border-left: 1px solid var(--borde);
 }
 
-.pantalla-modulo__kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: var(--esp-3); }
+.pantalla-modulo__kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: var(--esp-3); }
 .pantalla-modulo__kpi { background: var(--azul-claro); border-radius: var(--radio-sm); padding: 8px; }
 .pantalla-modulo__kpi-icono { width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
 .pantalla-modulo__kpi b { display: block; font-family: var(--fuente-titulos); font-size: 0.8125rem; color: var(--azul-profundo); }
