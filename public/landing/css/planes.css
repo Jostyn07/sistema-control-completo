@@ -1,0 +1,120 @@
+/* ==========================================================================
+   FINCIL — Planes y precios (Fase 3, secciones 3.1 / 3.2)
+   Vive en public/landing/planes.html. Consume únicamente los tokens de
+   Fase 0 y los componentes ya definidos en componentes.css / home.css.
+   ========================================================================== */
+
+.planes { padding: var(--esp-9) 0 var(--esp-7); }
+
+.planes__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+  gap: var(--esp-8);
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .planes__grid { grid-template-columns: 1fr; }
+}
+
+/* ---- Columna de introducción ---- */
+.planes__titulo { margin: var(--esp-3) 0 var(--esp-4); }
+.planes__intro-lista { display: flex; flex-direction: column; gap: var(--esp-4); margin: var(--esp-6) 0 var(--esp-7); }
+.planes__intro-item { display: flex; align-items: center; gap: var(--esp-3); }
+.planes__intro-icono {
+  width: 42px; height: 42px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--azul-fincil-suave); color: var(--azul-fincil);
+  display: flex; align-items: center; justify-content: center;
+}
+.planes__intro-item b { display: block; font-size: 0.9375rem; color: var(--azul-profundo); }
+.planes__intro-item span { font-size: 0.8125rem; color: var(--gris-texto); }
+
+.manuscrito--inline { position: static; font-size: 1.5rem; color: var(--azul-fincil); }
+
+/* ---- Tarjetas de planes ---- */
+.planes__tarjetas {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--esp-5);
+  align-items: start;
+}
+@media (max-width: 640px) {
+  .planes__tarjetas { grid-template-columns: 1fr; }
+}
+
+.planes__tarjeta {
+  position: relative;
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-lg);
+  box-shadow: var(--sombra-tarjeta);
+  padding: var(--esp-6);
+  display: flex;
+  flex-direction: column;
+}
+.planes__tarjeta--recomendada {
+  border: 2px solid var(--azul-fincil);
+  box-shadow: var(--sombra-tarjeta-hover);
+}
+.planes__badge-recomendado {
+  position: absolute;
+  top: -14px; left: var(--esp-5);
+  background: var(--azul-fincil);
+  color: var(--blanco);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 5px 14px;
+  border-radius: var(--radio-pill);
+}
+
+.planes__tarjeta-cabecera { display: flex; align-items: flex-start; gap: var(--esp-3); margin-bottom: var(--esp-4); }
+.planes__icono {
+  width: 48px; height: 48px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--azul-fincil-suave); color: var(--azul-fincil);
+  display: flex; align-items: center; justify-content: center;
+}
+.planes__tarjeta-cabecera h3 { margin-bottom: 2px; }
+.planes__precio { font-family: var(--fuente-titulos); font-size: var(--tam-h3); font-weight: 800; color: var(--azul-profundo); }
+.planes__precio span { font-family: var(--fuente-texto); font-size: 0.875rem; font-weight: 500; color: var(--gris-texto); }
+.planes__descuento { display: block; font-size: 0.8125rem; font-weight: 600; color: var(--verde); margin-top: 2px; }
+
+.planes__lista { list-style: none; margin: var(--esp-4) 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.planes__item { display: flex; align-items: center; gap: 10px; font-size: 0.9375rem; color: var(--azul-profundo); }
+.planes__item-icono {
+  width: 18px; height: 18px; flex-shrink: 0; border-radius: 50%;
+  background: rgba(29, 122, 90, 0.12); color: var(--verde);
+  display: flex; align-items: center; justify-content: center;
+}
+.planes__item--no-incluido { color: var(--gris-texto); }
+.planes__item--no-incluido .planes__item-icono { background: var(--azul-claro); color: var(--gris-texto); }
+
+.planes__separador { height: 1px; background: var(--borde); margin: var(--esp-5) 0 var(--esp-4); }
+.planes__eyebrow-plan {
+  display: block;
+  font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--gris-texto); margin-bottom: var(--esp-1);
+}
+
+.planes__cta { margin-top: var(--esp-6); width: 100%; }
+
+.planes__nota-config {
+  max-width: var(--ancho-maximo);
+  margin: var(--esp-7) auto 0;
+  padding: 0 var(--esp-6);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+/* ---- Franja de confianza ---- */
+.planes-confianza { padding: var(--esp-6) 0; background: var(--azul-claro); border-top: 1px solid var(--borde); }
+.planes-confianza__fila { display: flex; justify-content: center; gap: var(--esp-8); flex-wrap: wrap; }
+.planes-confianza__item { display: flex; align-items: center; gap: 10px; }
+.planes-confianza__item svg { color: var(--azul-fincil); flex-shrink: 0; }
+.planes-confianza__item b { display: block; font-size: 0.875rem; color: var(--azul-profundo); }
+.planes-confianza__item span { font-size: 0.8125rem; color: var(--gris-texto); }
+
+@media (max-width: 640px) {
+  .planes-confianza__fila { gap: var(--esp-5); justify-content: flex-start; }
+}
