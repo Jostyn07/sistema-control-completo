@@ -784,9 +784,360 @@
   </div>
 </section>
 
-<!-- Las secciones de Compras, Finanzas, Facturación, Nóminas e
-     Importar/Exportar, más el caso de uso completo (2.4), se agregan
-     en la siguiente fase. -->
+
+<!-- ======================= 2.2 / 2.3 — MÓDULO: FINANZAS ======================= -->
+<section class="modulo" id="finanzas">
+  <div class="envoltura modulo__grid">
+
+    <div class="modulo__texto">
+      <div class="modulo__cabecera">
+        <span class="tarjeta__icono" style="background:var(--mod-6-fondo); color:var(--mod-6-icono);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        </span>
+        <h2>Finanzas</h2>
+      </div>
+
+      <p class="modulo__problema texto-cuerpo-grande texto-secundario">
+        Sin un lugar que junte ingresos, costos y gastos, terminas sacando cuentas por separado
+        y nunca sabes con certeza si el mes te dejó ganancia real. Finanzas reúne esa información
+        y te dice, en tiempo real, la salud financiera de tu negocio.
+      </p>
+
+      <div class="modulo__bloque">
+        <h3>Qué puedes hacer</h3>
+        <ul class="modulo__lista-check">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver ingresos, costos y utilidad del mes</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Definir y ajustar tu meta de ventas</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver la proyección de cierre de mes</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Comparar ingresos contra costos</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Revisar la distribución de tus costos</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Consultar tu punto de equilibrio</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver tu ROI acumulado</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Exportar reportes financieros</li>
+        </ul>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué información maneja</h3>
+        <p class="texto-secundario">
+          Ventas registradas, costos de materiales y mano de obra de cada venta, nómina pagada,
+          gastos fijos configurados, meta de ventas del mes e inversión acumulada.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué resultados genera</h3>
+        <p class="texto-secundario">
+          La utilidad bruta y operativa del mes, el margen real, si ya superaste tu punto de
+          equilibrio, tu ROI acumulado y hacia dónde va tu cierre de mes al ritmo actual.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Se conecta con</h3>
+        <div class="modulo__conexiones">
+          <span class="modulo__chip">Ventas</span>
+          <span class="modulo__chip">Materiales</span>
+          <span class="modulo__chip">Procesos</span>
+          <span class="modulo__chip">Inventario</span>
+          <span class="modulo__chip">Nóminas</span>
+          <span class="modulo__chip">Compras</span>
+        </div>
+      </div>
+
+      <div class="modulo__ejemplo">
+        <strong>Ejemplo de flujo real: </strong>
+        registras una venta — Fincil descuenta los materiales usados y calcula su costo real.
+        Al pagar la nómina del mes, ese costo se resta de la utilidad operativa, y tu punto de
+        equilibrio y tu ROI se recalculan solos.
+      </div>
+
+      <a href="../login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
+    </div>
+
+    <!-- Demostración visual 10 — mockup de la pantalla de Finanzas -->
+    <div class="pantalla-modulo">
+      <div class="mockup__lateral">
+        <span class="mockup__lateral-marca">
+          <img src="/landing/img/logo-toolkap.png" alt="" width="16" height="16" style="border-radius:4px;">
+          Fincil
+        </span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Inicio</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/></svg>Ventas</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Inventario</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>Compras</span>
+        <span class="mockup__grupo-titulo">Productos</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.5 7.3 12 12l-8.5-4.7"/><path d="M12 22V12"/><path d="m3.3 7 8.2-4.5a1 1 0 0 1 1 0L20.7 7a1 1 0 0 1 .5.9v8.2a1 1 0 0 1-.5.9l-8.2 4.5a1 1 0 0 1-1 0L3.3 17a1 1 0 0 1-.5-.9V7.9a1 1 0 0 1 .5-.9Z"/></svg>Materiales</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg>Productos</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg>Procesos</span>
+        <span class="mockup__grupo-titulo">Finanzas</span>
+        <span class="mockup__enlace mockup__enlace--activo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>Finanzas</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Facturación</span>
+        <span class="mockup__grupo-titulo">Equipo</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Nóminas</span>
+        <span class="mockup__grupo-titulo">Reportes</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>Reportes</span>
+      </div>
+      <div class="pantalla-modulo__derecha">
+      <div class="pantalla-modulo__topbar">
+        <div class="pantalla-modulo__titulo">
+          <h4>Finanzas</h4>
+          <a href="#">¿Cómo funciona?</a>
+        </div>
+        <div class="pantalla-modulo__acciones">
+          <span class="pantalla-modulo__boton">Exportar</span>
+          <span class="pantalla-modulo__boton pantalla-modulo__boton--primario">Configurar meta</span>
+        </div>
+      </div>
+      <div class="pantalla-modulo__cuerpo">
+        <div class="pantalla-modulo__principal">
+          <div class="pantalla-modulo__kpis">
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:rgba(29,122,90,0.12);color:var(--verde);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+              <b>$2.1M</b><span>Ingresos del mes</span>
+            </div>
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:rgba(233,154,43,0.16);color:#A6660B;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg></span>
+              <b>$1.23M</b><span>Costos de venta</span>
+            </div>
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:var(--mod-6-fondo);color:var(--mod-6-icono);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+              <b>$878K</b><span>Utilidad bruta</span>
+            </div>
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:var(--mod-1-fondo);color:var(--mod-1-icono);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></span>
+              <b>Superado</b><span>Punto de equilibrio</span>
+            </div>
+          </div>
+
+          <table class="pantalla-modulo__tabla">
+            <thead>
+              <tr><th>Concepto</th><th>Valor</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Meta de ventas del mes</td><td>$1.400.000 (150.4%)</td></tr>
+              <tr><td>Nómina pagada</td><td>$0</td></tr>
+              <tr><td>Costos fijos del mes</td><td>$0</td></tr>
+              <tr><td>Utilidad operativa</td><td>$877.695</td></tr>
+              <tr><td>ROI acumulado</td><td>1241.9%</td></tr>
+              <tr><td>Proyección de cierre</td><td>$3.510.000</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pantalla-modulo__panel">
+          <h5>Finanzas</h5>
+          <p>Consulta ingresos, costos, utilidad y punto de equilibrio en un solo lugar.</p>
+
+          <div class="pantalla-modulo__panel-titulo">Con este módulo puedes</div>
+          <ul class="pantalla-modulo__panel-lista">
+            <li><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver tu utilidad real</li>
+            <li><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Seguir tu punto de equilibrio</li>
+            <li><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Medir tu ROI</li>
+          </ul>
+
+          <div class="pantalla-modulo__panel-titulo">Se conecta con</div>
+          <div class="pantalla-modulo__conexion">→ Ventas</div>
+          <div class="pantalla-modulo__conexion">→ Nóminas</div>
+          <div class="pantalla-modulo__conexion">→ Compras</div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ======================= 2.3 — MÓDULO: FACTURACIÓN (sin demo visual propia) ======================= -->
+<section class="modulo" id="facturacion">
+  <div class="envoltura modulo__grid modulo__grid--sin-visual">
+    <div class="modulo__texto">
+      <div class="modulo__cabecera">
+        <span class="tarjeta__icono" style="background:var(--mod-7-fondo); color:var(--mod-7-icono);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+        </span>
+        <h2>Facturación</h2>
+      </div>
+
+      <p class="modulo__problema texto-cuerpo-grande texto-secundario">
+        Llevar la facturación aparte del resto de la operación genera reprocesos, información
+        duplicada y errores al conciliar ventas con documentos fiscales. Facturación gestiona
+        esa información directamente desde el sistema.
+      </p>
+
+      <div class="modulo__bloque">
+        <h3>Qué puedes hacer</h3>
+        <ul class="modulo__lista-check">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Generar la facturación de una venta</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Consultar el historial de documentos</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver la numeración disponible</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Recibir alerta al agotarse la numeración</li>
+        </ul>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué información maneja</h3>
+        <p class="texto-secundario">
+          Datos de la venta (cliente, productos, valores), datos fiscales del negocio y la
+          numeración o resolución de facturación configurada.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué resultados genera</h3>
+        <p class="texto-secundario">
+          El documento de facturación asociado a cada venta, y una alerta cuando la numeración
+          disponible se está agotando.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Se conecta con</h3>
+        <div class="modulo__conexiones">
+          <span class="modulo__chip">Ventas</span>
+          <span class="modulo__chip">Finanzas</span>
+        </div>
+      </div>
+
+      <div class="modulo__ejemplo">
+        <strong>Ejemplo de flujo real: </strong>
+        cierras una venta — el sistema toma automáticamente sus datos y genera el documento de
+        facturación correspondiente, sin que tengas que capturar la información dos veces.
+      </div>
+
+      <a href="../login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ======================= 2.3 — MÓDULO: NÓMINAS (sin demo visual propia) ======================= -->
+<section class="modulo" id="nominas">
+  <div class="envoltura modulo__grid modulo__grid--sin-visual">
+    <div class="modulo__texto">
+      <div class="modulo__cabecera">
+        <span class="tarjeta__icono" style="background:var(--mod-8-fondo); color:var(--mod-8-icono);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
+        <h2>Nóminas</h2>
+      </div>
+
+      <p class="modulo__problema texto-cuerpo-grande texto-secundario">
+        Pagar al equipo sin que ese costo se refleje en la operación hace que la utilidad de tu
+        negocio se vea inflada y poco realista. Nóminas gestiona a tus colaboradores y sus pagos
+        dentro de Fincil.
+      </p>
+
+      <div class="modulo__bloque">
+        <h3>Qué puedes hacer</h3>
+        <ul class="modulo__lista-check">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Registrar colaboradores</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Gestionar sus pagos</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Consultar historial de nómina pagada</li>
+        </ul>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué información maneja</h3>
+        <p class="texto-secundario">
+          Datos de los colaboradores y los pagos de nómina registrados por periodo.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué resultados genera</h3>
+        <p class="texto-secundario">
+          El costo de nómina del mes, descontado directamente de la utilidad operativa de tu
+          negocio.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Se conecta con</h3>
+        <div class="modulo__conexiones">
+          <span class="modulo__chip">Finanzas</span>
+          <span class="modulo__chip">Procesos</span>
+        </div>
+      </div>
+
+      <div class="modulo__ejemplo">
+        <strong>Ejemplo de flujo real: </strong>
+        pagas la nómina del mes — el sistema registra ese pago y Finanzas lo descuenta de la
+        utilidad operativa, dejando el resultado del mes ajustado a la realidad de tu negocio.
+      </div>
+
+      <a href="../login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ======================= 2.3 — MÓDULO: IMPORTAR / EXPORTAR (sin demo visual propia) ======================= -->
+<section class="modulo" id="importar-exportar">
+  <div class="envoltura modulo__grid modulo__grid--sin-visual">
+    <div class="modulo__texto">
+      <div class="modulo__cabecera">
+        <span class="tarjeta__icono" style="background:var(--mod-9-fondo); color:var(--mod-9-icono);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </span>
+        <h2>Importar / Exportar</h2>
+      </div>
+
+      <p class="modulo__problema texto-cuerpo-grande texto-secundario">
+        Empezar a usar un sistema nuevo desde cero, o necesitar tu información fuera de Fincil,
+        es una barrera si toca cargar o copiar todo a mano. Importar / Exportar mueve la
+        información hacia y desde Fincil sin fricción.
+      </p>
+
+      <div class="modulo__bloque">
+        <h3>Qué puedes hacer</h3>
+        <ul class="modulo__lista-check">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Importar productos, materiales o inventario desde Excel</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Exportar reportes y datos del negocio</li>
+        </ul>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué información maneja</h3>
+        <p class="texto-secundario">
+          Archivos de origen (Excel/CSV) al importar, y los datos ya existentes en Fincil al
+          exportar.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué resultados genera</h3>
+        <p class="texto-secundario">
+          Módulos poblados sin captura manual, y reportes descargables listos para compartir o
+          analizar fuera del sistema.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Se conecta con</h3>
+        <div class="modulo__conexiones">
+          <span class="modulo__chip">Productos</span>
+          <span class="modulo__chip">Materiales</span>
+          <span class="modulo__chip">Inventario</span>
+          <span class="modulo__chip">Compras</span>
+          <span class="modulo__chip">Ventas</span>
+          <span class="modulo__chip">Finanzas</span>
+        </div>
+      </div>
+
+      <div class="modulo__ejemplo">
+        <strong>Ejemplo de flujo real: </strong>
+        migras a Fincil e importas tu listado de productos y materiales desde Excel — en minutos
+        tienes tu catálogo cargado y puedes empezar a operar sin capturar todo a mano.
+      </div>
+
+      <a href="../login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
+    </div>
+  </div>
+</section>
+
+<!-- Falta agregar: sección de Compras y el caso de uso completo (2.4). -->
 
 <footer style="padding: var(--esp-6) 0; text-align:center;">
   <p class="texto-secundario" style="font-size:0.8125rem;">Fincil · Tu negocio en orden — Fase 2 en construcción</p>
