@@ -1,0 +1,400 @@
+/* ============================================================
+   tema.css — Identidad visual única de Fincil para toda la app
+   (antes "tema-panel-oscuro.css": ese tema opcional se retira y
+   ESTE queda como el único diseño, con variante clara y oscura).
+
+   No reemplaza estilos.css: sigue viviendo junto a él y reutiliza
+   las mismas clases (.tarjeta, .campo, .boton, .tabla, etc.) que
+   ya usa cada página — acá solo se redefine su aspecto.
+
+   Se activa siempre (sin atributo). data-tema="oscuro" en <html>
+   cambia las variables de color a la variante oscura; lo hace
+   tema.js según lo guardado en localStorage.
+
+   En <head> de cada página, junto a estilos.css:
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+     <link rel="stylesheet" href="css/tema.css">
+   Y antes de </body>, junto a api.js / auth.js:
+     <script src="js/tema.js"></script>
+   ============================================================ */
+
+:root {
+  --t-sidebar-bg: #123B68;
+  --t-sidebar-activo-bg: rgba(22, 143, 240, 0.22);
+  --t-sidebar-texto: #A9BFDA;
+  --t-sidebar-texto-activo: #FFFFFF;
+  --t-sidebar-seccion: #6F89AD;
+  --t-sidebar-hairline: rgba(255, 255, 255, 0.08);
+
+  --t-bg: #F4F7FB;
+  --t-tarjeta-bg: #FFFFFF;
+  --t-ink: #14213D;
+  --t-ink-suave: #5B6B80;
+  --t-ink-tenue: #8492A3;
+  --t-borde: #E3E9F0;
+  --t-sombra: 0 2px 10px rgba(18, 59, 104, 0.08);
+  --t-radio: 14px;
+  --t-radio-chico: 9px;
+
+  --t-accent: #168FF0;
+  --t-accent-hover: #1279CB;
+  --t-exito: #1D7A5A;
+  --t-exito-fondo: #E7F5EE;
+  --t-advertencia: #C97A1E;
+  --t-advertencia-fondo: #FBF0E1;
+  --t-peligro: #D6455F;
+  --t-peligro-fondo: #FBEAEC;
+  --t-info: #7C5CDB;
+
+  font-family: "Manrope", -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--t-bg);
+  color: var(--t-ink);
+}
+
+[data-tema="oscuro"] {
+  --t-sidebar-bg: #0B1730;
+  --t-sidebar-activo-bg: rgba(78, 168, 245, 0.22);
+  --t-sidebar-texto: #93A6C2;
+  --t-sidebar-hairline: rgba(255, 255, 255, 0.07);
+
+  --t-bg: #0B1220;
+  --t-tarjeta-bg: #141B2E;
+  --t-ink: #EDF1F7;
+  --t-ink-suave: #A9B4C4;
+  --t-ink-tenue: #77839A;
+  --t-borde: rgba(255, 255, 255, 0.08);
+  --t-sombra: 0 4px 16px rgba(0, 0, 0, 0.35);
+
+  --t-accent: #4EA8F5;
+  --t-accent-hover: #6FB8F7;
+  --t-exito: #34D399;
+  --t-exito-fondo: rgba(52, 211, 153, 0.14);
+  --t-advertencia: #F5A93F;
+  --t-advertencia-fondo: rgba(245, 169, 63, 0.14);
+  --t-peligro: #F16C6C;
+  --t-peligro-fondo: rgba(241, 108, 108, 0.14);
+  --t-info: #A78BFA;
+}
+
+h1, h2, h3, h4 { font-weight: 600; }
+a { color: var(--t-accent); text-decoration: none; }
+a:hover { color: var(--t-accent-hover); text-decoration: underline; }
+::selection { background: rgba(22, 143, 240, 0.2); }
+:focus-visible { outline: 2px solid var(--t-accent); outline-offset: 2px; }
+
+/* ============================================================
+   BARRA LATERAL + BARRA SUPERIOR — construidas por tema.js a
+   partir de los enlaces de .navegacion (que queda oculta). Si por
+   lo que sea tema.js no llega a construirlas, la barra horizontal
+   de siempre se queda visible — nunca se oculta "a ciegas".
+   ============================================================ */
+.barra-lateral, .barra-superior { display: none; }
+body.con-barra-lateral .barra-lateral,
+body.con-barra-lateral .barra-superior { display: flex; }
+body.con-barra-lateral .navegacion { display: none; }
+body.con-barra-lateral { overflow-x: hidden; }
+
+.barra-lateral {
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: 240px;
+  background: var(--t-sidebar-bg);
+  padding: 20px 14px;
+  overflow-y: auto;
+  z-index: 50;
+  transition: transform 0.2s ease;
+}
+
+.barra-lateral__marca {
+  display: flex; align-items: center; gap: 10px;
+  color: #fff; font-weight: 800; font-size: 17px; line-height: 1.2;
+  padding: 6px 10px 20px;
+  text-decoration: none;
+}
+.barra-lateral__marca:hover { text-decoration: none; }
+.barra-lateral__marca small { display: block; color: var(--t-sidebar-texto); font-weight: 500; font-size: 11px; letter-spacing: 0.02em; }
+.barra-lateral__logo { width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0; display: block; }
+
+.barra-lateral__seccion {
+  color: var(--t-sidebar-seccion);
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  padding: 16px 10px 6px;
+}
+
+.barra-lateral__enlace {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; margin: 2px 0;
+  border-radius: var(--t-radio-chico);
+  color: var(--t-sidebar-texto);
+  font-size: 14px; font-weight: 500;
+  text-decoration: none;
+}
+.barra-lateral__enlace svg { width: 18px; height: 18px; flex-shrink: 0; }
+.barra-lateral__enlace:hover { background: rgba(255, 255, 255, 0.06); color: var(--t-sidebar-texto-activo); text-decoration: none; }
+.barra-lateral__enlace--activo,
+.barra-lateral__enlace--activo:hover { background: var(--t-sidebar-activo-bg); color: var(--t-sidebar-texto-activo); font-weight: 600; }
+
+.barra-lateral__pie { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--t-sidebar-hairline); display: flex; flex-direction: column; gap: 8px; }
+.barra-lateral__usuario { display: flex; align-items: center; gap: 10px; padding: 4px 10px 10px; }
+.barra-lateral__avatar {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%;
+  background: var(--t-accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+}
+.barra-lateral__usuario-texto { min-width: 0; line-height: 1.25; }
+.barra-lateral__usuario-nombre { display: block; color: #fff; font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barra-lateral__usuario-empresa { display: block; color: var(--t-sidebar-texto); font-size: 12px; }
+
+/* El bloque .navegacion__usuario que arma auth.js (con los botones de
+   tema y cerrar sesión) se reestiliza para verse parte de la sidebar. */
+.barra-lateral__pie .navegacion__usuario { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+.barra-lateral__pie .boton {
+  color: var(--t-sidebar-texto); border: 1px solid var(--t-sidebar-hairline);
+  text-align: left; text-decoration: none; justify-content: flex-start; gap: 8px;
+  display: flex; align-items: center;
+}
+.barra-lateral__pie .boton:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+
+/* ---- Fondo para cerrar la sidebar en móvil (ver breakpoint abajo) ---- */
+.barra-lateral__fondo { display: none; }
+
+/* ============================================================
+   BARRA SUPERIOR (topbar): buscador, notificaciones, ayuda, usuario
+   ============================================================ */
+.barra-superior {
+  position: fixed;
+  top: 0; right: 0; left: 240px;
+  height: 68px;
+  background: var(--t-tarjeta-bg);
+  border-bottom: 1px solid var(--t-borde);
+  align-items: center;
+  gap: 16px;
+  padding: 0 clamp(16px, 3vw, 32px);
+  z-index: 40;
+}
+.barra-superior__buscador {
+  flex: 1; max-width: 480px;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--t-bg);
+  border: 1px solid var(--t-borde);
+  border-radius: var(--t-radio-chico);
+  padding: 9px 12px;
+  color: var(--t-ink-tenue);
+}
+.barra-superior__buscador svg { flex-shrink: 0; }
+.barra-superior__buscador input {
+  flex: 1; min-width: 0; border: none; background: none; outline: none;
+  font-family: "Manrope", sans-serif; font-size: 14px; color: var(--t-ink);
+}
+.barra-superior__buscador input::placeholder { color: var(--t-ink-tenue); }
+.barra-superior__atajo {
+  font-size: 11px; font-weight: 600; color: var(--t-ink-tenue);
+  background: var(--t-tarjeta-bg); border: 1px solid var(--t-borde);
+  border-radius: 6px; padding: 2px 6px; flex-shrink: 0;
+}
+.barra-superior__acciones { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.barra-superior__icono {
+  position: relative;
+  width: 38px; height: 38px; border-radius: 50%;
+  border: 1px solid var(--t-borde); background: none;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--t-ink-suave); cursor: pointer;
+}
+.barra-superior__icono:hover { background: var(--t-bg); color: var(--t-accent); }
+.barra-superior__icono-punto {
+  position: absolute; top: 7px; right: 8px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--t-peligro); border: 1.5px solid var(--t-tarjeta-bg);
+}
+.barra-superior__usuario {
+  display: flex; align-items: center; gap: 10px;
+  padding: 5px 10px 5px 5px; border-radius: 999px;
+  border: 1px solid var(--t-borde); background: none; cursor: pointer;
+}
+.barra-superior__usuario:hover { background: var(--t-bg); }
+.barra-superior__usuario-texto { text-align: left; line-height: 1.2; }
+.barra-superior__usuario-nombre { display: block; font-size: 13.5px; font-weight: 700; color: var(--t-ink); }
+.barra-superior__usuario-empresa { display: block; font-size: 11.5px; color: var(--t-ink-tenue); }
+.barra-superior__usuario svg:last-child { color: var(--t-ink-tenue); }
+
+.barra-superior__menu { display: none; }
+
+@media (max-width: 640px) {
+  .barra-superior__buscador { display: none; }
+}
+
+/* ============================================================
+   Contenido: desplazado a la derecha de la sidebar y debajo de
+   la barra superior.
+   ============================================================ */
+body.con-barra-lateral .pagina {
+  margin-left: 240px;
+  margin-right: 0;
+  max-width: none;
+  padding: calc(68px + 28px) clamp(20px, 4vw, 48px) 32px;
+}
+
+@media (max-width: 900px) {
+  .barra-lateral { transform: translateX(-100%); }
+  body.con-sidebar-abierta .barra-lateral { transform: translateX(0); }
+  .barra-lateral__fondo { position: fixed; inset: 0; background: rgba(11, 23, 48, 0.45); z-index: 45; }
+  body:not(.con-sidebar-abierta) .barra-lateral__fondo { display: none; }
+  body.con-sidebar-abierta .barra-lateral__fondo { display: block; }
+  .barra-superior { left: 0; }
+  .barra-superior__menu {
+    display: flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: var(--t-radio-chico);
+    border: 1px solid var(--t-borde); background: none; color: var(--t-ink);
+    flex-shrink: 0;
+  }
+  body.con-barra-lateral .pagina { margin-left: 0; }
+}
+
+/* ---- Página / tarjetas ---- */
+.pagina { background: var(--t-bg); }
+.pagina__encabezado h1 { color: var(--t-ink); font-size: 2rem; }
+.pagina__encabezado h2 { color: var(--t-ink-suave); font-weight: 400; }
+
+.tarjeta {
+  background: var(--t-tarjeta-bg);
+  border: 1px solid var(--t-borde);
+  border-top: 1px solid var(--t-borde);
+  border-radius: var(--t-radio);
+  box-shadow: var(--t-sombra);
+  padding: 22px 24px;
+}
+.tarjeta h2, .tarjeta h3 { font-size: 17px; font-weight: 600; color: var(--t-ink); }
+
+.cuadricula-inicio { gap: 20px; }
+
+/* ---- Tabla ---- */
+.tabla th { color: var(--t-ink-suave); border-bottom: 1px solid var(--t-borde); font-weight: 500; letter-spacing: 0.04em; }
+.tabla td { border-bottom: 1px solid var(--t-borde); color: var(--t-ink); font-size: 14px; }
+.tabla__vacio { color: var(--t-ink-suave); font-style: normal; }
+
+/* ---- Botones ---- */
+.boton { font-family: "Manrope", sans-serif; font-weight: 600; border-radius: var(--t-radio-chico); color: var(--t-accent); text-decoration: none; border: 1px solid transparent; }
+.boton:hover { background: rgba(22, 143, 240, 0.08); }
+.boton--primario { background: var(--t-accent); color: #fff; border: none; }
+.boton--primario:hover { background: var(--t-accent-hover); }
+.boton--primario:active { background: var(--t-accent-hover); }
+.boton--peligro { color: var(--t-peligro); }
+.boton--peligro:hover { background: var(--t-peligro-fondo); }
+.boton--activo, .boton--activo:hover { background: var(--t-accent); color: #fff; }
+.boton--google { background: #fff; border: 1px solid var(--t-borde); color: var(--t-ink); }
+
+/* ---- Campos: con borde real (no subrayado) ---- */
+.campo__etiqueta { color: var(--t-ink-suave); text-transform: none; letter-spacing: 0; font-weight: 500; }
+.campo input, .campo select, .campo textarea, .agregar-material select {
+  font-family: "Manrope", sans-serif; color: var(--t-ink);
+  background: var(--t-tarjeta-bg);
+  border: 1px solid var(--t-borde);
+  border-radius: var(--t-radio-chico);
+  padding: 9px 12px;
+}
+.campo input:focus, .campo select:focus, .campo textarea:focus {
+  border: 1px solid var(--t-accent); padding: 9px 12px;
+  box-shadow: 0 0 0 3px rgba(22, 143, 240, 0.14);
+}
+.campo__tarjeta-segura { border: 1px solid var(--t-borde); border-radius: var(--t-radio-chico); height: auto; padding: 9px 12px; }
+.campo__tarjeta-segura.campo__tarjeta-segura--activo { border-color: var(--t-accent); }
+
+/* ---- Modal ---- */
+.modal { background: rgba(11, 18, 32, 0.5); }
+.modal__contenido { background: var(--t-tarjeta-bg); border-radius: var(--t-radio); border-top: none; box-shadow: 0 20px 48px rgba(11, 18, 32, 0.25); }
+
+.aviso { background: var(--t-ink); color: #fff; border-radius: var(--t-radio-chico); font-style: normal; }
+.aviso--error { background: var(--t-peligro); }
+
+/* ---- Productos ---- */
+.tarjeta-producto { background: var(--t-tarjeta-bg); border: 1px solid var(--t-borde); border-radius: var(--t-radio); box-shadow: var(--t-sombra); padding-bottom: 0; overflow: hidden; }
+.tarjeta-producto__foto { background-color: var(--t-bg); filter: none; }
+.tarjeta-producto__foto--vacia { background: var(--t-bg); color: var(--t-ink-suave); }
+.tarjeta-producto__cuerpo { padding: 14px 16px 16px; }
+.tarjeta-producto__margen { color: var(--t-exito); font-style: normal; }
+.tarjeta-producto__margen--negativo { color: var(--t-peligro); }
+
+.tarjeta--resumen { border-top: 1px solid var(--t-borde); }
+
+/* ---- Inventario ---- */
+.texto-secundario { color: var(--t-ink-suave); font-style: normal; }
+.semaforo--verde { background: var(--t-exito); }
+.semaforo--amarillo { background: var(--t-advertencia); }
+.semaforo--rojo { background: var(--t-peligro); }
+.capacidad__numero { font-weight: 700; }
+.capacidad__numero--cero { color: var(--t-peligro); }
+
+/* ---- Ventas: estados como píldoras ---- */
+.etiqueta-estado { font-style: normal; font-weight: 600; font-size: 0.8rem; padding: 4px 10px; border-radius: 999px; }
+.etiqueta-estado--pendiente { background: var(--t-advertencia-fondo); color: var(--t-advertencia); }
+.etiqueta-estado--en_produccion { background: rgba(22, 143, 240, 0.12); color: var(--t-accent); }
+.etiqueta-estado--listo { background: var(--t-exito-fondo); color: var(--t-exito); font-weight: 600; }
+.etiqueta-estado--entregado { background: var(--t-borde); color: var(--t-ink-suave); }
+
+/* ---- Finanzas / dashboard: indicadores (KPI) ---- */
+.panel-finanzas .indicador,
+.panel-finanzas .indicador:nth-child(4n+1) { border-left: none; padding: 22px 24px; }
+.indicador__valor { font-weight: 700; font-size: 1.9rem; color: var(--t-ink); overflow-wrap: break-word; }
+.indicador__valor--positivo { color: var(--t-exito); }
+.indicador__valor--negativo { color: var(--t-peligro); }
+.indicador .texto-secundario { color: var(--t-ink-suave); font-size: 13px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.indicador { min-width: 0; justify-content: center; }
+.panel-finanzas, .cuadricula-inicio { min-width: 0; }
+.indicador__icono { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+.indicador__icono svg { width: 20px; height: 20px; }
+.indicador__icono--azul { background: rgba(22, 143, 240, 0.12); color: var(--t-accent); }
+.indicador__icono--verde { background: var(--t-exito-fondo); color: var(--t-exito); }
+.indicador__icono--morado { background: rgba(124, 92, 219, 0.12); color: var(--t-info); }
+.indicador__icono--naranja { background: var(--t-advertencia-fondo); color: var(--t-advertencia); }
+
+/* ---- Finanzas: gráfico de barras CSS (el de Finanzas, no Chart.js) ---- */
+.grafico { border-bottom: 1px solid var(--t-borde); }
+.grafico__barra { border-radius: 4px 4px 0 0; }
+.grafico__barra--ingresos { background: var(--t-accent); }
+.grafico__barra--costos { background: var(--t-info); }
+.grafico__etiqueta { color: var(--t-ink-suave); }
+.grafico__leyenda { font-style: normal; color: var(--t-ink-suave); }
+.grafico__muestra { border-radius: 999px; }
+.grafico__muestra--ingresos { background: var(--t-accent); }
+.grafico__muestra--costos { background: var(--t-info); }
+
+/* ---- Facturación ---- */
+.factura__encabezado { border-bottom: 1px solid var(--t-borde); }
+
+/* ---- Dashboard / alertas ---- */
+.numero-resumen { font-weight: 700; color: var(--t-ink); }
+.alerta::before { background: var(--t-peligro); }
+.alerta--advertencia::before { background: var(--t-advertencia); }
+
+/* ---- Selector de período / métrica (dashboard) ---- */
+.selector-periodo .boton { border: 1px solid var(--t-borde); }
+.boton--activo { border-color: var(--t-accent); }
+
+/* ---- Barra de progreso ---- */
+.barra-progreso { background: var(--t-borde); }
+.barra-progreso__relleno { background: var(--t-accent); }
+
+/* ---- Suscripción: planes ---- */
+.tarjeta-plan { background: var(--t-tarjeta-bg); border: 1px solid var(--t-borde); border-radius: var(--t-radio); box-shadow: var(--t-sombra); }
+.tarjeta-plan--destacado { border: 2px solid var(--t-accent); }
+.tarjeta-plan__badge { background: var(--t-accent); }
+.tarjeta-plan__precio span { color: var(--t-ink-suave); }
+.tarjeta-plan__descuento { color: var(--t-exito); }
+.tarjeta-plan__descripcion { color: var(--t-ink-suave); }
+.tarjeta-plan__fila--no { color: var(--t-ink-suave); }
+.tarjeta-plan__icono--si { background: var(--t-exito-fondo); color: var(--t-exito); }
+.tarjeta-plan__icono--no { background: var(--t-borde); color: var(--t-ink-suave); }
+.banner-suscripcion, .tarjeta-plan__subtitulo { border-color: var(--t-borde); color: var(--t-ink-suave); }
+
+/* ---- Login (sin sidebar, la página no tiene .navegacion) ---- */
+.tarjeta-login { background: var(--t-tarjeta-bg); border-radius: var(--t-radio); box-shadow: var(--t-sombra); padding: 30px; }
+.separador-login { color: var(--t-ink-suave); }
+.separador-login::before, .separador-login::after { background: var(--t-borde); }
+
+@media (max-width: 640px) {
+  .panel-finanzas .indicador { border-left: none; }
+}

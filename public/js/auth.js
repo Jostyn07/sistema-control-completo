@@ -142,11 +142,20 @@ function mostrarUsuarioActual() {
   const nav = document.querySelector('.navegacion');
   if (!nav) return;
 
+  const nombre = usuario.nombre || usuario.correo;
+  const iniciales = nombre.trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+  const esOscuro = document.documentElement.getAttribute('data-tema') === 'oscuro';
+
   const contenedor = document.createElement('span');
   contenedor.className = 'navegacion__usuario';
-  const esOscuro = document.documentElement.getAttribute('data-tema') === 'panel-oscuro';
   contenedor.innerHTML = `
-    <span class="texto-secundario">${escaparHtmlAuth(usuario.nombre || usuario.correo)}</span>
+    <span class="barra-lateral__usuario">
+      <span class="barra-lateral__avatar">${iniciales}</span>
+      <span class="barra-lateral__usuario-texto">
+        <span class="barra-lateral__usuario-nombre">${escaparHtmlAuth(nombre)}</span>
+        <span class="barra-lateral__usuario-empresa">Mi Empresa</span>
+      </span>
+    </span>
     <button type="button" class="boton boton--pequeno" onclick="alternarTema()">${esOscuro ? '☀ Tema claro' : '🌙 Tema oscuro'}</button>
     <button type="button" class="boton boton--pequeno" onclick="cerrarSesion()">Cerrar sesión</button>
   `;
