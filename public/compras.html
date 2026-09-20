@@ -32,17 +32,45 @@
   </nav>
 
   <main class="pagina">
-    <header class="pagina__encabezado">
-      <h1>Compras</h1>
-      <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('compras')" title="¿Cómo funciona esta sección?">❓ ¿Cómo funciona?</button>
-      <button type="button" class="boton boton--primario" onclick="abrirFormularioCompra()">Registrar compra</button>
-      <a href="./importar-exportar.html" class="boton boton--pequeno">📊 Trabajar con Excel</a>
-    </header>
+    <div class="encabezado-modulo">
+      <span class="encabezado-modulo__icono">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.4 11.6a1 1 0 0 0 1 .8h8.8a1 1 0 0 0 1-.8L21 8H6"/></svg>
+      </span>
+      <div class="encabezado-modulo__texto">
+        <h1>Compras</h1>
+        <p>Registra y controla todas tus compras de materiales.</p>
+      </div>
+      <div class="encabezado-modulo__acciones">
+        <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('compras')" title="¿Cómo funciona esta sección?">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          ¿Cómo funciona?
+        </button>
+        <a href="./importar-exportar.html" class="boton boton--pequeno">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          Trabajar con Excel
+        </a>
+        <button type="button" class="boton boton--primario" onclick="abrirFormularioCompra()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Registrar compra
+        </button>
+      </div>
+    </div>
 
-    <!-- 1. Pendientes de compra (se genera sola) -->
+    <div class="tabs-modulo" id="selectorPeriodoCompras" style="border-bottom:none;margin-bottom:8px;">
+      <button type="button" class="tabs-modulo__item" data-periodo="7d" onclick="aplicarPeriodoCompras('7d')">7 días</button>
+      <button type="button" class="tabs-modulo__item" data-periodo="30d" onclick="aplicarPeriodoCompras('30d')">30 días</button>
+      <button type="button" class="tabs-modulo__item tabs-modulo__item--activo" data-periodo="mes" onclick="aplicarPeriodoCompras('mes')">Este mes</button>
+      <button type="button" class="tabs-modulo__item" data-periodo="3m" onclick="aplicarPeriodoCompras('3m')">3 meses</button>
+      <button type="button" class="tabs-modulo__item" data-periodo="6m" onclick="aplicarPeriodoCompras('6m')">6 meses</button>
+      <button type="button" class="tabs-modulo__item" data-periodo="1y" onclick="aplicarPeriodoCompras('1y')">1 año</button>
+    </div>
+
+    <div class="kpi-grid" id="kpisCompras"></div>
+
+    <!-- Sugerencias automáticas por stock bajo (no son compras registradas todavía) -->
     <section class="tarjeta seccion">
-      <h2>Pendientes de compra</h2>
-      <p class="texto-secundario">Esta lista se arma sola: materiales en zona roja o amarilla según su punto de reorden.</p>
+      <h2>Sugerencias de compra</h2>
+      <p class="texto-secundario">Esta lista se arma sola: materiales en zona roja o amarilla según su punto de reorden. Al comprar, quedan registradas abajo en "Compras".</p>
       <table class="tabla">
         <thead>
           <tr>
@@ -62,47 +90,57 @@
       </table>
     </section>
 
-    <!-- 2. Pedidos en camino (ya se pidieron, aún no llegan) -->
+    <!-- Compras registradas: todas, con tabs por estado real (pendiente / recibida) -->
     <section class="tarjeta seccion">
-      <h2>Pedidos en camino</h2>
-      <p class="texto-secundario">El stock se suma solo cuando el pedido llega — automático en la fecha estimada, o antes si lo marcas manualmente.</p>
+      <div class="tabs-modulo" id="tabsCompras">
+        <button type="button" class="tabs-modulo__item tabs-modulo__item--activo" data-filtro="todas" onclick="filtrarComprasPorEstado('todas')">Todas <span id="conteoComprasTodas">(0)</span></button>
+        <button type="button" class="tabs-modulo__item" data-filtro="pendiente" onclick="filtrarComprasPorEstado('pendiente')">Pendientes <span id="conteoComprasPendiente">(0)</span></button>
+        <button type="button" class="tabs-modulo__item" data-filtro="recibida" onclick="filtrarComprasPorEstado('recibida')">Recibidas <span id="conteoComprasRecibida">(0)</span></button>
+      </div>
+      <div class="barra-herramientas-tabla" style="justify-content:space-between;">
+        <div class="agregar-material" style="margin:0">
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Proveedor</span>
+            <input type="text" id="filtroProveedor" placeholder="Nombre del proveedor" oninput="cargarHistorialCompras()">
+          </label>
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Desde</span>
+            <input type="date" id="filtroDesde" onchange="cargarHistorialCompras()">
+          </label>
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Hasta</span>
+            <input type="date" id="filtroHasta" onchange="cargarHistorialCompras()">
+          </label>
+        </div>
+        <label class="barra-herramientas-tabla__buscador">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="buscadorCompras" placeholder="Buscar compra, proveedor o material…" oninput="pintarHistorialCompras()">
+        </label>
+      </div>
       <table class="tabla">
         <thead>
-          <tr><th>Material</th><th>Cantidad</th><th>Proveedor</th><th>Pedido el</th><th>Llega aprox.</th><th></th></tr>
+          <tr><th>N.º</th><th>Fecha</th><th>Material</th><th>Proveedor</th><th>Cantidad</th><th>Precio unitario</th><th>Total</th><th>Estado</th><th>Notas</th><th>Acciones</th></tr>
         </thead>
-        <tbody id="cuerpoEnCamino">
-          <tr><td colspan="6" class="tabla__vacio">Cargando…</td></tr>
+        <tbody id="cuerpoHistorialCompras">
+          <tr><td colspan="10" class="tabla__vacio">Cargando historial…</td></tr>
         </tbody>
       </table>
     </section>
 
-    <!-- 3. Historial con filtros -->
-    <section class="tarjeta seccion">
-      <h2>Historial de compras</h2>
-      <div class="agregar-material">
-        <label class="campo" style="margin:0">
-          <span class="campo__etiqueta">Proveedor</span>
-          <input type="text" id="filtroProveedor" placeholder="Nombre del proveedor">
-        </label>
-        <label class="campo" style="margin:0">
-          <span class="campo__etiqueta">Desde</span>
-          <input type="date" id="filtroDesde">
-        </label>
-        <label class="campo" style="margin:0">
-          <span class="campo__etiqueta">Hasta</span>
-          <input type="date" id="filtroHasta">
-        </label>
-        <button type="button" class="boton" style="align-self:flex-end" onclick="cargarHistorialCompras()">Filtrar</button>
-      </div>
-      <table class="tabla">
-        <thead>
-          <tr><th>Fecha del pedido</th><th>Material</th><th>Proveedor</th><th>Cantidad</th><th>Precio unitario</th><th>Total</th><th>Estado</th><th>Notas</th><th></th></tr>
-        </thead>
-        <tbody id="cuerpoHistorialCompras">
-          <tr><td colspan="9" class="tabla__vacio">Cargando historial…</td></tr>
-        </tbody>
-      </table>
-    </section>
+    <div class="kpi-grid" style="grid-template-columns: 1fr 1fr;">
+      <section class="tarjeta">
+        <div class="tarjeta__encabezado-fila">
+          <h2>Compras recientes</h2>
+        </div>
+        <div id="listaComprasRecientes"><p class="tabla__vacio">Cargando…</p></div>
+      </section>
+      <section class="tarjeta">
+        <div class="tarjeta__encabezado-fila">
+          <h2>Top proveedores</h2>
+        </div>
+        <div id="listaTopProveedores"><p class="tabla__vacio">Cargando…</p></div>
+      </section>
+    </div>
 
     <!-- 4. Formulario de registrar compra -->
     <div class="modal" id="modalCompra" hidden>
