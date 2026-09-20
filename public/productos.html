@@ -32,14 +32,31 @@
   </nav>
 
   <main class="pagina">
-    <header class="pagina__encabezado">
-      <h1>Productos</h1>
-      <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('productos')" title="¿Cómo funciona esta sección?">❓ ¿Cómo funciona?</button>
-      <button type="button" class="boton boton--primario" onclick="abrirFichaProducto()">
-        Nueva ficha técnica
-      </button>
-      <a href="./importar-exportar.html" class="boton boton--pequeno">📊 Trabajar con Excel</a>
-    </header>
+    <div class="encabezado-modulo">
+      <span class="encabezado-modulo__icono">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+      </span>
+      <div class="encabezado-modulo__texto">
+        <h1>Productos</h1>
+        <p>Gestiona tus productos terminados. El stock es cuánto puedes fabricar hoy según tus materiales.</p>
+      </div>
+      <div class="encabezado-modulo__acciones">
+        <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('productos')" title="¿Cómo funciona esta sección?">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          ¿Cómo funciona?
+        </button>
+        <a href="./importar-exportar.html" class="boton boton--pequeno">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Importar
+        </a>
+        <button type="button" class="boton boton--primario" onclick="abrirFichaProducto()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nueva ficha técnica
+        </button>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="kpisProductos"></div>
 
     <!-- Precio de hora global: se cambia en un solo lugar y afecta todas las fichas -->
     <section class="tarjeta banner-precio-hora">
@@ -61,9 +78,58 @@
       <div id="listaConflictosMateriales"></div>
     </section>
 
-    <!-- 1. Lista de productos (tarjetas con foto, precio y margen) -->
-    <section class="tarjetas-productos" id="listaProductos">
-      <p class="tabla__vacio">Cargando productos…</p>
+    <!-- 1. Lista de productos: filtros + tarjetas/lista -->
+    <section class="tarjeta">
+      <div class="barra-herramientas-tabla" style="justify-content:space-between; flex-wrap:wrap;">
+        <label class="barra-herramientas-tabla__buscador" style="min-width:260px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="buscadorProductos" placeholder="Buscar por nombre o categoría…" oninput="buscarProductos()">
+        </label>
+        <div class="agregar-material" style="margin:0">
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Categoría</span>
+            <select id="filtroCategoriaProducto" onchange="buscarProductos()"><option value="">Todas</option></select>
+          </label>
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Estado</span>
+            <select id="filtroEstadoProducto" onchange="buscarProductos()">
+              <option value="">Todos</option>
+              <option value="ok">En stock</option>
+              <option value="bajo">Stock bajo</option>
+              <option value="sin">Sin stock</option>
+            </select>
+          </label>
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Ordenar por</span>
+            <select id="ordenProductos" onchange="buscarProductos()">
+              <option value="reciente">Más recientes</option>
+              <option value="nombre">Nombre (A-Z)</option>
+              <option value="precio_desc">Precio: mayor a menor</option>
+              <option value="margen_desc">Margen: mayor a menor</option>
+              <option value="stock_asc">Stock: menor a mayor</option>
+            </select>
+          </label>
+        </div>
+        <div class="acciones-fila" style="border:1px solid var(--t-borde); border-radius:var(--t-radio-chico); padding:2px;">
+          <button type="button" id="botonVistaTarjetas" class="boton boton--pequeno boton--activo" onclick="cambiarVistaProductos('tarjetas')" title="Ver como tarjetas">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </button>
+          <button type="button" id="botonVistaLista" class="boton boton--pequeno" onclick="cambiarVistaProductos('lista')" title="Ver como lista">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <section class="tarjetas-productos" id="listaProductos"></section>
+
+      <table class="tabla" id="tablaProductosLista" hidden>
+        <thead>
+          <tr><th>Producto</th><th>Categoría</th><th>Precio de venta</th><th>Costo</th><th>Stock (fabricable)</th><th>Material limitante</th><th>Última actualización</th><th>Estado</th><th>Acciones</th></tr>
+        </thead>
+        <tbody id="cuerpoTablaProductosLista"></tbody>
+      </table>
+
+      <div class="paginacion" id="paginacionProductos"></div>
     </section>
 
     <!-- 2. Formulario de ficha técnica -->

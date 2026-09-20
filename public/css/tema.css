@@ -380,6 +380,7 @@ body.con-barra-lateral .pagina {
 .indicador__icono--verde { background: var(--t-exito-fondo); color: var(--t-exito); }
 .indicador__icono--morado { background: rgba(124, 92, 219, 0.12); color: var(--t-info); }
 .indicador__icono--naranja { background: var(--t-advertencia-fondo); color: var(--t-advertencia); }
+.indicador__icono--rosa { background: var(--t-peligro-fondo); color: var(--t-peligro); }
 
 /* ---- Finanzas: gráfico de barras CSS (el de Finanzas, no Chart.js) ---- */
 .grafico { border-bottom: 1px solid var(--t-borde); }

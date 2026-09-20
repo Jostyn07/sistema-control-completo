@@ -87,39 +87,286 @@ async function guardarPrecioHora() {
   }
 }
 
-// ---- 1. Lista de productos (tarjetas) ----
+// ---- 1. Lista de productos (tarjetas o lista) ----
+// El "stock" de un producto no es un número guardado: es cuántas
+// unidades más se pueden fabricar HOY con el material que hay
+// disponible (mínimo de "stock del material / cantidad que usa la
+// receta", material por material). Ese cálculo ya existe en el
+// servidor (/api/inventario/capacidad, el mismo que usa Inventario);
+// acá solo se combina con /api/productos por id.
+let capacidadPorProducto = new Map();
+let vistaProductosActual = localStorage.getItem('vista_productos') || 'tarjetas';
+let paginaProductos = 1;
+let filasPorPaginaProductos = 12;
+
 async function cargarListaProductos() {
   const contenedor = document.getElementById('listaProductos');
   try {
-    productosEnMemoria = await API.obtener('/api/productos');
+    const [productos, capacidad] = await Promise.all([
+      API.obtener('/api/productos'),
+      API.obtener('/api/inventario/capacidad')
+    ]);
+    capacidadPorProducto = new Map(capacidad.map(c => [c.id, c]));
+    productosEnMemoria = productos.map(p => {
+      const cap = capacidadPorProducto.get(p.id);
+      return { ...p, unidades_fabricables: cap ? cap.unidades_fabricables : 0, material_limitante: cap ? cap.material_limitante : null };
+    });
 
-    if (productosEnMemoria.length === 0) {
-      contenedor.innerHTML = '<p class="tabla__vacio">Aún no hay productos. Crea la primera ficha técnica con el botón de arriba.</p>';
-      return;
-    }
-
-    contenedor.innerHTML = productosEnMemoria.map(p => `
-      <article class="tarjeta-producto">
-        ${p.foto_url
-          ? `<img class="tarjeta-producto__foto" src="${escaparHtml(p.foto_url)}" alt="${escaparHtml(p.nombre)}">`
-          : `<div class="tarjeta-producto__foto tarjeta-producto__foto--vacia">Sin foto</div>`}
-        <div class="tarjeta-producto__cuerpo">
-          <h3>${escaparHtml(p.nombre)}</h3>
-          ${p.categorias_productos ? `<p class="texto-secundario" style="margin:-2px 0 6px">${escaparHtml(p.categorias_productos.nombre)}</p>` : ''}
-          <p class="tarjeta-producto__precio">${formatearPesos(p.precio_venta)}</p>
-          <p class="tarjeta-producto__margen ${p.margen_valor < 0 ? 'tarjeta-producto__margen--negativo' : ''}">
-            Margen: ${formatearPesos(p.margen_valor)} (${p.margen_porcentaje}%)
-          </p>
-          <div class="tabla__acciones">
-            <button type="button" class="boton boton--pequeno" onclick="verDesglose('${p.id}')">Ver desglose</button>
-            <button type="button" class="boton boton--pequeno" onclick="abrirFichaProducto('${p.id}')">Editar</button>
-            <button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarProducto('${p.id}')">Eliminar</button>
-          </div>
-        </div>
-      </article>`).join('');
+    poblarFiltroCategoriasProducto();
+    pintarKpisProductos();
+    cambiarVistaProductos(vistaProductosActual, true);
+    buscarProductos();
   } catch (err) {
     contenedor.innerHTML = `<p class="tabla__vacio">No se pudo cargar la lista: ${escaparHtml(err.message)}</p>`;
   }
+}
+
+function poblarFiltroCategoriasProducto() {
+  const selector = document.getElementById('filtroCategoriaProducto');
+  const actual = selector.value;
+  const categorias = [...new Set(productosEnMemoria
+    .map(p => p.categorias_productos ? p.categorias_productos.nombre : null)
+    .filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  selector.innerHTML = '<option value="">Todas</option>' +
+    categorias.map(c => `<option value="${escaparHtml(c)}">${escaparHtml(c)}</option>`).join('');
+  if (categorias.includes(actual)) selector.value = actual;
+}
+
+// Umbral de "stock bajo": no hay un mínimo configurado por producto
+// (eso solo existe para materiales), así que se usa un corte fijo de
+// unidades fabricables — 0 es "Sin stock", 1 a 9 es "Stock bajo".
+const UMBRAL_STOCK_BAJO_PRODUCTO = 10;
+
+function estadoStockProducto(p) {
+  const u = Number(p.unidades_fabricables || 0);
+  if (u <= 0) return 'sin';
+  if (u < UMBRAL_STOCK_BAJO_PRODUCTO) return 'bajo';
+  return 'ok';
+}
+
+function pintarKpisProductos() {
+  const contenedor = document.getElementById('kpisProductos');
+  if (!contenedor) return;
+
+  const total = productosEnMemoria.length;
+  const sinStock = productosEnMemoria.filter(p => estadoStockProducto(p) === 'sin').length;
+  const stockBajo = productosEnMemoria.filter(p => estadoStockProducto(p) === 'bajo').length;
+  const valorFabricable = productosEnMemoria.reduce((s, p) => s + Number(p.unidades_fabricables || 0) * Number(p.costo_calculado || 0), 0);
+
+  const ICONOS = {
+    caja: '<path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/>',
+    alerta: '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+    pausa: '<circle cx="12" cy="12" r="10"/><line x1="10" y1="9" x2="10" y2="15"/><line x1="14" y1="9" x2="14" y2="15"/>',
+    capas: '<path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/>'
+  };
+
+  const tarjetas = [
+    { icono: 'caja', color: 'azul', etiqueta: 'Total de productos', valor: String(total) },
+    { icono: 'alerta', color: 'naranja', etiqueta: 'Productos con stock bajo', valor: String(stockBajo) },
+    { icono: 'pausa', color: 'rosa', etiqueta: 'Productos sin stock', valor: String(sinStock) },
+    { icono: 'capas', color: 'morado', etiqueta: 'Valor fabricable hoy', valor: formatearPesos(valorFabricable) }
+  ];
+
+  contenedor.innerHTML = tarjetas.map(t => `
+    <div class="kpi-tarjeta">
+      <span class="kpi-tarjeta__icono indicador__icono--${t.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS[t.icono]}</svg></span>
+      <span class="kpi-tarjeta__etiqueta">${t.etiqueta}</span>
+      <span class="kpi-tarjeta__valor">${t.valor}</span>
+    </div>`).join('');
+}
+
+function cambiarVistaProductos(vista, silencioso) {
+  vistaProductosActual = vista;
+  localStorage.setItem('vista_productos', vista);
+  document.getElementById('botonVistaTarjetas').classList.toggle('boton--activo', vista === 'tarjetas');
+  document.getElementById('botonVistaLista').classList.toggle('boton--activo', vista === 'lista');
+  document.getElementById('listaProductos').hidden = vista !== 'tarjetas';
+  document.getElementById('tablaProductosLista').hidden = vista !== 'lista';
+  if (!silencioso) pintarListaProductosFiltrada();
+}
+
+function buscarProductos() {
+  paginaProductos = 1;
+  pintarListaProductosFiltrada();
+}
+
+// Conecta el buscador de la barra superior (tema.js) con el de esta página.
+window.buscarDesdeTopbar = function (texto) {
+  document.getElementById('buscadorProductos').value = texto;
+  buscarProductos();
+};
+
+function pintarListaProductosFiltrada() {
+  const texto = normalizarTextoProducto(document.getElementById('buscadorProductos').value);
+  const categoria = document.getElementById('filtroCategoriaProducto').value;
+  const estado = document.getElementById('filtroEstadoProducto').value;
+  const orden = document.getElementById('ordenProductos').value;
+
+  let lista = productosEnMemoria;
+  if (texto) {
+    lista = lista.filter(p =>
+      normalizarTextoProducto(p.nombre).includes(texto) ||
+      normalizarTextoProducto(p.categorias_productos ? p.categorias_productos.nombre : '').includes(texto));
+  }
+  if (categoria) lista = lista.filter(p => p.categorias_productos && p.categorias_productos.nombre === categoria);
+  if (estado) lista = lista.filter(p => estadoStockProducto(p) === estado);
+
+  lista = [...lista];
+  if (orden === 'nombre') lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  else if (orden === 'precio_desc') lista.sort((a, b) => Number(b.precio_venta) - Number(a.precio_venta));
+  else if (orden === 'margen_desc') lista.sort((a, b) => Number(b.margen_valor) - Number(a.margen_valor));
+  else if (orden === 'stock_asc') lista.sort((a, b) => Number(a.unidades_fabricables) - Number(b.unidades_fabricables));
+  else lista.sort((a, b) => new Date(b.actualizado_en || 0) - new Date(a.actualizado_en || 0));
+
+  renderizarVistaActual(lista);
+}
+
+function renderizarVistaActual(lista) {
+  if (productosEnMemoria.length === 0) {
+    document.getElementById('listaProductos').innerHTML = '<p class="tabla__vacio">Aún no hay productos. Crea la primera ficha técnica con el botón de arriba.</p>';
+    document.getElementById('cuerpoTablaProductosLista').innerHTML = '<tr><td colspan="9" class="tabla__vacio">Aún no hay productos.</td></tr>';
+    document.getElementById('paginacionProductos').innerHTML = '';
+    return;
+  }
+  if (lista.length === 0) {
+    document.getElementById('listaProductos').innerHTML = '<p class="tabla__vacio">Ningún producto coincide con la búsqueda o los filtros.</p>';
+    document.getElementById('cuerpoTablaProductosLista').innerHTML = '<tr><td colspan="9" class="tabla__vacio">Ningún producto coincide con la búsqueda o los filtros.</td></tr>';
+    document.getElementById('paginacionProductos').innerHTML = '';
+    return;
+  }
+
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / filasPorPaginaProductos));
+  if (paginaProductos > totalPaginas) paginaProductos = totalPaginas;
+  const inicio = (paginaProductos - 1) * filasPorPaginaProductos;
+  const paginaActual = lista.slice(inicio, inicio + filasPorPaginaProductos);
+
+  if (vistaProductosActual === 'tarjetas') pintarTarjetasProductos(paginaActual);
+  else pintarListaTablaProductos(paginaActual);
+
+  pintarPaginacionProductos(lista.length, totalPaginas);
+}
+
+function etiquetaEstadoProducto(p) {
+  const e = estadoStockProducto(p);
+  return e === 'ok' ? 'En stock' : (e === 'bajo' ? 'Stock bajo' : 'Sin stock');
+}
+
+function claseEstadoProducto(p) {
+  const e = estadoStockProducto(p);
+  return e === 'ok' ? 'listo' : (e === 'bajo' ? 'pendiente' : 'critico');
+}
+
+function pintarTarjetasProductos(lista) {
+  const contenedor = document.getElementById('listaProductos');
+  contenedor.innerHTML = lista.map(p => `
+    <article class="tarjeta-producto">
+      <div style="position:relative;">
+        ${p.foto_url
+          ? `<img class="tarjeta-producto__foto" src="${escaparHtml(p.foto_url)}" alt="${escaparHtml(p.nombre)}">`
+          : `<div class="tarjeta-producto__foto tarjeta-producto__foto--vacia">Sin foto</div>`}
+        <span class="etiqueta-estado etiqueta-estado--${claseEstadoProducto(p)}" style="position:absolute; top:8px; left:8px;">${etiquetaEstadoProducto(p)}</span>
+        <span class="texto-secundario" style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.55); color:#fff; padding:2px 8px; border-radius:999px; font-size:0.75rem;">Stock: ${Number(p.unidades_fabricables)}</span>
+      </div>
+      <div class="tarjeta-producto__cuerpo">
+        <h3>${escaparHtml(p.nombre)}</h3>
+        ${p.categorias_productos ? `<p class="texto-secundario" style="margin:-2px 0 6px">${escaparHtml(p.categorias_productos.nombre)}</p>` : ''}
+        <p class="tarjeta-producto__precio">${formatearPesos(p.precio_venta)}</p>
+        <p class="tarjeta-producto__margen ${p.margen_valor < 0 ? 'tarjeta-producto__margen--negativo' : ''}">
+          Margen: ${formatearPesos(p.margen_valor)} (${p.margen_porcentaje}%)
+        </p>
+        <div class="tabla__acciones">
+          <button type="button" class="boton boton--pequeno" onclick="verDesglose('${p.id}')">Ver</button>
+          <button type="button" class="boton boton--pequeno" onclick="abrirFichaProducto('${p.id}')">Editar</button>
+          <button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarProducto('${p.id}')">Eliminar</button>
+        </div>
+      </div>
+    </article>`).join('');
+}
+
+function pintarListaTablaProductos(lista) {
+  const cuerpo = document.getElementById('cuerpoTablaProductosLista');
+  cuerpo.innerHTML = lista.map(p => `
+    <tr>
+      <td>
+        <span class="celda-cliente">
+          ${p.foto_url ? `<img src="${escaparHtml(p.foto_url)}" class="miniatura" alt="">` : `<span class="miniatura miniatura--vacia"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>`}
+          <strong>${escaparHtml(p.nombre)}</strong>
+        </span>
+      </td>
+      <td>${p.categorias_productos ? escaparHtml(p.categorias_productos.nombre) : '—'}</td>
+      <td>${formatearPesos(p.precio_venta)}</td>
+      <td>${formatearPesos(p.costo_calculado)}</td>
+      <td>${celdaStockProducto(p)}</td>
+      <td>${p.material_limitante ? escaparHtml(p.material_limitante.nombre) : '—'}</td>
+      <td>${p.actualizado_en ? new Date(p.actualizado_en).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</td>
+      <td><span class="etiqueta-estado etiqueta-estado--${claseEstadoProducto(p)}">${etiquetaEstadoProducto(p)}</span></td>
+      <td>${accionesProductoLista(p)}</td>
+    </tr>`).join('');
+}
+
+function celdaStockProducto(p) {
+  const stock = Number(p.unidades_fabricables || 0);
+  const objetivo = Math.max(UMBRAL_STOCK_BAJO_PRODUCTO * 2, 1);
+  const porcentaje = Math.max(0, Math.min(100, Math.round((stock / objetivo) * 100)));
+  const estado = estadoStockProducto(p);
+  const color = estado === 'ok' ? 'var(--t-exito)' : (estado === 'bajo' ? 'var(--t-advertencia)' : 'var(--t-peligro)');
+  return `
+    <div>${stock.toLocaleString('es-CO')}</div>
+    <div class="barra-progreso" style="height:5px;margin-top:4px;">
+      <div class="barra-progreso__relleno" style="width:${porcentaje}%;background:${color};"></div>
+    </div>`;
+}
+
+const ICONO_OJO_PRODUCTO = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>';
+const ICONO_LAPIZ_PRODUCTO = '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>';
+const ICONO_BASURA_PRODUCTO = '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>';
+
+function accionesProductoLista(p) {
+  return `<span class="acciones-fila">
+    <button type="button" onclick="verDesglose('${p.id}')" title="Ver desglose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_OJO_PRODUCTO}</svg></button>
+    <button type="button" onclick="abrirFichaProducto('${p.id}')" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_LAPIZ_PRODUCTO}</svg></button>
+    <button type="button" class="acciones-fila__peligro" onclick="eliminarProducto('${p.id}')" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_BASURA_PRODUCTO}</svg></button>
+  </span>`;
+}
+
+function pintarPaginacionProductos(totalFilas, totalPaginas) {
+  const contenedor = document.getElementById('paginacionProductos');
+  const inicio = totalFilas === 0 ? 0 : (paginaProductos - 1) * filasPorPaginaProductos + 1;
+  const fin = Math.min(paginaProductos * filasPorPaginaProductos, totalFilas);
+
+  const botones = [];
+  for (let p = 1; p <= totalPaginas; p++) {
+    botones.push(`<button type="button" class="${p === paginaProductos ? 'paginacion__botones--activa' : ''}" onclick="irAPaginaProductos(${p})">${p}</button>`);
+  }
+
+  contenedor.innerHTML = `
+    <span>Mostrando ${inicio} a ${fin} de ${totalFilas} productos</span>
+    <span class="paginacion__selector">
+      Filas por página
+      <select onchange="cambiarFilasPorPaginaProductos(this.value)">
+        ${[12, 24, 48, 96].map(n => `<option value="${n}" ${n === filasPorPaginaProductos ? 'selected' : ''}>${n}</option>`).join('')}
+      </select>
+    </span>
+    <span class="paginacion__botones">
+      <button type="button" onclick="irAPaginaProductos(${paginaProductos - 1})" ${paginaProductos <= 1 ? 'disabled' : ''}>‹</button>
+      ${botones.join('')}
+      <button type="button" onclick="irAPaginaProductos(${paginaProductos + 1})" ${paginaProductos >= totalPaginas ? 'disabled' : ''}>›</button>
+    </span>`;
+}
+
+function irAPaginaProductos(pagina) {
+  paginaProductos = pagina;
+  pintarListaProductosFiltrada();
+}
+
+function cambiarFilasPorPaginaProductos(valor) {
+  filasPorPaginaProductos = Number(valor);
+  paginaProductos = 1;
+  pintarListaProductosFiltrada();
+}
+
+function normalizarTextoProducto(texto) {
+  return (texto ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
 // ---- 2. Abrir formulario de ficha técnica ----
