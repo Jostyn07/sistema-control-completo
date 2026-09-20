@@ -106,43 +106,172 @@ function alternarProductoProcesoNuevo(productoId, marcado) {
   else idsProductosSeleccionadosNuevoProceso.delete(productoId);
 }
 // ---- 1. Lista de procesos ----
+let paginaProcesos = 1;
+let filasPorPaginaProcesos = 10;
+
 async function cargarListaProcesos() {
   const cuerpo = document.getElementById('cuerpoTablaProcesos');
-  cuerpo.innerHTML = '<tr><td colspan="6" class="tabla__vacio">Cargando…</td></tr>';
+  cuerpo.innerHTML = '<tr><td colspan="8" class="tabla__vacio">Cargando…</td></tr>';
   try {
     const productoId = document.getElementById('filtroProductoProcesos').value;
     const url = '/api/procesos' + (productoId ? `?producto_id=${productoId}` : '');
     procesosEnMemoria = await API.obtener(url);
-    pintarListaProcesos(procesosEnMemoria);
+    paginaProcesos = 1;
+    pintarKpisProcesos();
+    pintarListaProcesosFiltrada();
   } catch (err) {
-    cuerpo.innerHTML = `<tr><td colspan="6" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
+    cuerpo.innerHTML = `<tr><td colspan="8" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
   }
 }
 
+function costoTotalProceso(p) {
+  const repeticiones = Number(p.repeticiones_por_unidad || 1);
+  const costoPorEjecucion = Number(p.costo_unitario || 0) + Number(p.costo_materiales || 0);
+  return costoPorEjecucion * repeticiones;
+}
+
+// Sin "% vs. mes anterior": estos totales son del estado actual de las
+// fichas técnicas, no hay un histórico guardado de estos números.
+function pintarKpisProcesos() {
+  const contenedor = document.getElementById('kpisProcesos');
+  if (!contenedor) return;
+
+  const total = procesosEnMemoria.length;
+  const tiempoPromedio = total ? procesosEnMemoria.reduce((s, p) => s + Number(p.tiempo_minutos || 0), 0) / total : 0;
+  const costoPromedio = total ? procesosEnMemoria.reduce((s, p) => s + costoTotalProceso(p), 0) / total : 0;
+
+  const porProducto = new Map();
+  for (const p of procesosEnMemoria) {
+    if (!p.productos) continue;
+    porProducto.set(p.productos.nombre, (porProducto.get(p.productos.nombre) || 0) + 1);
+  }
+  let productoConMasPasos = null, maxPasos = 0;
+  for (const [nombre, cantidad] of porProducto) {
+    if (cantidad > maxPasos) { maxPasos = cantidad; productoConMasPasos = nombre; }
+  }
+
+  const ICONOS = {
+    engranaje: '<circle cx="12" cy="6" r="2.2"/><circle cx="5" cy="18" r="2.2"/><circle cx="19" cy="18" r="2.2"/><path d="M12 8.2v3.3M12 11.5 6.6 16M12 11.5 17.4 16"/>',
+    reloj: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    moneda: '<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5a2.5 2 0 0 1 2.5-1.5c1.5 0 2.5.8 2.5 2s-1 1.7-2.5 2-2.5.8-2.5 2 1 2 2.5 2a2.5 2 0 0 0 2.5-1.5"/>',
+    capas: '<path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/>'
+  };
+
+  const tarjetas = [
+    { icono: 'engranaje', color: 'azul', etiqueta: 'Total de procesos', valor: String(total) },
+    { icono: 'reloj', color: 'verde', etiqueta: 'Tiempo promedio', valor: `${tiempoPromedio.toFixed(2)} min` },
+    { icono: 'moneda', color: 'naranja', etiqueta: 'Costo promedio', valor: formatearPesos(Math.round(costoPromedio)) },
+    { icono: 'capas', color: 'morado', etiqueta: 'Ficha técnica con más pasos', valor: productoConMasPasos ? `${escaparHtml(productoConMasPasos)}` : '—', extra: productoConMasPasos ? `${maxPasos} proceso(s)` : '' }
+  ];
+
+  contenedor.innerHTML = tarjetas.map(t => `
+    <div class="kpi-tarjeta">
+      <span class="kpi-tarjeta__icono indicador__icono--${t.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS[t.icono]}</svg></span>
+      <span class="kpi-tarjeta__etiqueta">${t.etiqueta}</span>
+      <span class="kpi-tarjeta__valor" style="font-size:${t.extra !== undefined ? '1.1rem' : ''}">${t.valor}</span>
+      ${t.extra ? `<span class="kpi-tarjeta__delta">${t.extra}</span>` : ''}
+    </div>`).join('');
+}
+
+function pintarListaProcesosFiltrada() {
+  const texto = normalizarTexto(document.getElementById('buscadorNombreProceso').value);
+  const orden = document.getElementById('ordenProcesos').value;
+
+  let lista = procesosEnMemoria;
+  if (texto) lista = lista.filter(p => normalizarTexto(p.nombre).includes(texto));
+
+  lista = [...lista];
+  if (orden === 'nombre') lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  else if (orden === 'tiempo_desc') lista.sort((a, b) => Number(b.tiempo_minutos) - Number(a.tiempo_minutos));
+  else if (orden === 'costo_desc') lista.sort((a, b) => costoTotalProceso(b) - costoTotalProceso(a));
+  else lista.sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+
+  pintarListaProcesos(lista);
+}
+
+// Conecta el buscador de la barra superior (tema.js) con el de esta página.
+window.buscarDesdeTopbar = function (texto) {
+  document.getElementById('buscadorNombreProceso').value = texto;
+  pintarListaProcesosFiltrada();
+};
+
+const ICONO_LAPIZ_PROCESO = '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>';
+const ICONO_BASURA_PROCESO = '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>';
+
 function pintarListaProcesos(lista) {
   const cuerpo = document.getElementById('cuerpoTablaProcesos');
-  if (lista.length === 0) {
+  if (procesosEnMemoria.length === 0) {
     cuerpo.innerHTML = '<tr><td colspan="8" class="tabla__vacio">Aún no hay procesos. Agrega el primero con el botón de arriba.</td></tr>';
+    document.getElementById('paginacionProcesos').innerHTML = '';
     return;
   }
-  cuerpo.innerHTML = lista.map(p => {
+  if (lista.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="8" class="tabla__vacio">Ningún proceso coincide con la búsqueda.</td></tr>';
+    document.getElementById('paginacionProcesos').innerHTML = '';
+    return;
+  }
+
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / filasPorPaginaProcesos));
+  if (paginaProcesos > totalPaginas) paginaProcesos = totalPaginas;
+  const inicio = (paginaProcesos - 1) * filasPorPaginaProcesos;
+  const paginaActual = lista.slice(inicio, inicio + filasPorPaginaProcesos);
+
+  cuerpo.innerHTML = paginaActual.map(p => {
     const repeticiones = Number(p.repeticiones_por_unidad || 1);
     const costoPorEjecucion = Number(p.costo_unitario) + Number(p.costo_materiales || 0);
     return `
     <tr>
       <td>${p.orden != null ? p.orden : '—'}</td>
       <td>${p.productos ? escaparHtml(p.productos.nombre) : '—'}</td>
-      <td>${escaparHtml(p.nombre)}</td>
+      <td><strong>${escaparHtml(p.nombre)}</strong></td>
       <td>${repeticiones > 1 ? `×${repeticiones}` : '—'}</td>
       <td>${p.tiempo_minutos} min</td>
       <td>${(p.procesos_materiales || []).map(m => `${m.cantidad} ${escaparHtml(m.materiales.unidad)} de ${escaparHtml(m.materiales.nombre)}`).join(', ') || '—'}</td>
       <td>${formatearPesos(costoPorEjecucion)}${repeticiones > 1 ? ` × ${repeticiones} = ${formatearPesos(costoPorEjecucion * repeticiones)}` : ''}</td>
-      <td class="tabla__acciones">
-        <button type="button" class="boton boton--pequeno" onclick="abrirFormularioProceso('${p.id}')">Editar</button>
-        <button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarProceso('${p.id}')">Eliminar</button>
-      </td>
+      <td><span class="acciones-fila">
+        <button type="button" onclick="abrirFormularioProceso('${p.id}')" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_LAPIZ_PROCESO}</svg></button>
+        <button type="button" class="acciones-fila__peligro" onclick="eliminarProceso('${p.id}')" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_BASURA_PROCESO}</svg></button>
+      </span></td>
     </tr>`;
   }).join('');
+
+  pintarPaginacionProcesos(lista.length, totalPaginas);
+}
+
+function pintarPaginacionProcesos(totalFilas, totalPaginas) {
+  const contenedor = document.getElementById('paginacionProcesos');
+  const inicio = totalFilas === 0 ? 0 : (paginaProcesos - 1) * filasPorPaginaProcesos + 1;
+  const fin = Math.min(paginaProcesos * filasPorPaginaProcesos, totalFilas);
+
+  const botones = [];
+  for (let p = 1; p <= totalPaginas; p++) {
+    botones.push(`<button type="button" class="${p === paginaProcesos ? 'paginacion__botones--activa' : ''}" onclick="irAPaginaProcesos(${p})">${p}</button>`);
+  }
+
+  contenedor.innerHTML = `
+    <span>Mostrando ${inicio} a ${fin} de ${totalFilas} procesos</span>
+    <span class="paginacion__selector">
+      Filas por página
+      <select onchange="cambiarFilasPorPaginaProcesos(this.value)">
+        ${[10, 20, 50].map(n => `<option value="${n}" ${n === filasPorPaginaProcesos ? 'selected' : ''}>${n}</option>`).join('')}
+      </select>
+    </span>
+    <span class="paginacion__botones">
+      <button type="button" onclick="irAPaginaProcesos(${paginaProcesos - 1})" ${paginaProcesos <= 1 ? 'disabled' : ''}>‹</button>
+      ${botones.join('')}
+      <button type="button" onclick="irAPaginaProcesos(${paginaProcesos + 1})" ${paginaProcesos >= totalPaginas ? 'disabled' : ''}>›</button>
+    </span>`;
+}
+
+function irAPaginaProcesos(pagina) {
+  paginaProcesos = pagina;
+  pintarListaProcesosFiltrada();
+}
+
+function cambiarFilasPorPaginaProcesos(valor) {
+  filasPorPaginaProcesos = Number(valor);
+  paginaProcesos = 1;
+  pintarListaProcesosFiltrada();
 }
 
 // ---- 2. Formulario nuevo / editar ----

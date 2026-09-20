@@ -32,36 +32,65 @@
   </nav>
 
   <main class="pagina">
-    <header class="pagina__encabezado">
-      <h1>Procesos</h1>
-      <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('procesos')" title="¿Cómo funciona esta sección?">❓ ¿Cómo funciona?</button>
-      <button type="button" class="boton boton--primario" onclick="abrirFormularioProceso()">
-        Agregar proceso
-      </button>
-      <a href="./importar-exportar.html" class="boton boton--pequeno">📊 Trabajar con Excel</a>
-    </header>
-    <p class="texto-secundario" style="margin-top:-14px">
-      Cada proceso (ej: "Armado", "Pintura") pertenece a una ficha técnica — no puede existir suelto. Su
-      costo se calcula solo (minutos × precio de hora), y la suma de todos los procesos de un producto ES
-      su mano de obra total en la ficha técnica.
-    </p>
+    <div class="encabezado-modulo">
+      <span class="encabezado-modulo__icono">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="6" r="2.2"/><circle cx="5" cy="18" r="2.2"/><circle cx="19" cy="18" r="2.2"/><path d="M12 8.2v3.3M12 11.5 6.6 16M12 11.5 17.4 16"/></svg>
+      </span>
+      <div class="encabezado-modulo__texto">
+        <h1>Procesos</h1>
+        <p>Gestiona los procesos de tus fichas técnicas. Cada proceso tiene un costo calculado en base al tiempo y al precio de la mano de obra.</p>
+      </div>
+      <div class="encabezado-modulo__acciones">
+        <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('procesos')" title="¿Cómo funciona esta sección?">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          ¿Cómo funciona?
+        </button>
+        <a href="./importar-exportar.html" class="boton boton--pequeno">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          Trabajar con Excel
+        </a>
+        <button type="button" class="boton boton--primario" onclick="abrirFormularioProceso()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Agregar proceso
+        </button>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="kpisProcesos"></div>
 
     <!-- Filtro por ficha técnica -->
     <section class="tarjeta">
-      <label class="campo campo--buscador" style="max-width:320px">
-        <span class="campo__etiqueta">Buscar ficha técnica</span>
-        <input type="text" id="buscadorFiltroFichaProcesos" placeholder="Nombre del producto…" oninput="filtrarSelectorFichaProcesos()">
-      </label>
-      <label class="campo" style="max-width:320px">
-        <span class="campo__etiqueta">Filtrar por ficha técnica</span>
-        <select id="filtroProductoProcesos" onchange="cargarListaProcesos()">
-          <option value="">Todas</option>
-        </select>
-      </label>
+      <div class="barra-herramientas-tabla" style="justify-content:space-between; flex-wrap:wrap;">
+        <label class="barra-herramientas-tabla__buscador" style="min-width:260px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="buscadorNombreProceso" placeholder="Buscar por nombre de proceso…" oninput="pintarListaProcesosFiltrada()">
+        </label>
+        <div class="agregar-material" style="margin:0">
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Buscar ficha técnica</span>
+            <input type="text" id="buscadorFiltroFichaProcesos" placeholder="Nombre del producto…" oninput="filtrarSelectorFichaProcesos()">
+          </label>
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Ficha técnica</span>
+            <select id="filtroProductoProcesos" onchange="cargarListaProcesos()">
+              <option value="">Todas</option>
+            </select>
+          </label>
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Ordenar por</span>
+            <select id="ordenProcesos" onchange="pintarListaProcesosFiltrada()">
+              <option value="orden">Orden de fabricación</option>
+              <option value="nombre">Nombre (A-Z)</option>
+              <option value="tiempo_desc">Tiempo: mayor a menor</option>
+              <option value="costo_desc">Costo: mayor a menor</option>
+            </select>
+          </label>
+        </div>
+      </div>
       <table class="tabla" id="tablaProcesos">
         <thead>
           <tr>
-            <th>Orden</th>
+            <th>N.º</th>
             <th>Ficha técnica</th>
             <th>Nombre del proceso</th>
             <th>Repite</th>
@@ -75,6 +104,7 @@
           <tr><td colspan="8" class="tabla__vacio">Cargando procesos…</td></tr>
         </tbody>
       </table>
+      <div class="paginacion" id="paginacionProcesos"></div>
     </section>
 
     <!-- Formulario nuevo / editar -->
