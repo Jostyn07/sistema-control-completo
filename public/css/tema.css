@@ -398,3 +398,114 @@ body.con-barra-lateral .pagina {
 @media (max-width: 640px) {
   .panel-finanzas .indicador { border-left: none; }
 }
+
+/* ============================================================
+   Componentes reutilizables para las páginas de listados
+   (Ventas, y a futuro Compras/Facturación/etc con el mismo patrón)
+   ============================================================ */
+
+/* ---- Encabezado de módulo con ícono ---- */
+.encabezado-modulo { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.encabezado-modulo__icono {
+  width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px;
+  background: rgba(22, 143, 240, 0.12); color: var(--t-accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.encabezado-modulo__texto h1 { margin: 0 0 2px; }
+.encabezado-modulo__texto p { margin: 0; color: var(--t-ink-suave); font-size: 0.9375rem; }
+.encabezado-modulo__acciones { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.encabezado-modulo__acciones .boton { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---- Tarjetas KPI con ícono y variación ---- */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 20px 0; }
+@media (max-width: 1000px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .kpi-grid { grid-template-columns: 1fr; } }
+.kpi-tarjeta {
+  background: var(--t-tarjeta-bg); border: 1px solid var(--t-borde); border-radius: var(--t-radio);
+  box-shadow: var(--t-sombra); padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;
+}
+.kpi-tarjeta__icono {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.kpi-tarjeta__icono svg { width: 18px; height: 18px; }
+.kpi-tarjeta__etiqueta { font-size: 0.8125rem; color: var(--t-ink-suave); }
+.kpi-tarjeta__valor { font-size: 1.6rem; font-weight: 800; color: var(--t-ink); font-family: "Manrope", sans-serif; }
+.kpi-tarjeta__delta { font-size: 0.8125rem; font-weight: 600; }
+.kpi-tarjeta__delta--positivo { color: var(--t-exito); }
+.kpi-tarjeta__delta--negativo { color: var(--t-peligro); }
+
+/* ---- Tabs de estado con contador ---- */
+.tabs-modulo { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--t-borde); margin-bottom: 16px; }
+.tabs-modulo__item {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 14px; border: none; background: none; cursor: pointer;
+  font-family: "Manrope", sans-serif; font-size: 0.875rem; font-weight: 600;
+  color: var(--t-ink-suave); border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tabs-modulo__item:hover { color: var(--t-accent); }
+.tabs-modulo__item--activo { color: var(--t-accent); border-bottom-color: var(--t-accent); }
+.tabs-modulo__item svg { width: 15px; height: 15px; }
+
+/* ---- Fila de búsqueda + filtros, alineada a la derecha de los tabs ---- */
+.barra-herramientas-tabla { display: flex; align-items: center; gap: 10px; justify-content: flex-end; margin-bottom: 14px; flex-wrap: wrap; }
+.barra-herramientas-tabla__buscador {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--t-borde); border-radius: var(--t-radio-chico);
+  padding: 8px 12px; background: var(--t-bg); min-width: 220px;
+}
+.barra-herramientas-tabla__buscador svg { color: var(--t-ink-tenue); flex-shrink: 0; }
+.barra-herramientas-tabla__buscador input { flex: 1; border: none; background: none; outline: none; font-family: "Manrope", sans-serif; font-size: 0.875rem; color: var(--t-ink); }
+
+/* ---- Avatar con inicial (cliente) ---- */
+.avatar-inicial {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  background: var(--t-info); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; font-family: "Manrope", sans-serif;
+}
+.celda-cliente { display: flex; align-items: center; gap: 8px; }
+
+/* ---- Miniatura de producto en tabla ---- */
+.miniatura { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: var(--t-bg); }
+.miniatura--vacia {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--t-ink-tenue); border: 1px dashed var(--t-borde);
+}
+
+/* ---- Pago como píldora ---- */
+.etiqueta-pago { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+.etiqueta-pago--pagado { background: var(--t-exito-fondo); color: var(--t-exito); }
+.etiqueta-pago--pendiente { background: var(--t-advertencia-fondo); color: var(--t-advertencia); }
+
+/* ---- Acciones de fila como íconos ---- */
+.acciones-fila { display: flex; align-items: center; gap: 4px; }
+.acciones-fila button, .acciones-fila a {
+  width: 30px; height: 30px; border-radius: var(--t-radio-chico);
+  border: none; background: none; color: var(--t-ink-suave);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.acciones-fila button:hover, .acciones-fila a:hover { background: var(--t-bg); color: var(--t-accent); }
+.acciones-fila button.acciones-fila__peligro:hover { color: var(--t-peligro); background: var(--t-peligro-fondo); }
+.acciones-fila svg { width: 16px; height: 16px; }
+
+/* ---- Paginación ---- */
+.paginacion { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 14px; font-size: 0.8125rem; color: var(--t-ink-suave); }
+.paginacion__selector { display: inline-flex; align-items: center; gap: 6px; }
+.paginacion__selector select {
+  font-family: "Manrope", sans-serif; border: 1px solid var(--t-borde); border-radius: var(--t-radio-chico);
+  padding: 5px 8px; background: var(--t-tarjeta-bg); color: var(--t-ink);
+}
+.paginacion__botones { display: inline-flex; align-items: center; gap: 4px; }
+.paginacion__botones button {
+  min-width: 30px; height: 30px; border-radius: var(--t-radio-chico);
+  border: 1px solid var(--t-borde); background: var(--t-tarjeta-bg); color: var(--t-ink-suave);
+  cursor: pointer; font-family: "Manrope", sans-serif; font-size: 0.8125rem;
+}
+.paginacion__botones button:disabled { opacity: 0.4; cursor: default; }
+.paginacion__botones button:hover:not(:disabled):not(.paginacion__botones--activa) { background: var(--t-bg); }
+.paginacion__botones button.paginacion__botones--activa { background: var(--t-accent); color: #fff; border-color: var(--t-accent); }
+
+.tarjeta__encabezado-fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.tarjeta__encabezado-fila h2 { display: flex; align-items: center; gap: 8px; margin: 0; }
+.tarjeta__encabezado-fila h2 svg { width: 18px; height: 18px; color: var(--t-ink-tenue); }

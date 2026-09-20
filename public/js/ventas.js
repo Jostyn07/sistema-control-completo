@@ -12,6 +12,9 @@ let productosParaVenta = [];
 let itemsVentaEnEdicion = []; // [{ producto_id, nombre, precio, cantidad, fabricables }]
 let pedidosEnMemoria = [];
 let historialEnMemoria = [];
+let filtroEstadoPedidos = 'todos'; // tab activa sobre la tabla de Pedidos
+let paginaHistorial = 1;
+let filasPorPaginaHistorial = 5;
 
 const ETIQUETA_ESTADO = {
   pendiente: 'Pendiente',
@@ -261,7 +264,7 @@ async function registrarVenta(forzar = false) {
 // ---- Pago (independiente del estado de entrega) ----
 function celdaPago(venta) {
   if (venta.pagado) {
-    return `<span class="indicador__valor--positivo">✓ Pagado</span> <button type="button" class="boton boton--pequeno" onclick="confirmarPago('${venta.id}', false)">Deshacer</button>`;
+    return `<span class="etiqueta-pago etiqueta-pago--pagado">✓ Pagado</span> <button type="button" class="boton boton--pequeno" onclick="confirmarPago('${venta.id}', false)">Deshacer</button>`;
   }
   return `<button type="button" class="boton boton--pequeno" onclick="confirmarPago('${venta.id}', true)">Confirmar pago</button>`;
 }
@@ -278,12 +281,19 @@ async function confirmarPago(id, pagado) {
 }
 
 // ---- Editar / Eliminar ----
+const ICONO_OJO = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>';
+const ICONO_LAPIZ = '<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>';
+const ICONO_CAMION = '<rect x="1" y="3" width="15" height="13"/><path d="M16 8h4l3 3v5h-7V8Z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>';
+const ICONO_BASURA = '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>';
+
 function accionesVenta(venta) {
-  return `
-    <button type="button" class="boton boton--pequeno" onclick='abrirEditarVenta(${JSON.stringify(venta).replace(/'/g, "&#39;")})'>Editar</button>
-    <button type="button" class="boton boton--pequeno" onclick='abrirEntregasVenta(${JSON.stringify(venta).replace(/'/g, "&#39;")})'>Entregas</button>
-    <button type="button" class="boton boton--pequeno" onclick='abrirComprobanteVenta(${JSON.stringify(venta).replace(/'/g, "&#39;")})'>Comprobante</button>
-    <button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarVenta('${venta.id}', '${escaparHtml(venta.cliente || 'sin cliente')}')">Eliminar</button>`;
+  const datos = JSON.stringify(venta).replace(/'/g, "&#39;");
+  return `<span class="acciones-fila">
+    <button type="button" onclick='abrirComprobanteVenta(${datos})' title="Ver comprobante"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_OJO}</svg></button>
+    <button type="button" onclick='abrirEditarVenta(${datos})' title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_LAPIZ}</svg></button>
+    <button type="button" onclick='abrirEntregasVenta(${datos})' title="Entregas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_CAMION}</svg></button>
+    <button type="button" class="acciones-fila__peligro" onclick="eliminarVenta('${venta.id}', '${escaparHtml(venta.cliente || 'sin cliente')}')" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_BASURA}</svg></button>
+  </span>`;
 }
 
 let itemsEditarVentaEnEdicion = [];
@@ -463,33 +473,81 @@ async function cargarPedidos() {
   }
 }
 
+function actualizarConteosPedidos() {
+  const porEstado = { pendiente: 0, en_produccion: 0, listo: 0 };
+  for (const v of pedidosEnMemoria) { if (v.estado in porEstado) porEstado[v.estado]++; }
+  const set = (id, valor) => { const el = document.getElementById(id); if (el) el.textContent = `(${valor})`; };
+  set('conteoTodos', pedidosEnMemoria.length);
+  set('conteoPendiente', porEstado.pendiente);
+  set('conteoEnProduccion', porEstado.en_produccion);
+  set('conteoListo', porEstado.listo);
+}
+
+function filtrarPorEstado(estado) {
+  filtroEstadoPedidos = estado;
+  document.querySelectorAll('#tabsPedidos .tabs-modulo__item').forEach(boton => {
+    boton.classList.toggle('tabs-modulo__item--activo', boton.dataset.filtro === estado);
+  });
+  buscarVentas();
+}
+
 function pintarPedidos(lista) {
   const cuerpo = document.getElementById('cuerpoPedidos');
+  actualizarConteosPedidos();
+
+  const listaFiltrada = filtroEstadoPedidos === 'todos'
+    ? lista
+    : lista.filter(v => v.estado === filtroEstadoPedidos);
 
   if (pedidosEnMemoria.length === 0) {
-    cuerpo.innerHTML = '<tr><td colspan="9" class="tabla__vacio">No hay pedidos activos. Los entregados quedan en el historial.</td></tr>';
+    cuerpo.innerHTML = '<tr><td colspan="10" class="tabla__vacio">No hay pedidos activos. Los entregados quedan en el historial.</td></tr>';
     return;
   }
-  if (lista.length === 0) {
-    cuerpo.innerHTML = '<tr><td colspan="9" class="tabla__vacio">Ningún pedido coincide con la búsqueda.</td></tr>';
+  if (listaFiltrada.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="10" class="tabla__vacio">Ningún pedido coincide con la búsqueda o el filtro.</td></tr>';
     return;
   }
 
-  cuerpo.innerHTML = lista.map(v => {
+  cuerpo.innerHTML = listaFiltrada.map(v => {
     const siguiente = SIGUIENTE_ESTADO[v.estado];
     return `
     <tr>
+      <td>${numeroCortoVenta(v)}</td>
       <td>${formatearFecha(v.fecha)}</td>
-      <td>${escaparHtml(v.cliente || '—')}</td>
-      <td>${celdaFechaEntrega(v)}</td>
+      <td><span class="celda-cliente">${avatarCliente(v)}${escaparHtml(v.cliente || '—')}</span></td>
       <td>${resumenProductosCompacto(v)}</td>
+      <td>${miniaturaVenta(v)}</td>
+      <td>${celdaFechaEntrega(v)}</td>
       <td>${formatearPesos(v.total)}</td>
-      <td><span class="etiqueta-estado etiqueta-estado--${v.estado}">${ETIQUETA_ESTADO[v.estado]}</span></td>
+      <td>
+        <span class="etiqueta-estado etiqueta-estado--${v.estado}">${ETIQUETA_ESTADO[v.estado]}</span>
+        ${siguiente ? `<button type="button" class="boton boton--pequeno" style="margin-top:4px" onclick="cambiarEstadoPedido('${v.id}', '${siguiente}')">Pasar a ${ETIQUETA_ESTADO[siguiente].toLowerCase()}</button>` : ''}
+      </td>
       <td>${celdaPago(v)}</td>
-      <td>${siguiente ? `<button type="button" class="boton boton--pequeno" onclick="cambiarEstadoPedido('${v.id}', '${siguiente}')">Pasar a ${ETIQUETA_ESTADO[siguiente].toLowerCase()}</button>` : ''}</td>
       <td>${accionesVenta(v)}</td>
     </tr>`;
   }).join('');
+}
+
+function numeroCortoVenta(venta) {
+  return '#' + String(venta.id || '').replace(/-/g, '').slice(-5).toUpperCase();
+}
+
+function avatarCliente(venta) {
+  const inicial = (venta.cliente || '?').trim().charAt(0).toUpperCase();
+  return `<span class="avatar-inicial">${escaparHtml(inicial)}</span>`;
+}
+
+function primeraFotoVenta(venta) {
+  const items = venta.ventas_items || [];
+  const conFoto = items.find(i => i.productos && i.productos.foto_url);
+  return conFoto ? conFoto.productos.foto_url : null;
+}
+
+function miniaturaVenta(venta) {
+  const foto = primeraFotoVenta(venta);
+  if (foto) return `<img src="${escaparHtml(foto)}" class="miniatura" alt="">`;
+  return `<span class="miniatura miniatura--vacia"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>`;
 }
 
 function celdaFechaEntrega(venta) {
@@ -556,6 +614,7 @@ async function cargarHistorialVentas() {
 
   try {
     historialEnMemoria = await API.obtener('/api/ventas' + (filtros.toString() ? '?' + filtros.toString() : ''));
+    paginaHistorial = 1;
     buscarVentas(); // pinta respetando el texto de búsqueda si había uno
   } catch (err) {
     cuerpo.innerHTML = `<tr><td colspan="11" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
@@ -564,23 +623,33 @@ async function cargarHistorialVentas() {
 
 function pintarHistorial(lista) {
   const cuerpo = document.getElementById('cuerpoHistorial');
+  pintarKpisVentas(lista);
 
   if (historialEnMemoria.length === 0) {
-    cuerpo.innerHTML = '<tr><td colspan="11" class="tabla__vacio">No hay ventas con esos filtros.</td></tr>';
+    cuerpo.innerHTML = '<tr><td colspan="13" class="tabla__vacio">No hay ventas con esos filtros.</td></tr>';
+    document.getElementById('paginacionHistorial').innerHTML = '';
     return;
   }
   if (lista.length === 0) {
-    cuerpo.innerHTML = '<tr><td colspan="11" class="tabla__vacio">Ninguna venta coincide con la búsqueda.</td></tr>';
+    cuerpo.innerHTML = '<tr><td colspan="13" class="tabla__vacio">Ninguna venta coincide con la búsqueda.</td></tr>';
+    document.getElementById('paginacionHistorial').innerHTML = '';
     return;
   }
 
-  cuerpo.innerHTML = lista.map(v => `
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / filasPorPaginaHistorial));
+  if (paginaHistorial > totalPaginas) paginaHistorial = totalPaginas;
+  const inicio = (paginaHistorial - 1) * filasPorPaginaHistorial;
+  const paginaActual = lista.slice(inicio, inicio + filasPorPaginaHistorial);
+
+  cuerpo.innerHTML = paginaActual.map(v => `
     <tr>
+      <td>${numeroCortoVenta(v)}</td>
       <td>${formatearFecha(v.fecha)}</td>
-      <td>${escaparHtml(v.cliente || '—')}</td>
+      <td><span class="celda-cliente">${avatarCliente(v)}${escaparHtml(v.cliente || '—')}</span></td>
       <td>${contactoCliente(v)}</td>
       <td>${v.fecha_entrega ? formatearFechaCortaVenta(v.fecha_entrega) : '—'}</td>
       <td>${resumenProductosCompacto(v)}</td>
+      <td>${miniaturaVenta(v)}</td>
       <td>${formatearPesos(v.total)}</td>
       <td>${formatearPesos(v.costo_total)}</td>
       <td>${formatearPesos(v.total - v.costo_total)}</td>
@@ -588,6 +657,99 @@ function pintarHistorial(lista) {
       <td>${celdaPago(v)}</td>
       <td>${accionesVenta(v)}</td>
     </tr>`).join('');
+
+  pintarPaginacionHistorial(lista.length, totalPaginas);
+}
+
+function pintarPaginacionHistorial(totalFilas, totalPaginas) {
+  const contenedor = document.getElementById('paginacionHistorial');
+  const inicio = totalFilas === 0 ? 0 : (paginaHistorial - 1) * filasPorPaginaHistorial + 1;
+  const fin = Math.min(paginaHistorial * filasPorPaginaHistorial, totalFilas);
+
+  const botonesPagina = [];
+  for (let p = 1; p <= totalPaginas; p++) {
+    botonesPagina.push(`<button type="button" class="${p === paginaHistorial ? 'paginacion__botones--activa' : ''}" onclick="irAPaginaHistorial(${p})">${p}</button>`);
+  }
+
+  contenedor.innerHTML = `
+    <span>Mostrando ${inicio} a ${fin} de ${totalFilas} resultados</span>
+    <span class="paginacion__selector">
+      Filas por página
+      <select onchange="cambiarFilasPorPaginaHistorial(this.value)">
+        ${[5, 10, 20, 50].map(n => `<option value="${n}" ${n === filasPorPaginaHistorial ? 'selected' : ''}>${n}</option>`).join('')}
+      </select>
+    </span>
+    <span class="paginacion__botones">
+      <button type="button" onclick="irAPaginaHistorial(${paginaHistorial - 1})" ${paginaHistorial <= 1 ? 'disabled' : ''}>‹</button>
+      ${botonesPagina.join('')}
+      <button type="button" onclick="irAPaginaHistorial(${paginaHistorial + 1})" ${paginaHistorial >= totalPaginas ? 'disabled' : ''}>›</button>
+    </span>`;
+}
+
+function irAPaginaHistorial(pagina) {
+  paginaHistorial = pagina;
+  buscarVentas();
+}
+
+function cambiarFilasPorPaginaHistorial(valor) {
+  filasPorPaginaHistorial = Number(valor);
+  paginaHistorial = 1;
+  buscarVentas();
+}
+
+// ---- KPIs del período actualmente cargado en el historial ----
+function pintarKpisVentas(lista) {
+  const contenedor = document.getElementById('kpisVentas');
+  if (!contenedor) return;
+
+  const totalVentas = lista.reduce((suma, v) => suma + Number(v.total || 0), 0);
+  const pedidos = lista.length;
+  const ticketPromedio = pedidos > 0 ? totalVentas / pedidos : 0;
+  const productosVendidos = lista.reduce((suma, v) => suma + (v.ventas_items || []).reduce((s, i) => s + Number(i.cantidad || 0), 0), 0);
+
+  const tarjetas = [
+    { icono: 'ICONO_PESO', color: 'azul', etiqueta: 'Ventas totales', valor: formatearPesos(totalVentas) },
+    { icono: 'ICONO_CARRITO', color: 'verde', etiqueta: 'Pedidos', valor: String(pedidos) },
+    { icono: 'ICONO_BOLSA', color: 'morado', etiqueta: 'Ticket promedio', valor: formatearPesos(Math.round(ticketPromedio)) },
+    { icono: 'ICONO_BARRAS', color: 'naranja', etiqueta: 'Productos vendidos', valor: String(productosVendidos) }
+  ];
+
+  const SVGS = {
+    ICONO_PESO: '<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+    ICONO_CARRITO: '<circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/>',
+    ICONO_BOLSA: '<path d="M6 2 3 6v14a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V6l-3-4Z"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+    ICONO_BARRAS: '<line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>'
+  };
+
+  contenedor.innerHTML = tarjetas.map(t => `
+    <div class="kpi-tarjeta">
+      <span class="kpi-tarjeta__icono indicador__icono--${t.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${SVGS[t.icono]}</svg></span>
+      <span class="kpi-tarjeta__etiqueta">${t.etiqueta}</span>
+      <span class="kpi-tarjeta__valor">${t.valor}</span>
+    </div>`).join('');
+}
+
+// ---- Exportar historial a Excel (reutiliza el endpoint real de Importar/Exportar) ----
+async function exportarVentasExcel() {
+  try {
+    const token = localStorage.getItem('token_sesion');
+    const respuesta = await fetch('/api/excel/ventas/exportar', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!respuesta.ok) {
+      const datos = await respuesta.json().catch(() => ({}));
+      throw new Error(datos.error || `Error ${respuesta.status}`);
+    }
+    const blob = await respuesta.blob();
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = '06_Ventas.xlsx';
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
 }
 
 // ---- Búsqueda (instantánea, en memoria; filtra pedidos e historial a la vez) ----

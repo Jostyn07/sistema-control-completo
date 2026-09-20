@@ -32,34 +32,68 @@
   </nav>
 
   <main class="pagina">
-    <header class="pagina__encabezado">
-      <h1>Ventas</h1>
-      <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('ventas')" title="¿Cómo funciona esta sección?">❓ ¿Cómo funciona?</button>
-      <button type="button" class="boton boton--primario" onclick="abrirNuevaVenta()">Nueva venta</button>
-      <a href="./importar-exportar.html" class="boton boton--pequeno">📊 Trabajar con Excel</a>
-    </header>
+    <div class="encabezado-modulo">
+      <span class="encabezado-modulo__icono">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/></svg>
+      </span>
+      <div class="encabezado-modulo__texto">
+        <h1>Ventas</h1>
+        <p>Gestiona tus ventas, consulta el historial y controla el estado de cada pedido.</p>
+      </div>
+      <div class="encabezado-modulo__acciones">
+        <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('ventas')" title="¿Cómo funciona esta sección?">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          ¿Cómo funciona?
+        </button>
+        <a href="./importar-exportar.html" class="boton boton--pequeno">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          Trabajar con Excel
+        </a>
+        <button type="button" class="boton boton--primario" onclick="abrirNuevaVenta()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nueva venta
+        </button>
+      </div>
+    </div>
 
-    <label class="campo" style="max-width:320px">
-      <span class="campo__etiqueta">Buscar</span>
-      <input type="text" id="buscadorVentas" placeholder="Cliente o producto…" oninput="buscarVentas()">
-    </label>
+    <div class="kpi-grid" id="kpisVentas"></div>
 
     <!-- 2. Pedidos con estado -->
     <section class="tarjeta seccion">
-      <h2>Pedidos</h2>
+      <div class="tabs-modulo" id="tabsPedidos">
+        <button type="button" class="tabs-modulo__item tabs-modulo__item--activo" data-filtro="todos" onclick="filtrarPorEstado('todos')">Todos <span id="conteoTodos">(0)</span></button>
+        <button type="button" class="tabs-modulo__item" data-filtro="pendiente" onclick="filtrarPorEstado('pendiente')">Pendientes <span id="conteoPendiente">(0)</span></button>
+        <button type="button" class="tabs-modulo__item" data-filtro="en_produccion" onclick="filtrarPorEstado('en_produccion')">En producción <span id="conteoEnProduccion">(0)</span></button>
+        <button type="button" class="tabs-modulo__item" data-filtro="listo" onclick="filtrarPorEstado('listo')">Listos <span id="conteoListo">(0)</span></button>
+      </div>
+      <div class="barra-herramientas-tabla">
+        <label class="barra-herramientas-tabla__buscador">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="buscadorVentas" placeholder="Buscar pedido, cliente o producto…" oninput="buscarVentas()">
+        </label>
+      </div>
       <table class="tabla">
         <thead>
-          <tr><th>Fecha</th><th>Cliente</th><th>Entrega</th><th>Productos</th><th>Total</th><th>Estado</th><th>Pago</th><th></th><th></th></tr>
+          <tr><th>N.º</th><th>Fecha</th><th>Cliente</th><th>Producto</th><th>Imagen</th><th>Entrega</th><th>Total</th><th>Estado</th><th>Pago</th><th>Acciones</th></tr>
         </thead>
         <tbody id="cuerpoPedidos">
-          <tr><td colspan="9" class="tabla__vacio">Cargando pedidos…</td></tr>
+          <tr><td colspan="10" class="tabla__vacio">Cargando pedidos…</td></tr>
         </tbody>
       </table>
     </section>
 
     <!-- 3. Historial con filtros -->
     <section class="tarjeta seccion">
-      <h2>Historial</h2>
+      <div class="tarjeta__encabezado-fila">
+        <h2>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Historial de ventas
+        </h2>
+        <button type="button" class="boton boton--pequeno" onclick="exportarVentasExcel()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar
+        </button>
+      </div>
       <div class="agregar-material">
         <label class="campo" style="margin:0">
           <span class="campo__etiqueta">Desde</span>
@@ -83,12 +117,13 @@
       </div>
       <table class="tabla">
         <thead>
-          <tr><th>Fecha</th><th>Cliente</th><th>Contacto</th><th>Entrega</th><th>Productos</th><th>Total</th><th>Costo</th><th>Ganancia</th><th>Estado</th><th>Pago</th><th></th></tr>
+          <tr><th>N.º</th><th>Fecha</th><th>Cliente</th><th>Contacto</th><th>Entrega</th><th>Producto</th><th>Imagen</th><th>Total</th><th>Costo</th><th>Ganancia</th><th>Estado</th><th>Pago</th><th>Acciones</th></tr>
         </thead>
         <tbody id="cuerpoHistorial">
-          <tr><td colspan="11" class="tabla__vacio">Cargando historial…</td></tr>
+          <tr><td colspan="13" class="tabla__vacio">Cargando historial…</td></tr>
         </tbody>
       </table>
+      <div class="paginacion" id="paginacionHistorial"></div>
     </section>
 
     <!-- 1. Formulario de nueva venta -->
