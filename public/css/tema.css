@@ -21,6 +21,35 @@
    ============================================================ */
 
 :root {
+  /* ---- Puente con las variables originales de estilos.css ----
+     estilos.css (cargado antes) define su propia paleta y la usa en
+     TODO: body, h1-h4, enlaces, alertas, avisos, etc. Antes solo
+     reescribíamos selectores puntuales (.tarjeta, .boton, .tabla…),
+     así que cualquier texto que dependiera de --ink/--bg/--serif sin
+     pasar por esos selectores se quedaba con los colores viejos —
+     por eso el tema oscuro se veía con texto ilegible. Redefiniendo
+     acá esas MISMAS variables (apuntando a los tokens --t-* de abajo,
+     que sí cambian con [data-tema="oscuro"]), toda la app queda
+     tematizada de verdad, la haya reescrito explícitamente o no. */
+  --bg: var(--t-bg);
+  --surface: var(--t-tarjeta-bg);
+  --ink: var(--t-ink);
+  --ink-suave: var(--t-ink-suave);
+  --ink-tenue: var(--t-ink-tenue);
+  --neutral-300: var(--t-borde);
+  --neutral-400: var(--t-ink-tenue);
+  --hairline: var(--t-borde);
+  --accent: var(--t-accent);
+  --accent-hover: var(--t-accent-hover);
+  --accent-activo: var(--t-accent-hover);
+  --accent-texto: var(--t-accent);
+  --magenta: var(--t-peligro);
+  --magenta-texto: var(--t-peligro);
+  --advertencia: var(--t-advertencia);
+  --radio: var(--t-radio-chico);
+  --sombra-lg: var(--t-sombra);
+  --serif: "Manrope", -apple-system, BlinkMacSystemFont, sans-serif;
+
   --t-sidebar-bg: #123B68;
   --t-sidebar-activo-bg: rgba(22, 143, 240, 0.22);
   --t-sidebar-texto: #A9BFDA;
