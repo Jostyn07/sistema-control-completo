@@ -57,7 +57,7 @@ const COLUMNAS_VENTAS = [
     encabezado: 'Teléfono',
     obligatorio: false,
     descripcion: 'Teléfono de contacto (se guarda cifrado).',
-    ejemplo: '3001234567'
+    ejemplo: '3332380765'
   },
   {
     clave: 'cedula',
