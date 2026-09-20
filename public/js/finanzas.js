@@ -135,49 +135,71 @@ async function cargarResumenFinanciero() {
       subtextoRoi = r.nota_roi || '';
     }
 
+    const ICONO_MONEDA = '<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>';
+    const ICONO_CARRITO_F = '<circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/>';
+    const ICONO_PERSONAS_F = '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>';
+    const ICONO_TENDENCIA = '<path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/>';
+    const ICONO_ETIQUETA_F = '<path d="M20.59 13.41 12 22l-10-10L11.59 2.41A2 2 0 0 1 13 2h7a2 2 0 0 1 2 2v7a2 2 0 0 1-.41 1.41Z"/><circle cx="16" cy="8" r="1.5"/>';
+    const ICONO_BLANCO_F = '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>';
+    const ICONO_RELOJ_F = '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>';
+    const ICONO_CAPAS_F = '<path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/>';
+
+    function iconoInd(color, svg) {
+      return `<span class="indicador__icono indicador__icono--${color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg}</svg></span>`;
+    }
+
     panel.innerHTML = `
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Ingresos del mes (${r.ventas_del_mes} venta(s))</span>
         <span class="indicador__valor">${formatearPesos(r.ingresos_mes)}</span>
+        ${iconoInd('azul', ICONO_MONEDA)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Costo de ventas</span>
         <span class="indicador__valor">${formatearPesos(r.costo_ventas_mes)}</span>
         <span class="texto-secundario">materiales + mano de obra de lo vendido</span>
+        ${iconoInd('naranja', ICONO_CARRITO_F)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Nómina pagada</span>
         <span class="indicador__valor">${formatearPesos(r.costos_nomina_mes)}</span>
         <span class="texto-secundario">confirmada como pagada en Nóminas este mes — cuenta como gasto variable</span>
+        ${iconoInd('morado', ICONO_PERSONAS_F)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Utilidad bruta</span>
         <span class="indicador__valor ${r.utilidad_bruta_mes >= 0 ? 'indicador__valor--positivo' : 'indicador__valor--negativo'}">${formatearPesos(r.utilidad_bruta_mes)}</span>
         ${r.margen_bruto_pct != null ? `<span class="texto-secundario">Margen bruto: ${r.margen_bruto_pct}%</span>` : ''}
+        ${iconoInd('verde', ICONO_TENDENCIA)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Costos fijos del mes</span>
         <span class="indicador__valor">${formatearPesos(r.costos_fijos_mes)}</span>
+        ${iconoInd('naranja', ICONO_ETIQUETA_F)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Utilidad operativa</span>
         <span class="indicador__valor ${colorUtilidad}">${formatearPesos(r.utilidad_operativa_mes)}</span>
         <span class="texto-secundario">utilidad bruta − costos fijos</span>
+        ${iconoInd('azul', ICONO_TENDENCIA)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Punto de equilibrio mensual</span>
         <span class="indicador__valor">${textoEquilibrio}</span>
         <span class="texto-secundario">${subtextoEquilibrio}</span>
+        ${iconoInd('azul', ICONO_BLANCO_F)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">ROI acumulado</span>
         <span class="indicador__valor ${r.roi_acumulado != null && r.roi_acumulado < 0 ? 'indicador__valor--negativo' : ''}">${textoRoi}</span>
         <span class="texto-secundario">${subtextoRoi}</span>
+        ${iconoInd('morado', ICONO_RELOJ_F)}
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Valor del inventario</span>
         <span class="indicador__valor">${formatearPesos(r.valor_inventario)}</span>
         <span class="texto-secundario">materiales sin vender, a su costo actual</span>
+        ${iconoInd('verde', ICONO_CAPAS_F)}
       </div>`;
 
     document.getElementById('panelFlujoCaja').innerHTML = `
@@ -190,24 +212,29 @@ async function cargarResumenFinanciero() {
         <div class="indicador tarjeta">
           <span class="campo__etiqueta">Ingresos del mes</span>
           <span class="indicador__valor">${formatearPesos(r.ingresos_mes)}</span>
+          ${iconoInd('verde', ICONO_MONEDA)}
         </div>
         <div class="indicador tarjeta">
-          <span class="campo__etiqueta">Compras del mes</span>
+          <span class="campo__etiqueta">Compras de materiales</span>
           <span class="indicador__valor">${formatearPesos(r.compras_mes)}</span>
           <span class="texto-secundario">materiales comprados, hayan llegado o no</span>
+          ${iconoInd('naranja', ICONO_CARRITO_F)}
         </div>
         <div class="indicador tarjeta">
-          <span class="campo__etiqueta">Costos fijos del mes</span>
+          <span class="campo__etiqueta">Costos fijos</span>
           <span class="indicador__valor">${formatearPesos(r.costos_fijos_mes)}</span>
+          ${iconoInd('morado', ICONO_ETIQUETA_F)}
         </div>
         <div class="indicador tarjeta">
           <span class="campo__etiqueta">Nómina pagada</span>
           <span class="indicador__valor">${formatearPesos(r.costos_nomina_mes)}</span>
+          ${iconoInd('azul', ICONO_PERSONAS_F)}
         </div>
         <div class="indicador tarjeta">
           <span class="campo__etiqueta">Flujo de caja neto</span>
           <span class="indicador__valor ${colorFlujo}">${formatearPesos(r.flujo_caja_mes)}</span>
           <span class="texto-secundario">ingresos − compras − costos fijos − nómina pagada</span>
+          ${iconoInd('verde', ICONO_MONEDA)}
         </div>
       </div>`;
   } catch (err) {
@@ -229,15 +256,18 @@ async function cargarAnalisisClientes() {
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Clientes distintos</span>
         <span class="indicador__valor">${r.resumen.total_clientes}</span>
+        <span class="indicador__icono indicador__icono--azul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Clientes recurrentes</span>
         <span class="indicador__valor">${r.resumen.clientes_recurrentes}</span>
         <span class="texto-secundario">${r.resumen.pct_recurrentes}% del total</span>
+        <span class="indicador__icono indicador__icono--verde"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
       </div>
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Ticket promedio general</span>
         <span class="indicador__valor">${formatearPesos(r.resumen.ticket_promedio_general)}</span>
+        <span class="indicador__icono indicador__icono--morado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V6l-3-4Z"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
       </div>`;
 
     if (r.clientes.length === 0) {
@@ -247,7 +277,7 @@ async function cargarAnalisisClientes() {
 
     cuerpo.innerHTML = r.clientes.map((c, i) => `
       <tr>
-        <td${i === 0 ? ' style="font-weight:600"' : ''}>${escaparHtml(c.nombre)}</td>
+        <td${i === 0 ? ' style="font-weight:600"' : ''}><span class="celda-cliente"><span class="avatar-inicial">${escaparHtml((c.nombre || '?').trim().charAt(0).toUpperCase())}</span>${escaparHtml(c.nombre)}</span></td>
         <td>${c.compras}</td>
         <td>${formatearPesos(c.total_gastado)}</td>
         <td>${formatearPesos(c.ticket_promedio)}</td>
@@ -268,7 +298,12 @@ function formatearFechaCliente(fecha) {
 async function cargarRentabilidadProductos() {
   const cuerpo = document.getElementById('cuerpoRentabilidad');
   try {
-    const lista = await API.obtener('/api/finanzas/rentabilidad-productos');
+    const [lista, productos] = await Promise.all([
+      API.obtener('/api/finanzas/rentabilidad-productos'),
+      API.obtener('/api/productos').catch(() => [])
+    ]);
+    const fotoPorProducto = new Map(productos.map(p => [p.id, p.foto_url]));
+
     if (lista.length === 0) {
       cuerpo.innerHTML = '<tr><td colspan="6" class="tabla__vacio">Aún no hay ventas este mes para analizar.</td></tr>';
       return;
@@ -277,9 +312,13 @@ async function cargarRentabilidadProductos() {
       let clase = '';
       if (p.margen < 0) clase = ' style="color:#b91c1c"';
       else if (i === 0) clase = ' style="color:#16a34a;font-weight:600"';
+      const foto = fotoPorProducto.get(p.producto_id);
+      const miniatura = foto
+        ? `<img src="${escaparHtml(foto)}" class="miniatura" alt="">`
+        : `<span class="miniatura miniatura--vacia"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>`;
       return `
       <tr>
-        <td${clase}>${escaparHtml(p.nombre)}</td>
+        <td${clase}><span class="celda-cliente">${miniatura}${escaparHtml(p.nombre)}</span></td>
         <td>${p.unidades}</td>
         <td>${formatearPesos(p.ingresos)}</td>
         <td>${formatearPesos(p.costo)}</td>
@@ -424,8 +463,10 @@ async function guardarCapital() {
 // ---- 3. Gráfico mensual (divs + CSS, sin librerías) ----
 async function cargarGraficoMensual() {
   const contenedor = document.getElementById('graficoMensual');
+  const selector = document.getElementById('selectorMesesGrafico');
+  const meses = selector ? selector.value : 6;
   try {
-    const historico = await API.obtener('/api/finanzas/historico-mensual?meses=6');
+    const historico = await API.obtener(`/api/finanzas/historico-mensual?meses=${meses}`);
     const maximo = Math.max(1, ...historico.map(h => Math.max(h.ingresos, h.costos_totales)));
 
     const NOMBRES_MES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];

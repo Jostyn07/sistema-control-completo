@@ -32,16 +32,33 @@
   </nav>
 
   <main class="pagina">
-    <header class="pagina__encabezado">
-      <h1>Finanzas y punto de equilibrio</h1>
-      <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('finanzas')" title="¿Cómo funciona esta sección?">❓ ¿Cómo funciona?</button>
-      <a href="./importar-exportar.html" class="boton boton--pequeno">📊 Trabajar con Excel</a>
-    </header>
+    <div class="encabezado-modulo">
+      <span class="encabezado-modulo__icono">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+      </span>
+      <div class="encabezado-modulo__texto">
+        <h1>Finanzas y punto de equilibrio</h1>
+        <p>Analiza el rendimiento de tu negocio y toma mejores decisiones.</p>
+      </div>
+      <div class="encabezado-modulo__acciones">
+        <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('finanzas')" title="¿Cómo funciona esta sección?">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          ¿Cómo funciona?
+        </button>
+        <a href="./importar-exportar.html" class="boton boton--pequeno">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          Trabajar con Excel
+        </a>
+      </div>
+    </div>
 
     <!-- Meta de ventas del mes: avance en tiempo real -->
     <section class="tarjeta seccion">
-      <div class="pagina__encabezado" style="margin-bottom:8px">
-        <h2 style="margin:0">Meta de ventas del mes</h2>
+      <div class="tarjeta__encabezado-fila">
+        <h2>
+          <span class="kpi-tarjeta__icono indicador__icono--azul" style="display:inline-flex;vertical-align:middle;margin-right:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+          Meta de ventas del mes
+        </h2>
         <button type="button" class="boton" onclick="abrirMetaVentas()">Cambiar meta</button>
       </div>
       <div id="panelMeta"><p class="tabla__vacio">Cargando…</p></div>
@@ -54,13 +71,21 @@
 
     <!-- Flujo de caja real: ingresos, compras y costos fijos del mes -->
     <section class="tarjeta seccion">
-      <h2>Flujo de caja del mes</h2>
+      <h2>
+        <span class="kpi-tarjeta__icono indicador__icono--verde" style="display:inline-flex;vertical-align:middle;margin-right:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+        Flujo de caja del mes
+      </h2>
       <div id="panelFlujoCaja"><p class="tabla__vacio">Cargando…</p></div>
     </section>
 
     <!-- Rentabilidad por producto: con lo REALMENTE vendido este mes -->
     <section class="tarjeta seccion">
-      <h2>Rentabilidad por producto</h2>
+      <div class="tarjeta__encabezado-fila">
+        <h2>
+          <span class="kpi-tarjeta__icono indicador__icono--azul" style="display:inline-flex;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
+          Rentabilidad por producto
+        </h2>
+      </div>
       <p class="texto-secundario">Este mes, con lo que realmente se vendió — no el margen teórico de la ficha técnica.</p>
       <table class="tabla">
         <thead>
@@ -74,7 +99,10 @@
 
     <!-- Análisis de clientes: quién compra más y con qué frecuencia -->
     <section class="tarjeta seccion">
-      <h2>Análisis de clientes</h2>
+      <h2>
+        <span class="kpi-tarjeta__icono indicador__icono--morado" style="display:inline-flex;vertical-align:middle;margin-right:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        Análisis de clientes
+      </h2>
       <p class="texto-secundario">Histórico completo, no solo este mes — para ver quién compra seguido de verdad.</p>
       <div class="panel-finanzas" id="resumenClientes" style="margin-bottom:16px">
         <p class="tabla__vacio">Cargando…</p>
@@ -91,7 +119,19 @@
 
     <!-- 3. Gráfico de ingresos vs costos por mes -->
     <section class="tarjeta seccion">
-      <h2>Ingresos vs. costos por mes</h2>
+      <div class="tarjeta__encabezado-fila">
+        <h2>
+          <span class="kpi-tarjeta__icono indicador__icono--azul" style="display:inline-flex;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
+          Ingresos vs. costos por mes
+        </h2>
+        <label class="campo" style="margin:0">
+          <select id="selectorMesesGrafico" onchange="cargarGraficoMensual()">
+            <option value="3">Últimos 3 meses</option>
+            <option value="6" selected>Últimos 6 meses</option>
+            <option value="12">Últimos 12 meses</option>
+          </select>
+        </label>
+      </div>
       <div class="grafico" id="graficoMensual">
         <p class="tabla__vacio">Cargando gráfico…</p>
       </div>
@@ -104,8 +144,11 @@
     <!-- 2. Costos fijos mensuales -->
     <section class="tarjeta seccion">
       <div class="pagina__encabezado" style="margin-bottom:8px">
-        <h2 style="margin:0">Costos fijos mensuales</h2>
-        <button type="button" class="boton" onclick="abrirCostoFijo()">Agregar costo fijo</button>
+        <h2 style="margin:0">
+          <span class="kpi-tarjeta__icono indicador__icono--morado" style="display:inline-flex;vertical-align:middle;margin-right:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
+          Costos fijos mensuales
+        </h2>
+        <button type="button" class="boton boton--primario" onclick="abrirCostoFijo()">Agregar costo fijo</button>
       </div>
       <table class="tabla">
         <thead><tr><th>Costo</th><th>Valor mensual</th><th></th></tr></thead>
@@ -118,10 +161,13 @@
     <!-- Capital invertido (necesario para el ROI) -->
     <section class="tarjeta seccion">
       <div class="pagina__encabezado" style="margin-bottom:8px">
-        <h2 style="margin:0">Capital invertido</h2>
+        <h2 style="margin:0">
+          <span class="kpi-tarjeta__icono indicador__icono--verde" style="display:inline-flex;vertical-align:middle;margin-right:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+          Capital invertido
+        </h2>
         <div style="display:flex;gap:8px">
           <button type="button" class="boton" onclick="abrirFechaInicioRoi()">Fecha de inicio</button>
-          <button type="button" class="boton" onclick="abrirCapital()">Registrar aporte</button>
+          <button type="button" class="boton boton--primario" onclick="abrirCapital()">Registrar aporte</button>
         </div>
       </div>
       <p class="texto-secundario">Es la base con la que se calcula el ROI del panel.</p>
