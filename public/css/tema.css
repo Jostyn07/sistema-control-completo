@@ -166,7 +166,13 @@ body.con-barra-lateral { overflow-x: hidden; }
 .barra-lateral__enlace--activo,
 .barra-lateral__enlace--activo:hover { background: var(--t-sidebar-activo-bg); color: var(--t-sidebar-texto-activo); font-weight: 600; }
 
-.barra-lateral__pie { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--t-sidebar-hairline); display: flex; flex-direction: column; gap: 8px; }
+.barra-lateral__pie {
+  margin-top: auto; padding-top: 16px; padding-bottom: 4px;
+  border-top: 1px solid var(--t-sidebar-hairline);
+  display: flex; flex-direction: column; gap: 8px;
+  position: sticky; bottom: 0;
+  background: var(--t-sidebar-bg);
+}
 .barra-lateral__usuario { display: flex; align-items: center; gap: 10px; padding: 4px 10px 10px; }
 .barra-lateral__avatar {
   width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%;
