@@ -43,8 +43,8 @@ function pintarKpisInventario() {
 
   const total = inventarioEnMemoria.length;
   const conStock = inventarioEnMemoria.filter(m => m.estado === 'verde').length;
-  const stockBajo = inventarioEnMemoria.filter(m => m.estado === 'amarillo').length;
-  const sinStock = inventarioEnMemoria.filter(m => m.estado === 'rojo').length;
+  const sinStock = inventarioEnMemoria.filter(m => m.estado === 'rojo' && Number(m.stock_actual) <= 0).length;
+  const stockBajo = total - conStock - sinStock;
 
   const ICONOS = {
     caja: '<path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/>',
@@ -105,7 +105,7 @@ function pintarInventarioPorMaterial(lista) {
     const ultimoAjuste = ultimoAjustePorMaterial.get(m.id);
     return `
     <tr>
-      <td><span class="etiqueta-estado etiqueta-estado--${m.estado === 'verde' ? 'listo' : (m.estado === 'amarillo' ? 'pendiente' : 'critico')}" title="${textoEstado(m.estado)}">${textoEstadoCorto(m.estado)}</span></td>
+      <td><span class="etiqueta-estado etiqueta-estado--${claseEstadoInv(m)}" title="${textoEstado(m.estado)}">${textoEstadoCorto(m)}</span></td>
       <td><strong>${escaparHtml(m.nombre)}</strong></td>
       <td>${m.stock_actual} ${escaparHtml(m.unidad)}</td>
       <td>${m.punto_reorden}</td>
@@ -149,17 +149,22 @@ function pintarPaginacionInventario(totalFilas, totalPaginas) {
 
 function irAPaginaInventario(pagina) {
   paginaInventario = pagina;
-  buscarInventario();
+  pintarInventarioFiltrado();
 }
 
 function cambiarFilasPorPaginaInventario(valor) {
   filasPorPaginaInventario = Number(valor);
   paginaInventario = 1;
-  buscarInventario();
+  pintarInventarioFiltrado();
 }
 
 // ---- Búsqueda + filtros (instantáneo, en memoria) ----
 function buscarInventario() {
+  paginaInventario = 1;
+  pintarInventarioFiltrado();
+}
+
+function pintarInventarioFiltrado() {
   const texto = normalizarTexto(document.getElementById('buscadorInventario').value);
   const estado = document.getElementById('filtroEstadoInventario').value;
   const proveedor = document.getElementById('filtroProveedorInventario').value;
@@ -169,7 +174,6 @@ function buscarInventario() {
   if (estado) lista = lista.filter(m => m.estado === estado);
   if (proveedor) lista = lista.filter(m => m.proveedor === proveedor);
 
-  paginaInventario = 1;
   pintarInventarioPorMaterial(lista);
 }
 
@@ -189,10 +193,16 @@ function textoEstado(estado) {
   return 'Stock suficiente';
 }
 
-function textoEstadoCorto(estado) {
-  if (estado === 'rojo') return 'Sin stock';
-  if (estado === 'amarillo') return 'Stock bajo';
-  return 'Con stock';
+function claseEstadoInv(m) {
+  if (m.estado === 'verde') return 'listo';
+  if (m.estado === 'amarillo') return 'pendiente';
+  return Number(m.stock_actual) <= 0 ? 'critico' : 'pendiente';
+}
+
+function textoEstadoCorto(m) {
+  if (m.estado === 'verde') return 'Con stock';
+  if (m.estado === 'rojo' && Number(m.stock_actual) <= 0) return 'Sin stock';
+  return 'Stock bajo';
 }
 
 // ---- 2. Vista por producto (capacidad) ----
