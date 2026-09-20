@@ -32,23 +32,63 @@
   </nav>
 
   <main class="pagina">
-    <header class="pagina__encabezado">
-      <h1>Inventario en tiempo real</h1>
-      <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('inventario')" title="¿Cómo funciona esta sección?">❓ ¿Cómo funciona?</button>
-      <a href="./importar-exportar.html" class="boton boton--pequeno">📊 Trabajar con Excel</a>
-      <div class="tabla__acciones">
-        <span class="texto-secundario" id="indicadorActualizacion"></span>
-        <button type="button" class="boton" onclick="refrescarInventario()">Actualizar ahora</button>
+    <div class="encabezado-modulo">
+      <span class="encabezado-modulo__icono">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="14" rx="1"/><path d="M8 7V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v3"/></svg>
+      </span>
+      <div class="encabezado-modulo__texto">
+        <h1>Inventario en tiempo real</h1>
+        <p>Consulta el stock actual, puntos de reorden y consumo promedio de tus materiales.</p>
       </div>
-    </header>
+      <div class="encabezado-modulo__acciones">
+        <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('inventario')" title="¿Cómo funciona esta sección?">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          ¿Cómo funciona?
+        </button>
+        <a href="./importar-exportar.html" class="boton boton--pequeno">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          Trabajar con Excel
+        </a>
+        <span class="texto-secundario" id="indicadorActualizacion" style="align-self:center;"></span>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="kpisInventario"></div>
 
     <!-- 1. Vista por material (semáforo) -->
     <section class="tarjeta seccion">
-      <h2>Por material</h2>
-      <label class="campo" style="max-width:320px">
-        <span class="campo__etiqueta">Buscar</span>
-        <input type="text" id="buscadorInventario" placeholder="Nombre o proveedor…" oninput="buscarInventario()">
-      </label>
+      <div class="tarjeta__encabezado-fila">
+        <h2>Por material</h2>
+        <button type="button" class="boton boton--pequeno" onclick="refrescarInventario()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6"/><path d="M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+          Actualizar ahora
+        </button>
+      </div>
+      <div class="barra-herramientas-tabla" style="justify-content:space-between;">
+        <label class="barra-herramientas-tabla__buscador" style="min-width:260px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="buscadorInventario" placeholder="Buscar por nombre o proveedor…" oninput="buscarInventario()">
+        </label>
+        <div class="agregar-material" style="margin:0">
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Estado</span>
+            <select id="filtroEstadoInventario" onchange="buscarInventario()">
+              <option value="">Todos</option>
+              <option value="verde">Con stock suficiente</option>
+              <option value="amarillo">Stock bajo</option>
+              <option value="rojo">Sin stock / crítico</option>
+            </select>
+          </label>
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Proveedor</span>
+            <select id="filtroProveedorInventario" onchange="buscarInventario()"><option value="">Todos</option></select>
+          </label>
+          <button type="button" class="boton boton--pequeno" style="align-self:flex-end" onclick="limpiarFiltrosInventario()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            Limpiar
+          </button>
+        </div>
+      </div>
       <table class="tabla">
         <thead>
           <tr>
@@ -58,19 +98,24 @@
             <th>Punto de reorden</th>
             <th>Consumo diario prom.</th>
             <th>Proveedor</th>
-            <th></th>
+            <th>Último ajuste</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody id="cuerpoInventarioMateriales">
-          <tr><td colspan="7" class="tabla__vacio">Cargando inventario…</td></tr>
+          <tr><td colspan="8" class="tabla__vacio">Cargando inventario…</td></tr>
         </tbody>
       </table>
+      <div class="paginacion" id="paginacionInventario"></div>
     </section>
 
     <!-- 2. Producción en proceso (WIP) — de solo lectura, se llena
          sola al registrar entregas en Nóminas -->
     <section class="tarjeta seccion">
-      <h2>Producción en proceso</h2>
+      <h2>
+        <span class="kpi-tarjeta__icono indicador__icono--morado" style="display:inline-flex;vertical-align:middle;margin-right:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+        Producción en proceso
+      </h2>
       <p class="texto-secundario" style="margin-top:-8px">
         Unidades que ya empezaron a fabricarse pero todavía no están terminadas. Se actualiza
         sola cuando un colaborador registra una entrega en Nóminas — no se edita aquí.
@@ -91,7 +136,10 @@
 
     <!-- 3. Vista por producto (capacidad de fabricación) -->
     <section class="seccion">
-      <h2>¿Cuánto puedes fabricar ahora?</h2>
+      <h2>
+        <span class="kpi-tarjeta__icono indicador__icono--verde" style="display:inline-flex;vertical-align:middle;margin-right:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
+        ¿Cuánto puedes fabricar ahora?
+      </h2>
       <div class="tarjetas-productos" id="listaCapacidad">
         <p class="tabla__vacio">Cargando capacidad…</p>
       </div>
