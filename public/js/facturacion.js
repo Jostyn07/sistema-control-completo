@@ -159,32 +159,159 @@ async function guardarConfiguracionFiscal() {
 }
 
 // ---- 2. Ventas facturables ----
+let facturablesEnMemoria = [];
+let paginaFacturables = 1;
+const FILAS_POR_PAGINA_FACT = 5;
+
 async function cargarVentasFacturables() {
   const cuerpo = document.getElementById('cuerpoFacturables');
   try {
-    const ventas = await API.obtener('/api/facturacion/facturables');
-    if (ventas.length === 0) {
-      cuerpo.innerHTML = '<tr><td colspan="6" class="tabla__vacio">Todas las ventas registradas ya tienen factura.</td></tr>';
-      return;
-    }
-    cuerpo.innerHTML = ventas.map(v => `
-      <tr>
-        <td>${formatearFecha(v.fecha)}</td>
-        <td>${escaparHtml(v.cliente || 'Consumidor final')}</td>
-        <td>${(v.ventas_items || []).map(i => `${i.cantidad}× ${escaparHtml(i.productos ? i.productos.nombre : '')}`).join(', ')}</td>
-        <td>${formatearPesos(v.total)}</td>
-        <td>${escaparHtml(v.estado)}</td>
-        <td>
-          <select id="modoFacturar-${v.id}" style="width:auto;display:inline-block;margin-right:6px">
-            <option value="individual">Individual</option>
-            <option value="categorias">Por categorías</option>
-          </select>
-          <button type="button" class="boton boton--pequeno boton--primario" onclick="generarFactura('${v.id}')">Generar factura</button>
-        </td>
-      </tr>`).join('');
+    facturablesEnMemoria = await API.obtener('/api/facturacion/facturables');
+    paginaFacturables = 1;
+    pintarKpisFacturacionParcial();
+    pintarFacturablesFiltrado();
   } catch (err) {
     cuerpo.innerHTML = `<tr><td colspan="6" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
   }
+}
+
+function normalizarTextoFact(texto) {
+  return (texto ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function avatarFact(nombre) {
+  const inicial = (nombre || '?').trim().charAt(0).toUpperCase();
+  return `<span class="avatar-inicial">${escaparHtml(inicial)}</span>`;
+}
+
+function pintarFacturablesFiltrado() {
+  const texto = normalizarTextoFact(document.getElementById('buscadorFacturables').value);
+  let lista = facturablesEnMemoria;
+  if (texto) {
+    lista = lista.filter(v =>
+      normalizarTextoFact(v.cliente).includes(texto) ||
+      (v.ventas_items || []).some(i => normalizarTextoFact(i.productos ? i.productos.nombre : '').includes(texto)));
+  }
+
+  const cuerpo = document.getElementById('cuerpoFacturables');
+  const paginacion = document.getElementById('paginacionFacturables');
+
+  if (facturablesEnMemoria.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="6" class="tabla__vacio">Todas las ventas registradas ya tienen factura.</td></tr>';
+    paginacion.innerHTML = '';
+    return;
+  }
+  if (lista.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="6" class="tabla__vacio">Ninguna venta coincide con la búsqueda.</td></tr>';
+    paginacion.innerHTML = '';
+    return;
+  }
+
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / FILAS_POR_PAGINA_FACT));
+  if (paginaFacturables > totalPaginas) paginaFacturables = totalPaginas;
+  const inicio = (paginaFacturables - 1) * FILAS_POR_PAGINA_FACT;
+  const pagina = lista.slice(inicio, inicio + FILAS_POR_PAGINA_FACT);
+
+  cuerpo.innerHTML = pagina.map(v => `
+    <tr>
+      <td>${formatearFecha(v.fecha)}</td>
+      <td><span class="celda-cliente">${avatarFact(v.cliente)}${escaparHtml(v.cliente || 'Consumidor final')}</span></td>
+      <td>${(v.ventas_items || []).map(i => `${i.cantidad}× ${escaparHtml(i.productos ? i.productos.nombre : '')}`).join(', ')}</td>
+      <td>${formatearPesos(v.total)}</td>
+      <td>
+        <select id="modoFacturar-${v.id}" style="width:auto;display:inline-block;">
+          <option value="individual">Individual</option>
+          <option value="categorias">Por categorías</option>
+        </select>
+      </td>
+      <td><button type="button" class="boton boton--pequeno boton--primario" onclick="generarFactura('${v.id}')">Generar factura</button></td>
+    </tr>`).join('');
+
+  pintarPaginacionGenerica(paginacion, lista.length, totalPaginas, paginaFacturables, (p) => { paginaFacturables = p; pintarFacturablesFiltrado(); }, 'ventas por facturar');
+}
+
+// Paginación genérica reutilizada por las dos tablas de esta página.
+function pintarPaginacionGenerica(contenedor, totalFilas, totalPaginas, paginaActual, irAPagina, nombre) {
+  const inicio = totalFilas === 0 ? 0 : (paginaActual - 1) * FILAS_POR_PAGINA_FACT + 1;
+  const fin = Math.min(paginaActual * FILAS_POR_PAGINA_FACT, totalFilas);
+  const idBase = 'pg' + Math.random().toString(36).slice(2, 8);
+  window[idBase] = irAPagina;
+
+  const botones = [];
+  for (let p = 1; p <= totalPaginas; p++) {
+    botones.push(`<button type="button" class="${p === paginaActual ? 'paginacion__botones--activa' : ''}" onclick="window.${idBase}(${p})">${p}</button>`);
+  }
+  contenedor.innerHTML = `
+    <span>Mostrando ${inicio} a ${fin} de ${totalFilas} ${nombre}</span>
+    <span class="paginacion__botones">
+      <button type="button" onclick="window.${idBase}(${paginaActual - 1})" ${paginaActual <= 1 ? 'disabled' : ''}>‹</button>
+      ${botones.join('')}
+      <button type="button" onclick="window.${idBase}(${paginaActual + 1})" ${paginaActual >= totalPaginas ? 'disabled' : ''}>›</button>
+    </span>`;
+}
+
+// Conecta el buscador de la barra superior (tema.js) con el de la tab activa.
+window.buscarDesdeTopbar = function (texto) {
+  const tabActiva = document.querySelector('#tabsFacturacion .tabs-modulo__item--activo').dataset.tab;
+  if (tabActiva === 'facturables') {
+    document.getElementById('buscadorFacturables').value = texto;
+    pintarFacturablesFiltrado();
+  } else {
+    document.getElementById('buscadorEmitidas').value = texto;
+    pintarHistorialFiltrado();
+  }
+};
+
+function cambiarTabFacturacion(tab) {
+  document.querySelectorAll('#tabsFacturacion .tabs-modulo__item').forEach(b => b.classList.toggle('tabs-modulo__item--activo', b.dataset.tab === tab));
+  document.getElementById('seccionFacturables').hidden = tab !== 'facturables';
+  document.getElementById('seccionEmitidas').hidden = tab !== 'emitidas';
+}
+
+function pintarKpisFacturacionParcial() {
+  // Se llama dos veces (al cargar cada tabla) y repinta con lo que ya
+  // haya disponible de la otra — así no importa cuál termine primero.
+  const contenedor = document.getElementById('kpisFacturacion');
+  if (!contenedor) return;
+
+  const totalFacturables = facturablesEnMemoria.length;
+  const valorFacturables = facturablesEnMemoria.reduce((s, v) => s + Number(v.total || 0), 0);
+
+  const historial = window.historialFacturasEnMemoria || [];
+  const hoy = new Date();
+  const esteMes = historial.filter(f => {
+    const d = new Date(f.fecha);
+    return d.getFullYear() === hoy.getFullYear() && d.getMonth() === hoy.getMonth();
+  });
+  const emitidasEsteMes = esteMes.length;
+  const valorEsteMes = esteMes.reduce((s, f) => s + Number(f.ventas ? f.ventas.total : 0), 0);
+  const anuladas = historial.filter(f => f.anulada).length;
+  const totalHistoricoActivo = historial.filter(f => !f.anulada).reduce((s, f) => s + Number(f.ventas ? f.ventas.total : 0), 0);
+
+  const ICONOS = {
+    subir: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+    doc: '<path d="M6 2h9l4 4v16H6Z"/><path d="M15 2v4h4"/><path d="M9 12h6M9 16h6"/>',
+    x: '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+    moneda: '<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'
+  };
+
+  const tarjetas = [
+    { icono: 'subir', color: 'verde', etiqueta: 'Ventas por facturar', valor: String(totalFacturables), extra: formatearPesos(valorFacturables) },
+    { icono: 'doc', color: 'azul', etiqueta: 'Facturas emitidas (este mes)', valor: String(emitidasEsteMes), extra: formatearPesos(valorEsteMes) },
+    { icono: 'x', color: 'naranja', etiqueta: 'Facturas anuladas', valor: String(anuladas), extra: 'histórico' },
+    { icono: 'moneda', color: 'morado', etiqueta: 'Total facturado (activas)', valor: formatearPesos(totalHistoricoActivo), extra: 'histórico' }
+  ];
+
+  contenedor.innerHTML = tarjetas.map(t => `
+    <div class="kpi-tarjeta">
+      <span class="kpi-tarjeta__icono indicador__icono--${t.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS[t.icono]}</svg></span>
+      <span class="kpi-tarjeta__etiqueta">${t.etiqueta}</span>
+      <span class="kpi-tarjeta__valor">${t.valor}</span>
+      <span class="kpi-tarjeta__delta">${t.extra}</span>
+    </div>`).join('');
+
+  document.getElementById('conteoTabFacturables').textContent = `(${totalFacturables})`;
+  document.getElementById('conteoTabEmitidas').textContent = `(${historial.length})`;
 }
 
 async function generarFactura(ventaId) {
@@ -203,32 +330,78 @@ async function generarFactura(ventaId) {
 }
 
 // ---- 3. Historial de facturas ----
+let paginaEmitidas = 1;
+
 async function cargarHistorialFacturas() {
   const cuerpo = document.getElementById('cuerpoHistorialFacturas');
   try {
-    const facturas = await API.obtener('/api/facturacion/historial');
-    if (facturas.length === 0) {
-      cuerpo.innerHTML = '<tr><td colspan="7" class="tabla__vacio">Aún no se han emitido facturas.</td></tr>';
-      return;
-    }
-    cuerpo.innerHTML = facturas.map(f => `
-      <tr>
-        <td><strong>${escaparHtml(f.numero || '—')}</strong></td>
-        <td>${formatearFecha(f.fecha)}</td>
-        <td>${escaparHtml(f.ventas ? (f.ventas.cliente || 'Consumidor final') : '—')}</td>
-        <td>${f.ventas ? formatearPesos(f.ventas.total) : '—'}</td>
-        <td>${f.anulada ? '<span class="indicador__valor--negativo">Anulada</span>' : (f.estado === 'recibo_interno' ? 'Recibo interno' : f.estado === 'generada_interna' ? 'Generada (sin validar DIAN)' : escaparHtml(f.estado))}</td>
-        <td>${f.cufe ? escaparHtml(f.cufe.slice(0, 12)) + '…' : 'Pendiente'}</td>
-        <td>
-          <button type="button" class="boton boton--pequeno" onclick="verFactura('${f.id}')">Ver / Imprimir</button>
-          ${f.anulada
-            ? `<button type="button" class="boton boton--pequeno boton--peligro" onclick="eliminarFactura('${f.id}', '${escaparHtml(f.numero || '')}')">Eliminar</button>`
-            : `<button type="button" class="boton boton--pequeno boton--peligro" onclick="anularFactura('${f.id}', '${escaparHtml(f.numero || '')}')">Anular</button>`}
-        </td>
-      </tr>`).join('');
+    window.historialFacturasEnMemoria = await API.obtener('/api/facturacion/historial');
+    paginaEmitidas = 1;
+    pintarKpisFacturacionParcial();
+    pintarHistorialFiltrado();
   } catch (err) {
     cuerpo.innerHTML = `<tr><td colspan="7" class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</td></tr>`;
   }
+}
+
+const ICONO_OJO_FACT = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>';
+const ICONO_IMPRIMIR = '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>';
+const ICONO_COPIAR = '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>';
+const ICONO_X_FACT = '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';
+const ICONO_BASURA_FACT = '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>';
+
+function copiarCufe(cufe) {
+  navigator.clipboard.writeText(cufe).then(() => mostrarAviso('CUFE copiado'));
+}
+
+function pintarHistorialFiltrado() {
+  const historial = window.historialFacturasEnMemoria || [];
+  const texto = normalizarTextoFact(document.getElementById('buscadorEmitidas').value);
+  let lista = historial;
+  if (texto) {
+    lista = lista.filter(f =>
+      normalizarTextoFact(f.numero).includes(texto) ||
+      normalizarTextoFact(f.ventas ? f.ventas.cliente : '').includes(texto));
+  }
+
+  const cuerpo = document.getElementById('cuerpoHistorialFacturas');
+  const paginacion = document.getElementById('paginacionEmitidas');
+
+  if (historial.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="7" class="tabla__vacio">Aún no se han emitido facturas.</td></tr>';
+    paginacion.innerHTML = '';
+    return;
+  }
+  if (lista.length === 0) {
+    cuerpo.innerHTML = '<tr><td colspan="7" class="tabla__vacio">Ninguna factura coincide con la búsqueda.</td></tr>';
+    paginacion.innerHTML = '';
+    return;
+  }
+
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / FILAS_POR_PAGINA_FACT));
+  if (paginaEmitidas > totalPaginas) paginaEmitidas = totalPaginas;
+  const inicio = (paginaEmitidas - 1) * FILAS_POR_PAGINA_FACT;
+  const pagina = lista.slice(inicio, inicio + FILAS_POR_PAGINA_FACT);
+
+  cuerpo.innerHTML = pagina.map(f => `
+    <tr>
+      <td><strong>${escaparHtml(f.numero || '—')}</strong></td>
+      <td>${formatearFecha(f.fecha)}</td>
+      <td><span class="celda-cliente">${avatarFact(f.ventas ? f.ventas.cliente : '?')}${escaparHtml(f.ventas ? (f.ventas.cliente || 'Consumidor final') : '—')}</span></td>
+      <td>${f.ventas ? formatearPesos(f.ventas.total) : '—'}</td>
+      <td>${f.anulada ? '<span class="etiqueta-estado etiqueta-estado--critico">Anulada</span>' : '<span class="etiqueta-estado etiqueta-estado--listo">Activa</span>'}</td>
+      <td>${f.cufe
+        ? `<span class="celda-cliente">${escaparHtml(f.cufe.slice(0, 10))}… <button type="button" onclick="copiarCufe('${escaparHtml(f.cufe)}')" title="Copiar CUFE" style="background:none;border:none;cursor:pointer;color:var(--t-ink-tenue);display:inline-flex;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_COPIAR}</svg></button></span>`
+        : '<span class="texto-secundario">Pendiente (modo interno)</span>'}</td>
+      <td><span class="acciones-fila">
+        <button type="button" onclick="verFactura('${f.id}')" title="Ver / imprimir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_OJO_FACT}</svg></button>
+        ${f.anulada
+          ? `<button type="button" class="acciones-fila__peligro" onclick="eliminarFactura('${f.id}', '${escaparHtml(f.numero || '')}')" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_BASURA_FACT}</svg></button>`
+          : `<button type="button" class="acciones-fila__peligro" onclick="anularFactura('${f.id}', '${escaparHtml(f.numero || '')}')" title="Anular"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_X_FACT}</svg></button>`}
+      </span></td>
+    </tr>`).join('');
+
+  pintarPaginacionGenerica(paginacion, lista.length, totalPaginas, paginaEmitidas, (p) => { paginaEmitidas = p; pintarHistorialFiltrado(); }, 'facturas');
 }
 
 async function anularFactura(id, numero) {
