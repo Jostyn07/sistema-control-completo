@@ -254,6 +254,12 @@ function normalizarTextoCompras(texto) {
   return (texto ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+// Conecta el buscador de la barra superior (tema.js) con el de esta página.
+window.buscarDesdeTopbar = function (texto) {
+  document.getElementById('buscadorCompras').value = texto;
+  pintarHistorialCompras();
+};
+
 function numeroCortoCompra(compra) {
   return '#OC-' + String(compra.id || '').replace(/-/g, '').slice(-4).toUpperCase();
 }

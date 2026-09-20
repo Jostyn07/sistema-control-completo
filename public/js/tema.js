@@ -153,6 +153,13 @@ function construirBarraSuperior(enlaceAyuda) {
       buscador.focus();
     }
   });
+
+  // Cada página puede conectar este buscador al suyo propio definiendo
+  // window.buscarDesdeTopbar(texto) — si no existe, el campo sigue
+  // sirviendo como atajo (Ctrl+K) sin filtrar nada por su cuenta.
+  buscador.addEventListener('input', () => {
+    if (typeof window.buscarDesdeTopbar === 'function') window.buscarDesdeTopbar(buscador.value);
+  });
 }
 
 function obtenerIniciales(nombre) {

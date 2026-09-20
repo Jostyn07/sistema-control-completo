@@ -776,6 +776,12 @@ function normalizarTexto(texto) {
   return (texto ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+// Conecta el buscador de la barra superior (tema.js) con el de esta página.
+window.buscarDesdeTopbar = function (texto) {
+  document.getElementById('buscadorVentas').value = texto;
+  buscarVentas();
+};
+
 // ---- Utilidades ----
 function contactoCliente(venta) {
   const partes = [];

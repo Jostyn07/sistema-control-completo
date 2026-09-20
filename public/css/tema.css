@@ -363,6 +363,7 @@ body.con-barra-lateral .pagina {
 .etiqueta-estado--en_produccion { background: rgba(22, 143, 240, 0.12); color: var(--t-accent); }
 .etiqueta-estado--listo { background: var(--t-exito-fondo); color: var(--t-exito); font-weight: 600; }
 .etiqueta-estado--entregado { background: var(--t-borde); color: var(--t-ink-suave); }
+.etiqueta-estado--critico { background: var(--t-peligro-fondo); color: var(--t-peligro); }
 
 /* ---- Finanzas / dashboard: indicadores (KPI) ---- */
 .panel-finanzas .indicador,

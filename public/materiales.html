@@ -34,37 +34,78 @@
   </nav>
 
   <main class="pagina">
-    <header class="pagina__encabezado">
-      <h1>Materiales</h1>
-      <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('materiales')" title="¿Cómo funciona esta sección?">❓ ¿Cómo funciona?</button>
-      <button type="button" class="boton boton--primario" onclick="abrirFormularioMaterial()">
-        Agregar material
-      </button>
-      <a href="./importar-exportar.html" class="boton boton--pequeno">📊 Trabajar con Excel</a>
-    </header>
+    <div class="encabezado-modulo">
+      <span class="encabezado-modulo__icono">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+      </span>
+      <div class="encabezado-modulo__texto">
+        <h1>Materiales</h1>
+        <p>Gestiona tus materiales e insumos. Mantén el control de tu inventario en tiempo real.</p>
+      </div>
+      <div class="encabezado-modulo__acciones">
+        <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('materiales')" title="¿Cómo funciona esta sección?">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          ¿Cómo funciona?
+        </button>
+        <a href="./importar-exportar.html" class="boton boton--pequeno">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Importar
+        </a>
+        <button type="button" class="boton boton--primario" onclick="abrirFormularioMaterial()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Agregar material
+        </button>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="kpisMateriales"></div>
 
     <!-- 1. Lista de materiales -->
     <section class="tarjeta">
-      <label class="campo campo--buscador" style="max-width: 320px;">
-        <span class="campo__etiqueta">Buscar</span>
-        <input type="text" id="buscadorMateriales" placeholder="Nombre, unidad o proveedor..." oninput="buscarMateriales()">
-      </label>
+      <div class="barra-herramientas-tabla" style="justify-content:space-between;">
+        <label class="barra-herramientas-tabla__buscador" style="min-width:280px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="buscadorMateriales" placeholder="Buscar por nombre o proveedor…" oninput="buscarMateriales()">
+        </label>
+        <div class="agregar-material" style="margin:0">
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Proveedor</span>
+            <select id="filtroProveedorMaterial" onchange="buscarMateriales()"><option value="">Todos</option></select>
+          </label>
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Estado</span>
+            <select id="filtroEstadoMaterial" onchange="buscarMateriales()">
+              <option value="">Todos</option>
+              <option value="verde">En stock</option>
+              <option value="amarillo">Stock bajo</option>
+              <option value="rojo">Sin stock / crítico</option>
+            </select>
+          </label>
+          <button type="button" class="boton boton--pequeno" style="align-self:flex-end" onclick="limpiarFiltrosMateriales()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            Limpiar
+          </button>
+        </div>
+      </div>
       <table class="tabla" id="tablaMateriales">
         <thead>
           <tr>
-            <th>Nombre</th>
+            <th>Material</th>
             <th>Unidad</th>
             <th>Costo unitario</th>
             <th>Proveedor</th>
+            <th>Stock actual</th>
+            <th>Stock mínimo</th>
             <th>Entrega (días)</th>
-            <th>Stock</th>
+            <th>Estado</th>
             <th>Acciones</th>
           </tr>
         </thead>
         <tbody id="cuerpoTablaMateriales">
-          <tr><td colspan="7" class="tabla__vacio">Cargando materiales…</td></tr>
+          <tr><td colspan="9" class="tabla__vacio">Cargando materiales…</td></tr>
         </tbody>
       </table>
+      <div class="paginacion" id="paginacionMateriales"></div>
     </section>
 
     <!-- 2. Formulario nuevo / editar (modal) -->
