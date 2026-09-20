@@ -3,77 +3,146 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Iniciar sesión — Sistema de Control</title>
+  <title>Iniciar sesión — Fincil</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/landing/img/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/landing/img/favicon-192.png">
+  <link rel="apple-touch-icon" href="/landing/img/apple-touch-icon.png">
   <link rel="stylesheet" href="/css/estilos.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/tema-panel-oscuro.css">
+  <link rel="stylesheet" href="/css/login.css">
 </head>
 <body>
   <main class="pagina-login">
-    <div class="tarjeta tarjeta-login">
-      <h1 id="tituloFormulario">Iniciar sesión</h1>
 
-      <div id="camposRegistro" hidden>
-        <label class="campo">
-          <span class="campo__etiqueta">Nombre</span>
-          <input type="text" id="campoNombre" placeholder="Tu nombre">
+    <div class="login__decor login__decor--superior" aria-hidden="true">
+      <svg viewBox="0 0 400 400" preserveAspectRatio="none"><polygon points="0,0 260,0 0,260" fill="#0F2A44" opacity="0.06"/><polygon points="0,40 190,0 0,300" fill="#1B6B72" opacity="0.10"/></svg>
+    </div>
+    <div class="login__decor login__decor--inferior" aria-hidden="true">
+      <svg viewBox="0 0 420 420" preserveAspectRatio="none">
+        <polygon points="420,420 180,420 420,160" fill="#0F2A44" opacity="0.9"/>
+        <polygon points="420,420 260,420 420,240" fill="#1B6B72" opacity="0.85"/>
+        <polygon points="420,300 320,420 420,420" fill="#5FB9BE" opacity="0.55"/>
+      </svg>
+    </div>
+
+    <div class="login__idioma">
+      <span class="login__idioma-bandera">🇨🇴</span> ES <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+
+    <div class="login__envoltura">
+      <div class="tarjeta tarjeta-login">
+        <a href="/landing/index.html" class="login__logo">
+          <img src="/landing/img/logo-toolkap.png" alt="Fincil" width="52" height="52" style="border-radius:12px;">
+          <span class="login__logo-texto">
+            <span class="login__logo-nombre">Fincil</span>
+            <span class="login__logo-eslogan">Tu negocio en orden</span>
+          </span>
+        </a>
+
+        <h1 id="tituloFormulario">Iniciar sesión</h1>
+        <p class="login__subtitulo">Accede a tu cuenta y continúa gestionando tu negocio de forma simple y segura.</p>
+
+        <div id="camposRegistro" hidden>
+          <label class="login__campo">
+            <span class="login__campo-etiqueta">Nombre</span>
+            <span class="login__campo-caja">
+              <span class="login__campo-icono"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/></svg></span>
+              <input type="text" id="campoNombre" placeholder="Tu nombre">
+            </span>
+          </label>
+        </div>
+
+        <label class="login__campo">
+          <span class="login__campo-etiqueta">Correo electrónico</span>
+          <span class="login__campo-caja">
+            <span class="login__campo-icono"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/></svg></span>
+            <input type="email" id="campoCorreo" placeholder="tucorreo@ejemplo.com">
+          </span>
         </label>
+
+        <label class="login__campo">
+          <span class="login__campo-etiqueta">Contraseña</span>
+          <span class="login__campo-caja">
+            <span class="login__campo-icono"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+            <input type="password" id="campoContrasena" placeholder="Ingresa tu contraseña">
+            <button type="button" class="login__campo-ojo" id="botonMostrarContrasena" aria-label="Mostrar contraseña">
+              <span class="login__icono-ojo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></span>
+              <span class="login__icono-ojo-tachado" hidden><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61C3.06 8.93 2 12 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="2" y1="2" x2="22" y2="22"/></svg></span>
+            </button>
+          </span>
+        </label>
+
+        <div class="login__fila-extra">
+          <label class="login__recordarme">
+            <input type="checkbox" id="checkRecordarme" checked>
+            <span class="login__recordarme-caja"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            Recordarme en este dispositivo
+          </label>
+          <a href="#" class="login__olvidaste">¿Olvidaste tu contraseña?</a>
+        </div>
+
+        <label class="login__campo login__campo--terminos" id="campoAceptoTerminos" hidden>
+          <span class="login__terminos-fila">
+            <input type="checkbox" id="checkAceptoTerminos">
+            <span class="login__terminos-caja"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+            <span class="login__terminos-texto">
+              Acepto los <a href="terminos.html" target="_blank">Términos y Condiciones</a> y la
+              <a href="privacidad.html" target="_blank">Política de Privacidad</a>.
+            </span>
+          </span>
+        </label>
+
+        <button type="button" class="login__boton-entrar" id="botonPrincipal" onclick="enviarFormulario()">
+          <span id="textoBotonPrincipal">Entrar</span> <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+
+        <div class="separador-login"><span>o</span></div>
+
+        <button type="button" class="boton boton--google boton--ancho" onclick="iniciarSesionConGoogle()">
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.85 2.09-1.81 2.73v2.27h2.93c1.71-1.58 2.7-3.9 2.7-6.64z"/>
+            <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.93-2.27c-.81.54-1.85.87-3.03.87-2.33 0-4.3-1.58-5.01-3.7H.96v2.34C2.44 15.98 5.48 18 9 18z"/>
+            <path fill="#FBBC05" d="M3.99 10.72A5.4 5.4 0 013.7 9c0-.6.1-1.18.29-1.72V4.94H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.06l3.03-2.34z"/>
+            <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.6-2.6C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.94l3.03 2.34C4.7 5.16 6.67 3.58 9 3.58z"/>
+          </svg>
+          Continuar con Google
+        </button>
+        <p class="texto-secundario login__nota-google">
+          Al continuar con Google, aceptas los <a href="terminos.html" target="_blank">Términos</a>
+          y la <a href="privacidad.html" target="_blank">Política de Privacidad</a>.
+        </p>
+
+        <p class="login__alternar">
+          <span id="textoAlternar">¿No tienes cuenta?</span>
+          <a href="#" id="enlaceAlternar" onclick="alternarModo(event)">Crear una cuenta</a>
+        </p>
       </div>
 
-      <label class="campo">
-        <span class="campo__etiqueta">Correo</span>
-        <input type="email" id="campoCorreo" placeholder="tucorreo@ejemplo.com">
-      </label>
-      <label class="campo">
-        <span class="campo__etiqueta">Contraseña</span>
-        <input type="password" id="campoContrasena" placeholder="Mínimo 6 caracteres">
-      </label>
-
-      <label class="campo" id="campoAceptoTerminos" hidden style="display:flex;align-items:flex-start;gap:8px;flex-direction:row">
-        <input type="checkbox" id="checkAceptoTerminos" style="margin-top:3px">
-        <span class="texto-secundario">
-          Acepto los <a href="terminos.html" target="_blank">Términos y Condiciones</a> y la
-          <a href="privacidad.html" target="_blank">Política de Privacidad</a>.
-        </span>
-      </label>
-
-      <button type="button" class="boton boton--primario boton--ancho" id="botonPrincipal" onclick="enviarFormulario()">
-        Entrar
-      </button>
-
-      <div class="separador-login"><span>o</span></div>
-
-      <button type="button" class="boton boton--google boton--ancho" onclick="iniciarSesionConGoogle()">
-        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-          <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.85 2.09-1.81 2.73v2.27h2.93c1.71-1.58 2.7-3.9 2.7-6.64z"/>
-          <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.93-2.27c-.81.54-1.85.87-3.03.87-2.33 0-4.3-1.58-5.01-3.7H.96v2.34C2.44 15.98 5.48 18 9 18z"/>
-          <path fill="#FBBC05" d="M3.99 10.72A5.4 5.4 0 013.7 9c0-.6.1-1.18.29-1.72V4.94H.96A9 9 0 000 9c0 1.45.35 2.83.96 4.06l3.03-2.34z"/>
-          <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.6-2.6C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.94l3.03 2.34C4.7 5.16 6.67 3.58 9 3.58z"/>
-        </svg>
-        Continuar con Google
-      </button>
-      <p class="texto-secundario" style="text-align:center; font-size:0.78rem; margin:8px 0 0">
-        Al continuar con Google, aceptas los <a href="terminos.html" target="_blank">Términos</a>
-        y la <a href="privacidad.html" target="_blank">Política de Privacidad</a>.
-      </p>
-
-      <p class="texto-secundario" style="text-align:center; margin-top:14px">
-        <span id="textoAlternar">¿No tienes cuenta?</span>
-        <a href="#" id="enlaceAlternar" onclick="alternarModo(event)">Crear una</a>
-      </p>
-      <p class="texto-secundario" style="text-align:center; margin-top:8px; font-size:0.78rem">
-        <a href="terminos.html" target="_blank">Términos</a> ·
-        <a href="privacidad.html" target="_blank">Privacidad</a> ·
-        <a href="cookies.html" target="_blank">Cookies</a>
-      </p>
+      <div class="login__lateral">
+        <span class="login__manuscrito">Tu crecimiento,<br>en orden.</span>
+        <div class="login__mensaje">
+          <span class="login__mensaje-linea"></span>
+          <span>SIMPLE</span>
+          <span>SEGURO</span>
+          <span>EN UN SOLO LUGAR</span>
+        </div>
+      </div>
     </div>
+
+    <p class="login__pie">
+      <a href="terminos.html" target="_blank">Términos</a> ·
+      <a href="privacidad.html" target="_blank">Privacidad</a> ·
+      <a href="cookies.html" target="_blank">Cookies</a>
+    </p>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/tema.js"></script>
   <script src="/js/auth.js"></script>
+  <script src="/js/login-ui.js"></script>
 </body>
 </html>

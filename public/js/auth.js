@@ -86,7 +86,8 @@ function alternarModo(evento) {
   document.getElementById('camposRegistro').hidden = !modoRegistro;
   document.getElementById('campoAceptoTerminos').hidden = !modoRegistro;
   document.getElementById('tituloFormulario').textContent = modoRegistro ? 'Crear cuenta' : 'Iniciar sesión';
-  document.getElementById('botonPrincipal').textContent = modoRegistro ? 'Crear cuenta' : 'Entrar';
+  const textoBoton = document.getElementById('textoBotonPrincipal') || document.getElementById('botonPrincipal');
+  textoBoton.textContent = modoRegistro ? 'Crear cuenta' : 'Entrar';
   document.getElementById('textoAlternar').textContent = modoRegistro ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?';
   document.getElementById('enlaceAlternar').textContent = modoRegistro ? 'Inicia sesión' : 'Crear una';
 }

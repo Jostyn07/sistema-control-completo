@@ -1,0 +1,99 @@
+/* ==========================================================================
+   FINCIL — Preguntas frecuentes (Fase 5, sección 5.1)
+   Vive en public/landing/faq.html.
+   ========================================================================== */
+
+.faq { padding: var(--esp-9) 0; }
+
+.faq__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  gap: var(--esp-8);
+  align-items: start;
+}
+@media (max-width: 980px) {
+  .faq__grid { grid-template-columns: 1fr; }
+}
+
+.faq__titulo { margin: var(--esp-3) 0 var(--esp-4); }
+
+/* ---- Ilustración decorativa de burbujas ---- */
+.faq__ilustracion { position: relative; height: 150px; margin: var(--esp-6) 0; }
+.faq__burbuja {
+  position: absolute;
+  border-radius: var(--radio-md);
+  background: var(--azul-fincil-suave);
+}
+.faq__burbuja--1 { width: 90px; height: 60px; left: 0; bottom: 10px; border-bottom-left-radius: 4px; }
+.faq__burbuja--3 { width: 80px; height: 55px; right: 10px; bottom: 0; background: var(--azul-claro); border: 1px solid var(--borde); border-bottom-right-radius: 4px; }
+.faq__burbuja--2 {
+  width: 130px; height: 100px;
+  left: 40px; top: 0;
+  background: var(--azul-fincil);
+  color: var(--blanco);
+  border-bottom-left-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--fuente-titulos);
+  font-size: 2.5rem; font-weight: 800;
+  box-shadow: var(--sombra-tarjeta-hover);
+}
+
+/* ---- Tarjeta de contacto ---- */
+.faq-contacto {
+  background: var(--azul-claro);
+  border-radius: var(--radio-md);
+  padding: var(--esp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-3);
+}
+.faq-contacto strong { font-size: 1rem; color: var(--azul-profundo); }
+.faq-contacto__fila { display: flex; align-items: center; gap: var(--esp-3); margin-top: var(--esp-2); }
+.faq-contacto__icono {
+  width: 38px; height: 38px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--blanco); color: var(--azul-fincil);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--sombra-tarjeta);
+}
+.faq-contacto__fila strong { display: block; font-size: 0.875rem; color: var(--azul-profundo); }
+.faq-contacto__fila span { font-size: 0.8125rem; color: var(--gris-texto); }
+
+/* ---- Acordeón ---- */
+.acordeon { display: flex; flex-direction: column; gap: var(--esp-3); }
+.acordeon__item {
+  background: var(--blanco);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio-md);
+  overflow: hidden;
+}
+.acordeon__item--abierto { box-shadow: var(--sombra-tarjeta); }
+
+.acordeon__pregunta {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--esp-4);
+  padding: var(--esp-4) var(--esp-5);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--fuente-texto);
+}
+.acordeon__numero {
+  width: 30px; height: 30px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--azul-fincil-suave); color: var(--azul-fincil);
+  font-family: var(--fuente-titulos); font-weight: 700; font-size: 0.875rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.acordeon__texto { flex: 1; font-weight: 700; color: var(--azul-profundo); font-size: 1rem; }
+.acordeon__chevron { color: var(--gris-texto); flex-shrink: 0; transition: transform var(--duracion-rapida) var(--curva); }
+.acordeon__item--abierto .acordeon__chevron { transform: rotate(180deg); color: var(--azul-fincil); }
+
+.acordeon__respuesta { padding: 0 var(--esp-5) var(--esp-5) calc(30px + var(--esp-4) + var(--esp-5)); }
+.acordeon__respuesta p { color: var(--gris-texto); font-size: 0.9375rem; }
+@media (max-width: 560px) {
+  .acordeon__respuesta { padding: 0 var(--esp-4) var(--esp-4) var(--esp-4); }
+}

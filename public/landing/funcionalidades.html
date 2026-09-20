@@ -14,13 +14,15 @@
 <link rel="stylesheet" href="/landing/css/home.css">
 <link rel="stylesheet" href="/landing/css/funcionalidades.css">
 <link rel="stylesheet" href="/landing/css/modulos.css">
+<link rel="stylesheet" href="/landing/css/recorrido.css">
+<link rel="stylesheet" href="/landing/css/cierre.css">
 </head>
 <body>
 
 <!-- ======================= HEADER (igual que Home) ======================= -->
 <header class="nav">
   <div class="nav__fila">
-    <a href="index.html" class="marca-fincil">
+    <a href="/landing/index.html" class="marca-fincil">
       <img src="/landing/img/logo-toolkap.png" alt="Fincil" width="30" height="30" style="border-radius:6px;">
       <span class="marca-fincil__texto">
         <span class="marca-fincil__nombre">Fincil</span>
@@ -29,10 +31,10 @@
     </a>
 
     <ul class="nav__enlaces">
-      <li><a href="index.html#todo-conectado">Cómo funciona</a></li>
-      <li><a href="funcionalidades.html" class="nav__enlace--activo">Funcionalidades</a></li>
-      <li><a href="planes.html">Planes</a></li>
-      <li><a href="faq.html">Preguntas frecuentes</a></li>
+      <li><a href="/landing/index.html#todo-conectado">Cómo funciona</a></li>
+      <li><a href="/landing/funcionalidades.html" class="nav__enlace--activo">Funcionalidades</a></li>
+      <li><a href="/landing/planes.html">Planes</a></li>
+      <li><a href="/landing/faq.html">Preguntas frecuentes</a></li>
     </ul>
 
     <div class="nav__acciones">
@@ -44,10 +46,10 @@
     </div>
   </div>
   <nav class="nav__menu-movil">
-    <a href="index.html#todo-conectado">Cómo funciona</a>
-    <a href="funcionalidades.html">Funcionalidades</a>
-    <a href="planes.html">Planes</a>
-    <a href="faq.html">Preguntas frecuentes</a>
+    <a href="/landing/index.html#todo-conectado">Cómo funciona</a>
+    <a href="/landing/funcionalidades.html">Funcionalidades</a>
+    <a href="/landing/planes.html">Planes</a>
+    <a href="/landing/faq.html">Preguntas frecuentes</a>
     <a href="../login.html">Iniciar sesión</a>
   </nav>
 </header>
@@ -784,12 +786,908 @@
   </div>
 </section>
 
-<!-- Las secciones de Compras, Finanzas, Facturación, Nóminas e
-     Importar/Exportar, más el caso de uso completo (2.4), se agregan
-     en la siguiente fase. -->
 
-<footer style="padding: var(--esp-6) 0; text-align:center;">
-  <p class="texto-secundario" style="font-size:0.8125rem;">Fincil · Tu negocio en orden — Fase 2 en construcción</p>
+<!-- ======================= 2.2 / 2.3 — MÓDULO: FINANZAS ======================= -->
+<section class="modulo" id="finanzas">
+  <div class="envoltura modulo__grid">
+
+    <div class="modulo__texto">
+      <div class="modulo__cabecera">
+        <span class="tarjeta__icono" style="background:var(--mod-6-fondo); color:var(--mod-6-icono);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        </span>
+        <h2>Finanzas</h2>
+      </div>
+
+      <p class="modulo__problema texto-cuerpo-grande texto-secundario">
+        Sin un lugar que junte ingresos, costos y gastos, terminas sacando cuentas por separado
+        y nunca sabes con certeza si el mes te dejó ganancia real. Finanzas reúne esa información
+        y te dice, en tiempo real, la salud financiera de tu negocio.
+      </p>
+
+      <div class="modulo__bloque">
+        <h3>Qué puedes hacer</h3>
+        <ul class="modulo__lista-check">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver ingresos, costos y utilidad del mes</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Definir y ajustar tu meta de ventas</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver la proyección de cierre de mes</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Comparar ingresos contra costos</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Revisar la distribución de tus costos</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Consultar tu punto de equilibrio</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver tu ROI acumulado</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Exportar reportes financieros</li>
+        </ul>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué información maneja</h3>
+        <p class="texto-secundario">
+          Ventas registradas, costos de materiales y mano de obra de cada venta, nómina pagada,
+          gastos fijos configurados, meta de ventas del mes e inversión acumulada.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué resultados genera</h3>
+        <p class="texto-secundario">
+          La utilidad bruta y operativa del mes, el margen real, si ya superaste tu punto de
+          equilibrio, tu ROI acumulado y hacia dónde va tu cierre de mes al ritmo actual.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Se conecta con</h3>
+        <div class="modulo__conexiones">
+          <span class="modulo__chip">Ventas</span>
+          <span class="modulo__chip">Materiales</span>
+          <span class="modulo__chip">Procesos</span>
+          <span class="modulo__chip">Inventario</span>
+          <span class="modulo__chip">Nóminas</span>
+          <span class="modulo__chip">Compras</span>
+        </div>
+      </div>
+
+      <div class="modulo__ejemplo">
+        <strong>Ejemplo de flujo real: </strong>
+        registras una venta — Fincil descuenta los materiales usados y calcula su costo real.
+        Al pagar la nómina del mes, ese costo se resta de la utilidad operativa, y tu punto de
+        equilibrio y tu ROI se recalculan solos.
+      </div>
+
+      <a href="../login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
+    </div>
+
+    <!-- Demostración visual 10 — mockup de la pantalla de Finanzas -->
+    <div class="pantalla-modulo">
+      <div class="mockup__lateral">
+        <span class="mockup__lateral-marca">
+          <img src="/landing/img/logo-toolkap.png" alt="" width="16" height="16" style="border-radius:4px;">
+          Fincil
+        </span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Inicio</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/></svg>Ventas</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Inventario</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>Compras</span>
+        <span class="mockup__grupo-titulo">Productos</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.5 7.3 12 12l-8.5-4.7"/><path d="M12 22V12"/><path d="m3.3 7 8.2-4.5a1 1 0 0 1 1 0L20.7 7a1 1 0 0 1 .5.9v8.2a1 1 0 0 1-.5.9l-8.2 4.5a1 1 0 0 1-1 0L3.3 17a1 1 0 0 1-.5-.9V7.9a1 1 0 0 1 .5-.9Z"/></svg>Materiales</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg>Productos</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg>Procesos</span>
+        <span class="mockup__grupo-titulo">Finanzas</span>
+        <span class="mockup__enlace mockup__enlace--activo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>Finanzas</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Facturación</span>
+        <span class="mockup__grupo-titulo">Equipo</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Nóminas</span>
+        <span class="mockup__grupo-titulo">Reportes</span>
+        <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>Reportes</span>
+      </div>
+      <div class="pantalla-modulo__derecha">
+      <div class="pantalla-modulo__topbar">
+        <div class="pantalla-modulo__titulo">
+          <h4>Finanzas</h4>
+          <a href="#">¿Cómo funciona?</a>
+        </div>
+        <div class="pantalla-modulo__acciones">
+          <span class="pantalla-modulo__boton">Exportar</span>
+          <span class="pantalla-modulo__boton pantalla-modulo__boton--primario">Configurar meta</span>
+        </div>
+      </div>
+      <div class="pantalla-modulo__cuerpo">
+        <div class="pantalla-modulo__principal">
+          <div class="pantalla-modulo__kpis">
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:rgba(29,122,90,0.12);color:var(--verde);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+              <b>$2.1M</b><span>Ingresos del mes</span>
+            </div>
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:rgba(233,154,43,0.16);color:#A6660B;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg></span>
+              <b>$1.23M</b><span>Costos de venta</span>
+            </div>
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:var(--mod-6-fondo);color:var(--mod-6-icono);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+              <b>$878K</b><span>Utilidad bruta</span>
+            </div>
+            <div class="pantalla-modulo__kpi">
+              <span class="pantalla-modulo__kpi-icono" style="background:var(--mod-1-fondo);color:var(--mod-1-icono);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></span>
+              <b>Superado</b><span>Punto de equilibrio</span>
+            </div>
+          </div>
+
+          <table class="pantalla-modulo__tabla">
+            <thead>
+              <tr><th>Concepto</th><th>Valor</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Meta de ventas del mes</td><td>$1.400.000 (150.4%)</td></tr>
+              <tr><td>Nómina pagada</td><td>$0</td></tr>
+              <tr><td>Costos fijos del mes</td><td>$0</td></tr>
+              <tr><td>Utilidad operativa</td><td>$877.695</td></tr>
+              <tr><td>ROI acumulado</td><td>1241.9%</td></tr>
+              <tr><td>Proyección de cierre</td><td>$3.510.000</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pantalla-modulo__panel">
+          <h5>Finanzas</h5>
+          <p>Consulta ingresos, costos, utilidad y punto de equilibrio en un solo lugar.</p>
+
+          <div class="pantalla-modulo__panel-titulo">Con este módulo puedes</div>
+          <ul class="pantalla-modulo__panel-lista">
+            <li><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver tu utilidad real</li>
+            <li><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Seguir tu punto de equilibrio</li>
+            <li><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Medir tu ROI</li>
+          </ul>
+
+          <div class="pantalla-modulo__panel-titulo">Se conecta con</div>
+          <div class="pantalla-modulo__conexion">→ Ventas</div>
+          <div class="pantalla-modulo__conexion">→ Nóminas</div>
+          <div class="pantalla-modulo__conexion">→ Compras</div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ======================= 2.3 — MÓDULO: FACTURACIÓN (sin demo visual propia) ======================= -->
+<section class="modulo" id="facturacion">
+  <div class="envoltura modulo__grid modulo__grid--sin-visual">
+    <div class="modulo__texto">
+      <div class="modulo__cabecera">
+        <span class="tarjeta__icono" style="background:var(--mod-7-fondo); color:var(--mod-7-icono);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+        </span>
+        <h2>Facturación</h2>
+      </div>
+
+      <p class="modulo__problema texto-cuerpo-grande texto-secundario">
+        Llevar la facturación aparte del resto de la operación genera reprocesos, información
+        duplicada y errores al conciliar ventas con documentos fiscales. Facturación gestiona
+        esa información directamente desde el sistema.
+      </p>
+
+      <div class="modulo__bloque">
+        <h3>Qué puedes hacer</h3>
+        <ul class="modulo__lista-check">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Generar la facturación de una venta</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Consultar el historial de documentos</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Ver la numeración disponible</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Recibir alerta al agotarse la numeración</li>
+        </ul>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué información maneja</h3>
+        <p class="texto-secundario">
+          Datos de la venta (cliente, productos, valores), datos fiscales del negocio y la
+          numeración o resolución de facturación configurada.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué resultados genera</h3>
+        <p class="texto-secundario">
+          El documento de facturación asociado a cada venta, y una alerta cuando la numeración
+          disponible se está agotando.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Se conecta con</h3>
+        <div class="modulo__conexiones">
+          <span class="modulo__chip">Ventas</span>
+          <span class="modulo__chip">Finanzas</span>
+        </div>
+      </div>
+
+      <div class="modulo__ejemplo">
+        <strong>Ejemplo de flujo real: </strong>
+        cierras una venta — el sistema toma automáticamente sus datos y genera el documento de
+        facturación correspondiente, sin que tengas que capturar la información dos veces.
+      </div>
+
+      <a href="../login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ======================= 2.3 — MÓDULO: NÓMINAS (sin demo visual propia) ======================= -->
+<section class="modulo" id="nominas">
+  <div class="envoltura modulo__grid modulo__grid--sin-visual">
+    <div class="modulo__texto">
+      <div class="modulo__cabecera">
+        <span class="tarjeta__icono" style="background:var(--mod-8-fondo); color:var(--mod-8-icono);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
+        <h2>Nóminas</h2>
+      </div>
+
+      <p class="modulo__problema texto-cuerpo-grande texto-secundario">
+        Pagar al equipo sin que ese costo se refleje en la operación hace que la utilidad de tu
+        negocio se vea inflada y poco realista. Nóminas gestiona a tus colaboradores y sus pagos
+        dentro de Fincil.
+      </p>
+
+      <div class="modulo__bloque">
+        <h3>Qué puedes hacer</h3>
+        <ul class="modulo__lista-check">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Registrar colaboradores</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Gestionar sus pagos</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Consultar historial de nómina pagada</li>
+        </ul>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué información maneja</h3>
+        <p class="texto-secundario">
+          Datos de los colaboradores y los pagos de nómina registrados por periodo.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué resultados genera</h3>
+        <p class="texto-secundario">
+          El costo de nómina del mes, descontado directamente de la utilidad operativa de tu
+          negocio.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Se conecta con</h3>
+        <div class="modulo__conexiones">
+          <span class="modulo__chip">Finanzas</span>
+          <span class="modulo__chip">Procesos</span>
+        </div>
+      </div>
+
+      <div class="modulo__ejemplo">
+        <strong>Ejemplo de flujo real: </strong>
+        pagas la nómina del mes — el sistema registra ese pago y Finanzas lo descuenta de la
+        utilidad operativa, dejando el resultado del mes ajustado a la realidad de tu negocio.
+      </div>
+
+      <a href="../login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ======================= 2.3 — MÓDULO: IMPORTAR / EXPORTAR (sin demo visual propia) ======================= -->
+<section class="modulo" id="importar-exportar">
+  <div class="envoltura modulo__grid modulo__grid--sin-visual">
+    <div class="modulo__texto">
+      <div class="modulo__cabecera">
+        <span class="tarjeta__icono" style="background:var(--mod-9-fondo); color:var(--mod-9-icono);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </span>
+        <h2>Importar / Exportar</h2>
+      </div>
+
+      <p class="modulo__problema texto-cuerpo-grande texto-secundario">
+        Empezar a usar un sistema nuevo desde cero, o necesitar tu información fuera de Fincil,
+        es una barrera si toca cargar o copiar todo a mano. Importar / Exportar mueve la
+        información hacia y desde Fincil sin fricción.
+      </p>
+
+      <div class="modulo__bloque">
+        <h3>Qué puedes hacer</h3>
+        <ul class="modulo__lista-check">
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Importar productos, materiales o inventario desde Excel</li>
+          <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg> Exportar reportes y datos del negocio</li>
+        </ul>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué información maneja</h3>
+        <p class="texto-secundario">
+          Archivos de origen (Excel/CSV) al importar, y los datos ya existentes en Fincil al
+          exportar.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Qué resultados genera</h3>
+        <p class="texto-secundario">
+          Módulos poblados sin captura manual, y reportes descargables listos para compartir o
+          analizar fuera del sistema.
+        </p>
+      </div>
+
+      <div class="modulo__bloque">
+        <h3>Se conecta con</h3>
+        <div class="modulo__conexiones">
+          <span class="modulo__chip">Productos</span>
+          <span class="modulo__chip">Materiales</span>
+          <span class="modulo__chip">Inventario</span>
+          <span class="modulo__chip">Compras</span>
+          <span class="modulo__chip">Ventas</span>
+          <span class="modulo__chip">Finanzas</span>
+        </div>
+      </div>
+
+      <div class="modulo__ejemplo">
+        <strong>Ejemplo de flujo real: </strong>
+        migras a Fincil e importas tu listado de productos y materiales desde Excel — en minutos
+        tienes tu catálogo cargado y puedes empezar a operar sin capturar todo a mano.
+      </div>
+
+      <a href="../login.html?modo=registro" class="boton boton--primario modulo__cta">Probar Fincil gratis</a>
+    </div>
+  </div>
+</section>
+
+
+<!-- ======================= 2.4 — RECORRIDO COMPLETO (Demostración visual 11) ======================= -->
+<section class="recorrido" id="recorrido">
+  <div class="envoltura envoltura--ancho">
+
+    <div class="recorrido__header">
+      <a href="/landing/index.html" class="marca-fincil">
+        <img src="/landing/img/logo-toolkap.png" alt="Fincil" width="34" height="34" style="border-radius:8px;">
+        <span class="marca-fincil__texto">
+          <span class="marca-fincil__nombre">Fincil</span>
+          <span class="marca-fincil__eslogan">Tu negocio en orden</span>
+        </span>
+      </a>
+
+      <div class="recorrido__header-centro">
+        <h2>Tu negocio en <span class="recorrido__acento">5 pasos</span></h2>
+        <p class="texto-cuerpo-grande texto-secundario">Desde los materiales hasta tus finanzas, todo en un solo sistema.</p>
+        <p class="texto-secundario">Sigue este recorrido inicial y descubre cómo Fincil te ayuda a trabajar de forma simple y organizada.</p>
+      </div>
+
+      <div class="recorrido__nota">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg>
+        <div><strong>Una operación, múltiples beneficios.</strong><span>Inventario, ventas y finanzas siempre sincronizados.</span></div>
+      </div>
+    </div>
+
+    <div class="recorrido__pasos">
+
+    <div class="recorrido__paso">
+      <div class="recorrido__paso-numero">
+        <span class="recorrido__numero-circulo">1</span>
+        <div>
+          <h3>Materiales</h3>
+          <p>Registra tus materiales</p>
+        </div>
+      </div>
+
+      <div class="recorrido__paso-pantalla">
+        <div class="recorrido-pantalla ">
+        <div class="recorrido-pantalla__lateral">
+          <img src="/landing/img/logo-toolkap.png" alt="" class="recorrido-pantalla__logo">
+          <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+            <span class="recorrido-pantalla__icono recorrido-pantalla__icono--activo"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 7.3 12 12l-8.5-4.7"/><path d="M12 22V12"/><path d="m3.3 7 8.2-4.5a1 1 0 0 1 1 0L20.7 7a1 1 0 0 1 .5.9v8.2a1 1 0 0 1-.5.9l-8.2 4.5a1 1 0 0 1-1 0L3.3 17a1 1 0 0 1-.5-.9V7.9a1 1 0 0 1 .5-.9Z"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg></span>
+        </div>
+        <div class="recorrido-pantalla__cuerpo">
+          <div class="recorrido-pantalla__topbar">
+              <span class="recorrido-pantalla__campana"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg></span>
+              <span class="recorrido-pantalla__avatar">J</span>
+              <span class="recorrido-pantalla__usuario"><b>Jostyn</b><span>Mi Empresa</span></span>
+            </div>
+          
+          <div class="recorrido-pantalla__titulo-fila">
+            <span class="recorrido-pantalla__titulo">Materiales</span>
+            <span class="recorrido-pantalla__boton-mini recorrido-pantalla__boton-mini--primario">+ Nuevo</span>
+          </div>
+          <ul class="recorrido-pantalla__lista">
+            <li class="recorrido-pantalla__fila">
+              <span class="recorrido-pantalla__fila-izq"><span class="recorrido-pantalla__swatch" style="background:#4C8FE0;"></span>Tela algodón</span>
+              <span class="recorrido-pantalla__valor">120 m</span>
+            </li>
+            <li class="recorrido-pantalla__fila">
+              <span class="recorrido-pantalla__fila-izq"><span class="recorrido-pantalla__swatch" style="background:#D9455F;"></span>Hilo poliéster</span>
+              <span class="recorrido-pantalla__valor">50 un</span>
+            </li>
+            <li class="recorrido-pantalla__fila">
+              <span class="recorrido-pantalla__fila-izq"><span class="recorrido-pantalla__swatch" style="background:#8A93A0;"></span>Botones</span>
+              <span class="recorrido-pantalla__valor">200 un</span>
+            </li>
+            <li class="recorrido-pantalla__fila">
+              <span class="recorrido-pantalla__fila-izq"><span class="recorrido-pantalla__swatch" style="background:#2B2F36;"></span>Cremallera</span>
+              <span class="recorrido-pantalla__valor">80 un</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+        <span class="recorrido__flecha"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+      </div>
+
+      <div class="recorrido__blurb">
+        <span class="recorrido__blurb-icono"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 7.3 12 12l-8.5-4.7"/><path d="M12 22V12"/><path d="m3.3 7 8.2-4.5a1 1 0 0 1 1 0L20.7 7a1 1 0 0 1 .5.9v8.2a1 1 0 0 1-.5.9l-8.2 4.5a1 1 0 0 1-1 0L3.3 17a1 1 0 0 1-.5-.9V7.9a1 1 0 0 1 .5-.9Z"/></svg></span>
+        <h4>Controla tus insumos</h4>
+        <p>Registra, organiza y mantén el control de tus materiales en tiempo real.</p>
+      </div>
+    </div>
+
+    <div class="recorrido__paso">
+      <div class="recorrido__paso-numero">
+        <span class="recorrido__numero-circulo">2</span>
+        <div>
+          <h3>Productos</h3>
+          <p>Crea y configura tus productos</p>
+        </div>
+      </div>
+
+      <div class="recorrido__paso-pantalla">
+        <div class="recorrido-pantalla ">
+        <div class="recorrido-pantalla__lateral">
+          <img src="/landing/img/logo-toolkap.png" alt="" class="recorrido-pantalla__logo">
+          <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 7.3 12 12l-8.5-4.7"/><path d="M12 22V12"/><path d="m3.3 7 8.2-4.5a1 1 0 0 1 1 0L20.7 7a1 1 0 0 1 .5.9v8.2a1 1 0 0 1-.5.9l-8.2 4.5a1 1 0 0 1-1 0L3.3 17a1 1 0 0 1-.5-.9V7.9a1 1 0 0 1 .5-.9Z"/></svg></span>
+            <span class="recorrido-pantalla__icono recorrido-pantalla__icono--activo"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg></span>
+        </div>
+        <div class="recorrido-pantalla__cuerpo">
+          <div class="recorrido-pantalla__topbar">
+              <span class="recorrido-pantalla__campana"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg></span>
+              <span class="recorrido-pantalla__avatar">J</span>
+              <span class="recorrido-pantalla__usuario"><b>Jostyn</b><span>Mi Empresa</span></span>
+            </div>
+          
+          <div class="recorrido-pantalla__titulo-fila">
+            <span class="recorrido-pantalla__titulo">Productos</span>
+            <span class="recorrido-pantalla__boton-mini recorrido-pantalla__boton-mini--primario">+ Nuevo</span>
+          </div>
+          <ul class="recorrido-pantalla__lista">
+            <li class="recorrido-pantalla__fila">
+              <span class="recorrido-pantalla__fila-izq"><span class="recorrido-pantalla__swatch" style="background:#F3D6DE;"></span>Ramo de Rosas</span>
+              <span class="recorrido-pantalla__valor">$85.000</span>
+            </li>
+            <li class="recorrido-pantalla__fila">
+              <span class="recorrido-pantalla__fila-izq"><span class="recorrido-pantalla__swatch" style="background:#F5E1A4;"></span>Ramo de Girasoles</span>
+              <span class="recorrido-pantalla__valor">$75.000</span>
+            </li>
+            <li class="recorrido-pantalla__fila">
+              <span class="recorrido-pantalla__fila-izq"><span class="recorrido-pantalla__swatch" style="background:#E5D9F2;"></span>Caja de Regalo</span>
+              <span class="recorrido-pantalla__valor">$45.000</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+        <span class="recorrido__flecha"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+      </div>
+
+      <div class="recorrido__blurb">
+        <span class="recorrido__blurb-icono"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
+        <h4>Define tus productos</h4>
+        <p>Configura nombre, categoría, precio y el stock inicial.</p>
+      </div>
+    </div>
+
+    <div class="recorrido__paso">
+      <div class="recorrido__paso-numero">
+        <span class="recorrido__numero-circulo">3</span>
+        <div>
+          <h3>Procesos</h3>
+          <p>Organiza tu operación</p>
+        </div>
+      </div>
+
+      <div class="recorrido__paso-pantalla">
+        <div class="recorrido-pantalla ">
+        <div class="recorrido-pantalla__lateral">
+          <img src="/landing/img/logo-toolkap.png" alt="" class="recorrido-pantalla__logo">
+          <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 7.3 12 12l-8.5-4.7"/><path d="M12 22V12"/><path d="m3.3 7 8.2-4.5a1 1 0 0 1 1 0L20.7 7a1 1 0 0 1 .5.9v8.2a1 1 0 0 1-.5.9l-8.2 4.5a1 1 0 0 1-1 0L3.3 17a1 1 0 0 1-.5-.9V7.9a1 1 0 0 1 .5-.9Z"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
+            <span class="recorrido-pantalla__icono recorrido-pantalla__icono--activo"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg></span>
+        </div>
+        <div class="recorrido-pantalla__cuerpo">
+          <div class="recorrido-pantalla__topbar">
+              <span class="recorrido-pantalla__campana"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg></span>
+              <span class="recorrido-pantalla__avatar">J</span>
+              <span class="recorrido-pantalla__usuario"><b>Jostyn</b><span>Mi Empresa</span></span>
+            </div>
+          
+          <div class="recorrido-pantalla__titulo-fila">
+            <span class="recorrido-pantalla__titulo">Procesos</span>
+            <span class="recorrido-pantalla__boton-mini recorrido-pantalla__boton-mini--primario">+ Nuevo</span>
+          </div>
+          <ul class="recorrido-pantalla__lista">
+            <li class="recorrido-pantalla__fila">
+              <span class="recorrido-pantalla__fila-izq"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg>Preparación de ramos</span>
+              <span class="recorrido-pantalla__estado"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Activo</span>
+            </li>
+            <li class="recorrido-pantalla__fila">
+              <span class="recorrido-pantalla__fila-izq"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg>Empaque</span>
+              <span class="recorrido-pantalla__estado"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Activo</span>
+            </li>
+            <li class="recorrido-pantalla__fila">
+              <span class="recorrido-pantalla__fila-izq"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg>Control de calidad</span>
+              <span class="recorrido-pantalla__estado"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Activo</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+        <span class="recorrido__flecha"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+      </div>
+
+      <div class="recorrido__blurb">
+        <span class="recorrido__blurb-icono"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg></span>
+        <h4>Estandariza tus procesos</h4>
+        <p>Define los pasos de tu operación y asegúrate de que todo fluya correctamente.</p>
+      </div>
+    </div>
+
+    <div class="recorrido__paso">
+      <div class="recorrido__paso-numero">
+        <span class="recorrido__numero-circulo">4</span>
+        <div>
+          <h3>Venta</h3>
+          <p>Registra tus ventas</p>
+        </div>
+      </div>
+
+      <div class="recorrido__paso-pantalla">
+        <div class="recorrido-pantalla ">
+        <div class="recorrido-pantalla__lateral">
+          <img src="/landing/img/logo-toolkap.png" alt="" class="recorrido-pantalla__logo">
+          <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 7.3 12 12l-8.5-4.7"/><path d="M12 22V12"/><path d="m3.3 7 8.2-4.5a1 1 0 0 1 1 0L20.7 7a1 1 0 0 1 .5.9v8.2a1 1 0 0 1-.5.9l-8.2 4.5a1 1 0 0 1-1 0L3.3 17a1 1 0 0 1-.5-.9V7.9a1 1 0 0 1 .5-.9Z"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg></span>
+            <span class="recorrido-pantalla__icono recorrido-pantalla__icono--activo"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg></span>
+        </div>
+        <div class="recorrido-pantalla__cuerpo">
+          <div class="recorrido-pantalla__topbar">
+              <span class="recorrido-pantalla__campana"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg></span>
+              <span class="recorrido-pantalla__avatar">J</span>
+              <span class="recorrido-pantalla__usuario"><b>Jostyn</b><span>Mi Empresa</span></span>
+            </div>
+          
+          <div class="recorrido-pantalla__titulo-fila">
+            <span class="recorrido-pantalla__titulo">Nueva venta</span>
+          </div>
+          <div class="recorrido-pantalla__campo">
+            <span class="recorrido-pantalla__campo-etq">Cliente</span>
+            <span class="recorrido-pantalla__campo-valor">Laura Rodríguez</span>
+          </div>
+          <ul class="recorrido-pantalla__lista">
+            <li class="recorrido-pantalla__fila">
+              <span class="recorrido-pantalla__fila-izq">Ramo de Rosas × 1</span>
+              <span class="recorrido-pantalla__valor">$85.000</span>
+            </li>
+            <li class="recorrido-pantalla__fila">
+              <span class="recorrido-pantalla__fila-izq">Ramo de Girasoles × 1</span>
+              <span class="recorrido-pantalla__valor">$75.000</span>
+            </li>
+          </ul>
+          <div class="recorrido-pantalla__total">
+            <span>Total</span><b>$160.000</b>
+          </div>
+          <div class="recorrido-pantalla__acciones">
+            <span class="recorrido-pantalla__boton-mini">Cancelar</span>
+            <span class="recorrido-pantalla__boton-mini recorrido-pantalla__boton-mini--primario">Registrar venta</span>
+          </div>
+        </div>
+      </div>
+        <span class="recorrido__flecha"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
+      </div>
+
+      <div class="recorrido__blurb">
+        <span class="recorrido__blurb-icono"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/></svg></span>
+        <h4>Realiza tus ventas</h4>
+        <p>Selecciona el cliente, los productos y registra la venta. El inventario se actualiza automáticamente.</p>
+      </div>
+    </div>
+
+    <div class="recorrido__paso">
+      <div class="recorrido__paso-numero">
+        <span class="recorrido__numero-circulo">5</span>
+        <div>
+          <h3>Finanzas</h3>
+          <p>Mira el resultado de tu negocio</p>
+        </div>
+      </div>
+
+      <div class="recorrido__paso-pantalla">
+        <div class="recorrido-pantalla ">
+        <div class="recorrido-pantalla__lateral">
+          <img src="/landing/img/logo-toolkap.png" alt="" class="recorrido-pantalla__logo">
+          <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 7.3 12 12l-8.5-4.7"/><path d="M12 22V12"/><path d="m3.3 7 8.2-4.5a1 1 0 0 1 1 0L20.7 7a1 1 0 0 1 .5.9v8.2a1 1 0 0 1-.5.9l-8.2 4.5a1 1 0 0 1-1 0L3.3 17a1 1 0 0 1-.5-.9V7.9a1 1 0 0 1 .5-.9Z"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 0 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 0 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/></svg></span>
+            <span class="recorrido-pantalla__icono recorrido-pantalla__icono--activo"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+            <span class="recorrido-pantalla__icono"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg></span>
+        </div>
+        <div class="recorrido-pantalla__cuerpo">
+          <div class="recorrido-pantalla__topbar">
+              <span class="recorrido-pantalla__campana"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg></span>
+              <span class="recorrido-pantalla__avatar">J</span>
+              <span class="recorrido-pantalla__usuario"><b>Jostyn</b><span>Mi Empresa</span></span>
+            </div>
+          
+          <div class="recorrido-pantalla__titulo-fila">
+            <span class="recorrido-pantalla__titulo">Resumen financiero</span>
+            <span class="recorrido-pantalla__periodo">Sep 2026</span>
+          </div>
+          <div class="recorrido-pantalla__kpis">
+            <div class="recorrido-pantalla__kpi">
+              <span class="recorrido-pantalla__kpi-etq">Ingresos</span>
+              <b>$2.191.000</b>
+              <span class="recorrido-pantalla__kpi-cambio">↑ 12%</span>
+            </div>
+            <div class="recorrido-pantalla__kpi">
+              <span class="recorrido-pantalla__kpi-etq">Costos</span>
+              <b>$1.260.705</b>
+              
+            </div>
+            <div class="recorrido-pantalla__kpi">
+              <span class="recorrido-pantalla__kpi-etq">Utilidad</span>
+              <b>$930.295</b>
+              <span class="recorrido-pantalla__kpi-cambio">↑ 5.8%</span>
+            </div>
+            <div class="recorrido-pantalla__kpi">
+              <span class="recorrido-pantalla__kpi-etq">Margen</span>
+              <b>42.4%</b>
+              <span class="recorrido-pantalla__kpi-cambio">↑ 2.1%</span>
+            </div>
+          </div>
+          <div class="recorrido-pantalla__grafico">
+            <span class="recorrido-pantalla__grafico-etq">Ingresos vs. costos</span>
+            <div class="recorrido-pantalla__barras">
+              <span class="recorrido-pantalla__barra" style="height:40%;"></span>
+<span class="recorrido-pantalla__barra" style="height:65%;"></span>
+<span class="recorrido-pantalla__barra" style="height:50%;"></span>
+<span class="recorrido-pantalla__barra" style="height:78%;"></span>
+<span class="recorrido-pantalla__barra" style="height:60%;"></span>
+<span class="recorrido-pantalla__barra" style="height:90%;"></span>
+<span class="recorrido-pantalla__barra" style="height:70%;"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+        
+      </div>
+
+      <div class="recorrido__blurb">
+        <span class="recorrido__blurb-icono"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+        <h4>Consulta tus finanzas</h4>
+        <p>Visualiza ingresos, costos, utilidad y más, con reportes claros y en tiempo real.</p>
+      </div>
+    </div>
+    </div>
+
+    <div class="recorrido-final">
+      <div class="recorrido-final__intro">
+        <span class="recorrido-final__icono"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span>
+        <span class="texto-eyebrow">Listo para comenzar</span>
+        <h2>Tu negocio, en orden</h2>
+        <p class="texto-secundario">Con estos 5 pasos tendrás todo lo que necesitas para trabajar de forma simple, organizada y con control total.</p>
+      </div>
+
+      <div class="recorrido-stepper">
+          <div class="recorrido-stepper__paso">
+            <span class="recorrido-stepper__circulo">1</span>
+            <b>Materiales</b>
+            <span>Insumos bajo control</span>
+          </div>
+          <div class="recorrido-stepper__paso">
+            <span class="recorrido-stepper__circulo">2</span>
+            <b>Productos</b>
+            <span>Tu catálogo listo</span>
+          </div>
+          <div class="recorrido-stepper__paso">
+            <span class="recorrido-stepper__circulo">3</span>
+            <b>Procesos</b>
+            <span>Operación organizada</span>
+          </div>
+          <div class="recorrido-stepper__paso">
+            <span class="recorrido-stepper__circulo">4</span>
+            <b>Venta</b>
+            <span>Clientes y pedidos</span>
+          </div>
+          <div class="recorrido-stepper__paso">
+            <span class="recorrido-stepper__circulo">5</span>
+            <b>Finanzas</b>
+            <span>Resultados en tiempo real</span>
+          </div>
+      </div>
+
+      <div class="recorrido-final__cta">
+        <span class="manuscrito manuscrito--inline">Tu crecimiento,<br>en orden.</span>
+        <a href="../login.html?modo=registro" class="boton boton--primario">Comenzar ahora <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+        <span class="recorrido-final__caption">7 días gratis, sin tarjeta de crédito.</span>
+      </div>
+    </div>
+
+    <div class="recorrido-confianza">
+      <div class="recorrido-confianza__item">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>
+        <div><b>Seguro y confiable</b><span>Tus datos siempre protegidos.</span></div>
+      </div>
+      <div class="recorrido-confianza__item">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+        <div><b>Todo en la nube</b><span>Accede desde cualquier dispositivo.</span></div>
+      </div>
+      <div class="recorrido-confianza__item">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3ZM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3Z"/></svg>
+        <div><b>Soporte siempre</b><span>Te acompañamos en cada paso.</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Falta agregar: sección de Compras. -->
+
+<!-- ======================= 5.3 — CTA FINAL (Demostración visual 19, parte 1) ======================= -->
+<section class="cta-final">
+  <div class="envoltura cta-final__grid">
+    <div class="cta-final__texto">
+      <span class="texto-eyebrow">Tu negocio en orden, hoy</span>
+      <h1 class="cta-final__titulo">Organiza tu negocio con <span class="acento">Fincil</span>.</h1>
+      <p class="texto-cuerpo-grande texto-secundario">
+        Productos, ventas, inventario, clientes y finanzas en un solo lugar. Empieza gratis y
+        descubre lo fácil que puede ser.
+      </p>
+      <a href="../login.html?modo=registro" class="boton boton--primario cta-final__boton">
+        Prueba Fincil gratis durante 7 días <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+      <span class="cta-final__caption">Sin tarjeta de crédito, sin complicaciones.</span>
+    </div>
+
+    <div class="cta-final__separador"></div>
+
+    <div class="cta-final__lista">
+        <div class="cta-final__item">
+          <span class="cta-final__icono"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg></span>
+          <div><b>Activa tu cuenta</b><span>En minutos.</span></div>
+        </div>
+        <div class="cta-final__item">
+          <span class="cta-final__icono"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+          <div><b>Explora todas las funciones</b><span>Sin límites por 7 días.</span></div>
+        </div>
+        <div class="cta-final__item">
+          <span class="cta-final__icono"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+          <div><b>Lleva tu negocio al siguiente nivel</b><span>De forma simple y segura.</span></div>
+        </div>
+    </div>
+
+    <div class="cta-final__visual">
+      <span class="manuscrito manuscrito--inline cta-final__manuscrito">Tu crecimiento,<br>en orden.</span>
+      <div class="dispositivo dispositivo--laptop">
+        <div class="dispositivo__pantalla">
+          <div class="mockup__lateral" style="width:110px;">
+            <span class="mockup__lateral-marca">
+              <img src="/landing/img/logo-toolkap.png" alt="" width="16" height="16" style="border-radius:4px;">
+              Fincil
+            </span>
+            <span class="mockup__enlace mockup__enlace--activo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Inicio</span>
+            <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2 3h2l2.6 12.4a2 2 0 0 0 2 1.6h9a2 2 0 0 0 2-1.6L22 7H6"/></svg>Ventas</span>
+            <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Inventario</span>
+            <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Clientes</span>
+            <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>Finanzas</span>
+            <span class="mockup__enlace"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>Reportes</span>
+          </div>
+          <div class="mockup__contenido">
+            <div class="mockup__saludo">
+              <div><h5>¡Hola, Jostyn!</h5><p>Aquí tienes un resumen de tu negocio.</p></div>
+            </div>
+            <div class="mockup__kpis" style="grid-template-columns:repeat(3,1fr);">
+              <div class="mockup__kpi"><span class="mockup__kpi-icono" style="background:rgba(29,122,90,0.12);color:var(--verde);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span><span class="mockup__kpi-valor">$2.106.000</span><span class="mockup__kpi-cambio mockup__kpi-cambio--positivo">↑ 12%</span></div>
+              <div class="mockup__kpi"><span class="mockup__kpi-icono" style="background:var(--mod-1-fondo);color:var(--mod-1-icono);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span><span class="mockup__kpi-valor">128</span><span class="mockup__kpi-cambio mockup__kpi-cambio--positivo">↑ 5%</span></div>
+              <div class="mockup__kpi"><span class="mockup__kpi-icono" style="background:var(--mod-8-fondo);color:var(--mod-8-icono);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span><span class="mockup__kpi-valor">24</span><span class="mockup__kpi-cambio mockup__kpi-cambio--positivo">↑ 20%</span></div>
+            </div>
+            <div class="mockup__panel" style="padding:10px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <span class="mockup__panel-titulo" style="margin:0;">Ventas de los últimos 7 días</span>
+                <span style="font-size:0.5625rem;color:var(--gris-texto);background:var(--blanco);padding:2px 8px;border-radius:999px;">Últimos 7 días</span>
+              </div>
+              <div class="dispositivo__barras">
+                <span style="height:35%"></span><span style="height:55%"></span><span style="height:45%"></span>
+                <span style="height:70%"></span><span style="height:95%"></span><span style="height:60%"></span>
+                <span style="height:50%"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dispositivo dispositivo--telefono">
+        <div class="dispositivo__pantalla-tel">
+          <div class="dispositivo__tel-marca">
+            <img src="/landing/img/logo-toolkap.png" alt="" width="16" height="16" style="border-radius:4px;">Fincil
+          </div>
+          <p class="dispositivo__tel-saludo">¡Hola, Jostyn!<br><span>Tu negocio en orden.</span></p>
+          <ul class="dispositivo__tel-lista">
+            <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>Ventas</li>
+            <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="1"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Inventario</li>
+            <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Clientes</li>
+            <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>Finanzas</li>
+            <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>Reportes</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Pie de página (Demostración visual 19, parte 2) ======================= -->
+<footer class="pie">
+  <div class="envoltura pie__grid">
+    <div class="pie__marca">
+      <a href="/landing/index.html" class="marca-fincil">
+        <img src="/landing/img/logo-toolkap.png" alt="Fincil" width="30" height="30" style="border-radius:6px;">
+        <span class="marca-fincil__texto">
+          <span class="marca-fincil__nombre" style="color:var(--blanco);">Fincil</span>
+          <span class="marca-fincil__eslogan">Tu negocio en orden</span>
+        </span>
+      </a>
+      <p class="pie__descripcion">
+        Una plataforma simple y completa para gestionar tu negocio. Más control, mejores
+        decisiones, mayor crecimiento.
+      </p>
+      <div class="pie__redes">
+        <a href="#" class="pie__red" aria-label="Instagram"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></a>
+        <a href="#" class="pie__red" aria-label="TikTok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></a>
+        <a href="#" class="pie__red" aria-label="YouTube"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="4"/><path d="m10 9 5 3-5 3Z"/></svg></a>
+        <a href="#" class="pie__red" aria-label="LinkedIn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="4"/><line x1="7" y1="10" x2="7" y2="17"/><circle cx="7" cy="6.5" r="1.1"/><path d="M11 17v-4a2 2 0 0 1 4 0v4"/><line x1="11" y1="10" x2="11" y2="17"/></svg></a>
+      </div>
+    </div>
+
+    <div class="pie__columna">
+      <h4>Producto</h4>
+      <ul>
+          <li><a href="/landing/funcionalidades.html">Funciones</a></li>
+          <li><a href="/landing/planes.html">Precios</a></li>
+          <li><a href="/landing/faq.html">Preguntas frecuentes</a></li>
+      </ul>
+    </div>
+
+    <div class="pie__ayuda">
+      <span class="pie__ayuda-icono"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3ZM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3Z"/></svg></span>
+      <div>
+        <strong>¿Necesitas ayuda?</strong>
+        <span>Estamos aquí para apoyarte.</span>
+      </div>
+      <a href="/landing/faq.html" class="boton boton--secundario boton--sobre-oscuro pie__ayuda-boton">Contáctanos <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+    </div>
+  </div>
+
+  <div class="envoltura pie__linea">
+    <span>© 2026 Fincil. Todos los derechos reservados.</span>
+    <span>Hecho con ❤️ en Colombia 🇨🇴</span>
+  </div>
 </footer>
 
 <script src="/landing/js/interacciones.js"></script>
