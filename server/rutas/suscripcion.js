@@ -18,6 +18,7 @@
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const wompi = require('../servicios/wompi');
+const { enviarSuscripcionMeta } = require('../servicios/meta-capi');
 const { sincronizarEstadoSuscripcion, calcularBloqueo, tienePagoAceptadoPrevio, crearPruebaGratis } = require('../servicios/suscripcion');
 const router = express.Router();
 
@@ -190,6 +191,10 @@ router.post('/confirmar-pago', async (req, res, next) => {
           actualizado_en: ahora.toISOString()
         });
       if (eSusc) throw new Error(eSusc.message);
+
+      // Conversión para Meta (servidor). Mismo event_id que el pixel del
+      // navegador, así que Meta no la cuenta doble.
+      await enviarSuscripcionMeta({ transaccion, plan, usuarioId: req.usuarioId, email: req.usuarioEmail, req });
     }
 
     res.json({ status: transaccion.status, monto: Math.round(Number(transaccion.amount_in_cents) / 100) });

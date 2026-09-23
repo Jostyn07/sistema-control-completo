@@ -9,6 +9,7 @@
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const wompi = require('../servicios/wompi');
+const { enviarSuscripcionMeta } = require('../servicios/meta-capi');
 const router = express.Router();
 
 // POST /api/webhooks/wompi
@@ -82,6 +83,17 @@ router.post('/wompi', async (req, res, next) => {
           actualizado_en: ahora.toISOString()
         });
       if (eSusc) throw new Error(eSusc.message);
+
+      // Conversión para Meta. Cubre sobre todo los pagos que se aprueban
+      // después (PSE): el navegador ya no está abierto para avisarle a
+      // Meta. Si /confirmar-pago ya la envió, Meta la descarta por el
+      // mismo event_id. Solo se envía si el estado CAMBIÓ a aprobado,
+      // para no repetirla en cada reintento de Wompi.
+      if (!yaExiste || yaExiste.estado !== 'APPROVED') {
+        const { data: plan } = await supabase
+          .from('planes_suscripcion').select('id, nombre').eq('id', planId).maybeSingle();
+        await enviarSuscripcionMeta({ transaccion, plan, usuarioId });
+      }
     }
 
     res.status(200).json({ ok: true });

@@ -2,7 +2,7 @@
 // Se incluye en el <head> de las páginas públicas (landing, login, gracias).
 // Cambia PIXEL_ID por el ID de tu pixel (Administrador de eventos de Meta).
 (function () {
-  var PIXEL_ID = 'TU_PIXEL_ID';
+  var PIXEL_ID = '1096538993342486';
 
   !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
   n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;

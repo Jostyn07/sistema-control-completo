@@ -109,8 +109,12 @@ async function enviarFormulario() {
         mostrarAviso('Debes aceptar los Términos y la Política de Privacidad para continuar', 'error');
         return;
       }
-      await API.enviar('/api/auth/registro', { nombre, correo, contrasena });
-      rastrearMeta('CompleteRegistration');
+      const registro = await API.enviar('/api/auth/registro', { nombre, correo, contrasena });
+      // Pixel de Meta: mismo eventID que envía el servidor (API de
+      // Conversiones), así el registro se cuenta una sola vez.
+      if (window.rastrearMeta && registro && registro.usuario_id) {
+        rastrearMeta('CompleteRegistration', { status: 'trial' }, { eventID: 'reg_' + registro.usuario_id });
+      }
       mostrarAviso('Cuenta creada, ahora inicia sesión');
       alternarModo();
     } else {

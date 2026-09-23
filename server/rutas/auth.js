@@ -7,6 +7,7 @@
 const express = require('express');
 const supabase = require('../supabase/cliente');
 const { crearPruebaGratis } = require('../servicios/suscripcion');
+const { enviarEventoMeta } = require('../servicios/meta-capi');
 const router = express.Router();
 
 // POST /api/auth/registro
@@ -39,6 +40,18 @@ router.post('/registro', async (req, res, next) => {
     } catch (errPrueba) {
       console.error('[registro] No se pudo crear la prueba gratis:', errPrueba.message);
     }
+
+    // Conversión para Meta: mismo event_id (reg_<usuario>) que manda el
+    // navegador en auth.js, para que Meta la cuente una sola vez.
+    await enviarEventoMeta({
+      evento: 'CompleteRegistration',
+      eventId: 'reg_' + data.user.id,
+      email: data.user.email,
+      nombre,
+      usuarioId: data.user.id,
+      req,
+      datos: { status: 'trial', content_name: 'Registro Fincil' }
+    });
 
     res.status(201).json({ creado: true, usuario_id: data.user.id });
   } catch (err) { next(err); }
