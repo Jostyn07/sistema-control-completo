@@ -12,6 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/tema.css">
+  <script src="/js/meta-pixel.js"></script>
 </head>
 <body>
   <main class="pagina-login">
@@ -39,6 +40,7 @@
           if (r.estado === 'activa') {
             document.getElementById('tituloGracias').textContent = '¡Listo! Tu suscripción está activa';
             document.getElementById('textoGracias').textContent = 'Ya puedes usar el sistema sin restricciones.';
+            rastrearMeta('Subscribe', { currency: 'COP', value: 0 }); // pon el valor real del plan
           } else {
             document.getElementById('tituloGracias').textContent = 'Estamos confirmando tu pago';
             document.getElementById('textoGracias').textContent = 'Si ya pagaste, puede tardar un momento en reflejarse. Actualiza esta página en unos segundos.';

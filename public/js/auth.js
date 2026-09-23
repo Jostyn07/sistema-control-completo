@@ -110,6 +110,7 @@ async function enviarFormulario() {
         return;
       }
       await API.enviar('/api/auth/registro', { nombre, correo, contrasena });
+      rastrearMeta('CompleteRegistration');
       mostrarAviso('Cuenta creada, ahora inicia sesión');
       alternarModo();
     } else {

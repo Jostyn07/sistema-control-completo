@@ -98,10 +98,15 @@ async function reactivarSuscripcion() {
   }
 }
 
+// Planes cargados, por id — para saber el nombre del plan elegido al
+// reportar la conversión al Pixel de Meta.
+const planesPorId = {};
+
 async function cargarPlanes() {
   const contenedor = document.getElementById('listaPlanes');
   try {
     const planes = await API.obtener('/api/suscripcion/planes');
+    planes.forEach(p => { planesPorId[p.id] = p; });
     if (planes.length === 0) {
       contenedor.innerHTML = '<p class="tabla__vacio">No hay planes disponibles todavía.</p>';
       return;
@@ -202,14 +207,27 @@ async function confirmarPago(planId, transactionId) {
       plan_id: planId,
       transaction_id: transactionId
     });
-    manejarResultadoPago(resultado);
+    manejarResultadoPago(resultado, planId, transactionId);
   } catch (err) {
     mostrarAviso(err.message, 'error');
   }
 }
 
-function manejarResultadoPago(resultado) {
+function manejarResultadoPago(resultado, planId, transactionId) {
   if (resultado.status === 'APPROVED') {
+    // Conversión para Meta: el valor es el monto REAL cobrado (ya con el
+    // 50% de descuento del primer mes si aplicó), confirmado por el
+    // servidor contra Wompi — no el precio de lista.
+    const plan = planesPorId[planId] || {};
+    if (window.rastrearMeta) {
+      rastrearMeta('Subscribe', {
+        value: Number(resultado.monto) || Number(plan.precio_mensual) || 0,
+        currency: 'COP',
+        content_ids: [planId],
+        content_name: plan.nombre || 'Plan',
+        content_type: 'product'
+      }, { eventID: 'sub_' + transactionId });
+    }
     mostrarAviso('¡Pago aprobado! Tu suscripción ya está activa.');
     cargarEstadoActual();
   } else if (resultado.status === 'PENDING') {
