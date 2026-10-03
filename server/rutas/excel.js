@@ -47,79 +47,79 @@ const MODULOS = {
   materiales: {
     archivo: '01_Materiales.xlsx',
     plantilla: () => materialesExportador.generarPlantilla(),
-    exportarActual: (usuarioId) => materialesExportador.exportarMateriales(usuarioId),
-    analizar: (buffer, usuarioId) => materialesImportador.analizarMateriales(buffer, usuarioId),
-    importar: (usuarioId, filas, opciones) => materialesImportador.importarMateriales(usuarioId, filas, opciones.modo || 'crear_y_actualizar')
+    exportarActual: (empresaId) => materialesExportador.exportarMateriales(empresaId),
+    analizar: (buffer, empresaId) => materialesImportador.analizarMateriales(buffer, empresaId),
+    importar: (empresaId, filas, opciones) => materialesImportador.importarMateriales(empresaId, filas, opciones.modo || 'crear_y_actualizar')
   },
   productos: {
     archivo: '02_Productos.xlsx',
     plantilla: () => productosExportador.generarPlantilla(),
-    exportarActual: (usuarioId) => productosExportador.exportarProductos(usuarioId),
-    analizar: (buffer, usuarioId) => productosImportador.analizarProductos(buffer, usuarioId),
-    importar: (usuarioId, filas, opciones) => productosImportador.importarProductos(usuarioId, filas, opciones.modo || 'crear_y_actualizar')
+    exportarActual: (empresaId) => productosExportador.exportarProductos(empresaId),
+    analizar: (buffer, empresaId) => productosImportador.analizarProductos(buffer, empresaId),
+    importar: (empresaId, filas, opciones) => productosImportador.importarProductos(empresaId, filas, opciones.modo || 'crear_y_actualizar')
   },
   procesos: {
     archivo: '03_Procesos.xlsx',
     plantilla: () => procesosExportador.generarPlantilla(),
-    exportarActual: (usuarioId) => procesosExportador.exportarProcesos(usuarioId),
-    analizar: (buffer, usuarioId) => procesosImportador.analizarProcesos(buffer, usuarioId),
-    importar: (usuarioId, filas, opciones) => procesosImportador.importarProcesos(usuarioId, filas, opciones.modo || 'crear_y_actualizar')
+    exportarActual: (empresaId) => procesosExportador.exportarProcesos(empresaId),
+    analizar: (buffer, empresaId) => procesosImportador.analizarProcesos(buffer, empresaId),
+    importar: (empresaId, filas, opciones) => procesosImportador.importarProcesos(empresaId, filas, opciones.modo || 'crear_y_actualizar')
   },
   inventario: {
     archivo: '04_Inventario.xlsx',
     plantilla: () => inventarioExportador.generarPlantilla(),
-    exportarActual: (usuarioId) => inventarioExportador.exportarInventario(usuarioId),
-    analizar: (buffer, usuarioId) => inventarioImportador.analizarInventario(buffer, usuarioId),
+    exportarActual: (empresaId) => inventarioExportador.exportarInventario(empresaId),
+    analizar: (buffer, empresaId) => inventarioImportador.analizarInventario(buffer, empresaId),
     // Inventario no tiene "modo" (crear/actualizar) — cada fila válida
     // siempre se aplica como un movimiento nuevo; no necesita opciones.
-    importar: (usuarioId, filas) => inventarioImportador.importarInventario(usuarioId, filas)
+    importar: (empresaId, filas) => inventarioImportador.importarInventario(empresaId, filas)
   },
   compras: {
     archivo: '05_Compras.xlsx',
     plantilla: () => comprasExportador.generarPlantilla(),
-    exportarActual: (usuarioId) => comprasExportador.exportarCompras(usuarioId),
-    analizar: (buffer, usuarioId) => comprasImportador.analizarCompras(buffer, usuarioId),
+    exportarActual: (empresaId) => comprasExportador.exportarCompras(empresaId),
+    analizar: (buffer, empresaId) => comprasImportador.analizarCompras(buffer, empresaId),
     // `afectar_inventario` (true por defecto): si es false, las compras
     // marcadas "RECIBIDA" quedan en el historial pero NO suman stock —
     // útil cuando el stock ya se cargó aparte, por Materiales o Inventario.
-    importar: (usuarioId, filas, opciones) =>
-      comprasImportador.importarCompras(usuarioId, filas, { afectarInventario: opciones.afectar_inventario !== false })
+    importar: (empresaId, filas, opciones) =>
+      comprasImportador.importarCompras(empresaId, filas, { afectarInventario: opciones.afectar_inventario !== false })
   },
   ventas: {
     archivo: '06_Ventas.xlsx',
     plantilla: () => ventasExportador.generarPlantilla(),
-    exportarActual: (usuarioId) => ventasExportador.exportarVentas(usuarioId),
-    analizar: (buffer, usuarioId) => ventasImportador.analizarVentas(buffer, usuarioId),
+    exportarActual: (empresaId) => ventasExportador.exportarVentas(empresaId),
+    analizar: (buffer, empresaId) => ventasImportador.analizarVentas(buffer, empresaId),
     // Cada venta siempre se crea nueva (como Inventario/Compras) — no necesita opciones.
-    importar: (usuarioId, filas) => ventasImportador.importarVentas(usuarioId, filas)
+    importar: (empresaId, filas) => ventasImportador.importarVentas(empresaId, filas)
   },
   finanzas: {
     archivo: '07_Finanzas.xlsx',
     plantilla: () => finanzasExportador.generarPlantilla(),
-    exportarActual: (usuarioId) => finanzasExportador.exportarFinanzas(usuarioId),
-    analizar: (buffer, usuarioId) => finanzasImportador.analizarFinanzas(buffer, usuarioId),
+    exportarActual: (empresaId) => finanzasExportador.exportarFinanzas(empresaId),
+    analizar: (buffer, empresaId) => finanzasImportador.analizarFinanzas(buffer, empresaId),
     // Este módulo no recibe un arreglo plano de `filas`, sino el reporte
     // completo (tres listas: costos fijos, capital y configuración) que
     // devolvió /analizar — no necesita opciones aparte.
-    importar: (usuarioId, filas) => finanzasImportador.importarFinanzas(usuarioId, filas)
+    importar: (empresaId, filas) => finanzasImportador.importarFinanzas(empresaId, filas)
   },
   facturacion: {
     archivo: '08_Facturacion.xlsx',
     plantilla: () => facturacionExportador.generarPlantilla(),
-    exportarActual: (usuarioId) => facturacionExportador.exportarFacturacion(usuarioId),
-    analizar: (buffer, usuarioId) => facturacionImportador.analizarFacturacion(buffer, usuarioId),
+    exportarActual: (empresaId) => facturacionExportador.exportarFacturacion(empresaId),
+    analizar: (buffer, empresaId) => facturacionImportador.analizarFacturacion(buffer, empresaId),
     // No genera facturas electrónicas reales ni usa opciones — ver
     // definiciones/facturacion.js para el porqué de esta limitación.
-    importar: (usuarioId, filas) => facturacionImportador.importarFacturacion(usuarioId, filas)
+    importar: (empresaId, filas) => facturacionImportador.importarFacturacion(empresaId, filas)
   },
   nominas: {
     archivo: '09_Nominas.xlsx',
     plantilla: () => nominasExportador.generarPlantilla(),
-    exportarActual: (usuarioId) => nominasExportador.exportarNominas(usuarioId),
-    analizar: (buffer, usuarioId) => nominasImportador.analizarNominas(buffer, usuarioId),
+    exportarActual: (empresaId) => nominasExportador.exportarNominas(empresaId),
+    analizar: (buffer, empresaId) => nominasImportador.analizarNominas(buffer, empresaId),
     // Igual que Finanzas: recibe el reporte completo (colaboradores +
     // encargos), no un arreglo plano — no necesita opciones.
-    importar: (usuarioId, filas) => nominasImportador.importarNominas(usuarioId, filas)
+    importar: (empresaId, filas) => nominasImportador.importarNominas(empresaId, filas)
   }
 };
 
@@ -163,7 +163,7 @@ router.get('/:modulo/exportar', async (req, res, next) => {
   try {
     const modulo = obtenerModulo(req, res);
     if (!modulo) return;
-    enviarXlsx(res, modulo.archivo, await modulo.exportarActual(req.usuarioId));
+    enviarXlsx(res, modulo.archivo, await modulo.exportarActual(req.empresa.id));
   } catch (err) { next(err); }
 });
 
@@ -179,7 +179,7 @@ router.post('/:modulo/analizar', (req, res, next) => {
       if (!modulo) return;
       if (!req.file) return res.status(400).json({ error: 'No se recibió ningún archivo' });
 
-      const reporte = await modulo.analizar(req.file.buffer, req.usuarioId);
+      const reporte = await modulo.analizar(req.file.buffer, req.empresa.id);
       res.json(reporte);
     } catch (err) { next(err); }
   });
@@ -207,7 +207,7 @@ router.post('/:modulo/importar', async (req, res, next) => {
       return res.status(400).json({ error: 'No hay filas para importar. Vuelve a analizar el archivo.' });
     }
 
-    const resultado = await modulo.importar(req.usuarioId, filas, opciones);
+    const resultado = await modulo.importar(req.empresa.id, filas, opciones);
     res.json(resultado);
   } catch (err) { next(err); }
 });
@@ -231,7 +231,7 @@ router.get('/todo/exportar', async (req, res, next) => {
   try {
     const archivos = [];
     for (const clave of Object.keys(MODULOS)) {
-      archivos.push({ nombre: MODULOS[clave].archivo, buffer: await MODULOS[clave].exportarActual(req.usuarioId) });
+      archivos.push({ nombre: MODULOS[clave].archivo, buffer: await MODULOS[clave].exportarActual(req.empresa.id) });
     }
     const zip = await crearZip(archivos);
     const fecha = new Date().toISOString().slice(0, 10);

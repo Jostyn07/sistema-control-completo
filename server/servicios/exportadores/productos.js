@@ -19,11 +19,11 @@ function filaDesdeProducto(producto) {
   });
 }
 
-async function exportarProductos(usuarioId) {
+async function exportarProductos(empresaId) {
   const { data, error } = await supabase
     .from('productos')
     .select('codigo, nombre, precio_venta, minutos_fabricacion, foto_url, activo, categorias_productos(nombre)')
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .order('nombre');
   if (error) throw new Error(error.message);
 

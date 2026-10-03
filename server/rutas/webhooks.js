@@ -12,6 +12,22 @@ const wompi = require('../servicios/wompi');
 const { enviarSuscripcionMeta } = require('../servicios/meta-capi');
 const router = express.Router();
 
+// La referencia de pago es SUB_<empresaId>_<planId>_<ts>. Pagos abiertos
+// antes de la migración traen SUB_<usuarioId>_..., así que si el id no
+// es una empresa se busca la empresa de la que ese usuario es propietario.
+async function resolverEmpresaDeReferencia(id) {
+  if (!id) return null;
+  // Primero como empresa; si no, como usuario propietario (referencia antigua)
+  let { data: m } = await supabase
+    .from('empresa_usuarios').select('empresa_id, usuario_id').eq('empresa_id', id).eq('rol', 'propietario').maybeSingle();
+  if (!m) {
+    ({ data: m } = await supabase
+      .from('empresa_usuarios').select('empresa_id, usuario_id').eq('usuario_id', id).eq('rol', 'propietario').maybeSingle());
+  }
+  // usuarioId = propietario de la empresa (la columna suscripciones.usuario_id es obligatoria)
+  return m ? { empresaId: m.empresa_id, usuarioId: m.usuario_id } : null;
+}
+
 // POST /api/webhooks/wompi
 // Wompi manda el objeto de la transacción completo en el evento (a
 // diferencia de otras pasarelas, no hay que volver a consultar la API
@@ -42,13 +58,17 @@ router.post('/wompi', async (req, res, next) => {
     const { data: yaExiste } = await supabase
       .from('pagos_suscripcion').select('id, estado').eq('wompi_transaction_id', transaccion.id).maybeSingle();
 
-    const [prefijo, usuarioId, planId] = String(transaccion.reference || '').split('_');
+    const [prefijo, idReferencia, planId] = String(transaccion.reference || '').split('_');
     const aceptado = transaccion.status === 'APPROVED';
+    const destino = prefijo === 'SUB' ? await resolverEmpresaDeReferencia(idReferencia) : null;
+    const empresaId = destino ? destino.empresaId : null;
+    const usuarioId = destino ? destino.usuarioId : null; // propietario de la empresa
 
     if (!yaExiste) {
       // Se registra el pago siempre (aceptado o no), para trazabilidad
       const { error: ePago } = await supabase.from('pagos_suscripcion').insert({
-        usuario_id: prefijo === 'SUB' ? usuarioId : null,
+        empresa_id: empresaId,
+        usuario_id: usuarioId,
         plan_id: prefijo === 'SUB' ? planId : null,
         wompi_transaction_id: transaccion.id,
         monto: Math.round(Number(transaccion.amount_in_cents) / 100),
@@ -67,7 +87,7 @@ router.post('/wompi', async (req, res, next) => {
     // Solo se activa la suscripción si el pago fue aceptado Y trae el
     // usuario/plan (siempre deberían venir, se mandaron en la
     // referencia al abrir el Widget).
-    if (aceptado && prefijo === 'SUB' && usuarioId && planId) {
+    if (aceptado && prefijo === 'SUB' && empresaId && planId) {
       const ahora = new Date();
       const vencimiento = new Date(ahora);
       vencimiento.setDate(vencimiento.getDate() + 30);
@@ -75,13 +95,14 @@ router.post('/wompi', async (req, res, next) => {
       const { error: eSusc } = await supabase
         .from('suscripciones')
         .upsert({
+          empresa_id: empresaId,
           usuario_id: usuarioId,
           plan_id: planId,
           estado: 'activa',
           fecha_inicio: ahora.toISOString(),
           fecha_vencimiento: vencimiento.toISOString(),
           actualizado_en: ahora.toISOString()
-        });
+        }, { onConflict: 'empresa_id' });
       if (eSusc) throw new Error(eSusc.message);
 
       // Conversión para Meta. Cubre sobre todo los pagos que se aprueban

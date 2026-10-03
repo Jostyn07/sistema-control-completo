@@ -25,9 +25,9 @@ function generarPlantilla() {
   });
 }
 
-async function exportarNominas(usuarioId) {
+async function exportarNominas(empresaId) {
   const { data: colaboradores, error } = await supabase
-    .from('colaboradores').select('codigo, nombre, activo').eq('usuario_id', usuarioId).order('nombre');
+    .from('colaboradores').select('codigo, nombre, activo').eq('empresa_id', empresaId).order('nombre');
   if (error) throw new Error(error.message);
 
   const filasColaboradores = (colaboradores || [])
@@ -36,9 +36,9 @@ async function exportarNominas(usuarioId) {
 
   const { data: encargos, error: eEnc } = await supabase
     .from('colaboradores_encargos')
-    .select('fecha_entrega, cantidad_entregada, costo_total_proceso, pagado, colaboradores!inner(codigo, usuario_id), procesos(codigo)')
-    .eq('usuario_id', usuarioId)
-    .eq('colaboradores.usuario_id', usuarioId)
+    .select('fecha_entrega, cantidad_entregada, costo_total_proceso, pagado, colaboradores!inner(codigo, empresa_id), procesos(codigo)')
+    .eq('empresa_id', empresaId)
+    .eq('colaboradores.empresa_id', empresaId)
     .order('fecha_entrega', { ascending: false })
     .limit(LIMITE_ENCARGOS);
   if (eEnc) throw new Error(eEnc.message);

@@ -7,7 +7,9 @@
 // ============================================================
 const express = require('express');
 const multer = require('multer');
-const supabase = require('../supabase/cliente');
+// Storage con service_role: las políticas del bucket se definen en la fase
+// de archivos; la ruta siempre queda bajo la carpeta de la empresa activa.
+const { supabaseAdmin: supabase } = require('../supabase/cliente');
 const router = express.Router();
 
 const BUCKET = 'productos-fotos';
@@ -37,7 +39,7 @@ router.post('/foto-producto', (req, res, next) => {
       const extension = (req.file.originalname.split('.').pop() || 'jpg')
         .toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
       const nombreUnico = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
-      const ruta = `${req.usuarioId}/${nombreUnico}`;
+      const ruta = `${req.empresa.id}/${nombreUnico}`;
 
       const { error: eStorage } = await supabase.storage
         .from(BUCKET)

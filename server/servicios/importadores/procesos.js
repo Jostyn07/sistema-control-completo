@@ -17,6 +17,7 @@
 // MATERIALES_PROCESO — si no aparece, su ficha de materiales no se toca.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { usuarioActual } = require('../../contexto');
 const { leerHoja } = require('../excel/lector');
 const {
   HOJA_PROCESOS, HOJA_MATERIALES_PROCESO, COLUMNAS_PROCESOS, COLUMNAS_MATERIALES_PROCESO
@@ -35,31 +36,31 @@ function extraer(filaExcel, mapaClaves) {
   return datos;
 }
 
-async function obtenerProductosPorCodigo(usuarioId) {
-  const { data, error } = await supabase.from('productos').select('id, codigo').eq('usuario_id', usuarioId).not('codigo', 'is', null);
+async function obtenerProductosPorCodigo(empresaId) {
+  const { data, error } = await supabase.from('productos').select('id, codigo').eq('empresa_id', empresaId).not('codigo', 'is', null);
   if (error) throw new Error(error.message);
   return new Map((data || []).map((p) => [p.codigo.toLowerCase(), p]));
 }
 
-async function obtenerMaterialesPorCodigo(usuarioId) {
-  const { data, error } = await supabase.from('materiales').select('id, codigo').eq('usuario_id', usuarioId).not('codigo', 'is', null);
+async function obtenerMaterialesPorCodigo(empresaId) {
+  const { data, error } = await supabase.from('materiales').select('id, codigo').eq('empresa_id', empresaId).not('codigo', 'is', null);
   if (error) throw new Error(error.message);
   return new Map((data || []).map((m) => [m.codigo.toLowerCase(), m]));
 }
 
-async function obtenerProcesosPorCodigo(usuarioId) {
+async function obtenerProcesosPorCodigo(empresaId) {
   const { data, error } = await supabase
     .from('procesos')
     .select('id, codigo, producto_id, nombre, tiempo_minutos, orden, repeticiones_por_unidad, activo')
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .not('codigo', 'is', null);
   if (error) throw new Error(error.message);
   return new Map((data || []).map((p) => [p.codigo.toLowerCase(), p]));
 }
 
-async function siguienteCodigoDisponible(usuarioId) {
+async function siguienteCodigoDisponible(empresaId) {
   const { data, error } = await supabase
-    .from('procesos').select('codigo').eq('usuario_id', usuarioId).not('codigo', 'is', null).like('codigo', 'PROC%');
+    .from('procesos').select('codigo').eq('empresa_id', empresaId).not('codigo', 'is', null).like('codigo', 'PROC%');
   if (error) throw new Error(error.message);
   let maximo = 0;
   for (const fila of data || []) {
@@ -69,9 +70,9 @@ async function siguienteCodigoDisponible(usuarioId) {
   return maximo + 1;
 }
 
-async function siguienteOrden(productoId, usuarioId, ordenesYaUsadosEnArchivo) {
+async function siguienteOrden(productoId, empresaId, ordenesYaUsadosEnArchivo) {
   const { data, error } = await supabase
-    .from('procesos').select('orden').eq('producto_id', productoId).eq('usuario_id', usuarioId)
+    .from('procesos').select('orden').eq('producto_id', productoId).eq('empresa_id', empresaId)
     .order('orden', { ascending: false }).limit(1);
   if (error) throw new Error(error.message);
   const maximoBD = data && data.length > 0 && data[0].orden != null ? Number(data[0].orden) : 0;
@@ -80,14 +81,14 @@ async function siguienteOrden(productoId, usuarioId, ordenesYaUsadosEnArchivo) {
 }
 
 // -------------------- 1. ANALIZAR --------------------
-async function analizarProcesos(buffer, usuarioId) {
+async function analizarProcesos(buffer, empresaId) {
   const filasProcesosExcel = leerHoja(buffer, HOJA_PROCESOS);
   const filasMaterialesExcel = leerHoja(buffer, HOJA_MATERIALES_PROCESO, { opcional: true });
 
   const [productosPorCodigo, materialesPorCodigo, procesosPorCodigo] = await Promise.all([
-    obtenerProductosPorCodigo(usuarioId),
-    obtenerMaterialesPorCodigo(usuarioId),
-    obtenerProcesosPorCodigo(usuarioId)
+    obtenerProductosPorCodigo(empresaId),
+    obtenerMaterialesPorCodigo(empresaId),
+    obtenerProcesosPorCodigo(empresaId)
   ]);
 
   const codigosProcesoVistosEnArchivo = new Set();
@@ -205,10 +206,10 @@ async function analizarProcesos(buffer, usuarioId) {
 }
 
 // -------------------- 2. IMPORTAR --------------------
-async function importarProcesos(usuarioId, filas, modo = 'crear_y_actualizar') {
+async function importarProcesos(empresaId, filas, modo = 'crear_y_actualizar') {
   let siguienteConsecutivo = null;
   const ordenesUsadosEnArchivo = new Map(); // producto_id -> mayor orden ya repartido en esta importación
-  const costoMinuto = await obtenerCostoMinutoManoObra(usuarioId);
+  const costoMinuto = await obtenerCostoMinutoManoObra(empresaId);
   const productosARecalcular = new Set();
   const resultado = { creados: 0, actualizados: 0, sin_cambios: 0, omitidos: 0 };
 
@@ -231,15 +232,15 @@ async function importarProcesos(usuarioId, filas, modo = 'crear_y_actualizar') {
     if (fila.accion === 'crear') {
       let codigo = fila.codigo;
       if (!codigo) {
-        if (siguienteConsecutivo == null) siguienteConsecutivo = await siguienteCodigoDisponible(usuarioId);
+        if (siguienteConsecutivo == null) siguienteConsecutivo = await siguienteCodigoDisponible(empresaId);
         codigo = `PROC${String(siguienteConsecutivo).padStart(3, '0')}`;
         siguienteConsecutivo++;
       }
-      const orden = aNumero(datos.orden) ?? await siguienteOrden(fila.producto_id, usuarioId, ordenesUsadosEnArchivo);
+      const orden = aNumero(datos.orden) ?? await siguienteOrden(fila.producto_id, empresaId, ordenesUsadosEnArchivo);
       ordenesUsadosEnArchivo.set(fila.producto_id, Math.max(ordenesUsadosEnArchivo.get(fila.producto_id) || 0, orden));
 
       const { data: nuevo, error } = await supabase.from('procesos').insert({
-        usuario_id: usuarioId,
+        empresa_id: empresaId, usuario_id: usuarioActual(),
         producto_id: fila.producto_id,
         codigo,
         nombre: aTextoLimpio(datos.nombre),
@@ -272,7 +273,7 @@ async function importarProcesos(usuarioId, filas, modo = 'crear_y_actualizar') {
       if (aTextoLimpio(datos.repeticiones_por_unidad) !== '') cambios.repeticiones_por_unidad = repeticiones;
       if (aTextoLimpio(datos.activo) !== '') cambios.activo = aBooleanoSiNo(datos.activo);
 
-      const { error } = await supabase.from('procesos').update(cambios).eq('id', fila.proceso_id).eq('usuario_id', usuarioId);
+      const { error } = await supabase.from('procesos').update(cambios).eq('id', fila.proceso_id).eq('empresa_id', empresaId);
       if (error) throw new Error(`Fila ${fila.numero_fila}: ${error.message}`);
       procesoId = fila.proceso_id;
 
@@ -296,12 +297,12 @@ async function importarProcesos(usuarioId, filas, modo = 'crear_y_actualizar') {
       resultado.actualizados++;
     }
 
-    await recalcularCostoMaterialesDeProceso(procesoId, usuarioId);
+    await recalcularCostoMaterialesDeProceso(procesoId, empresaId);
     productosARecalcular.add(fila.producto_id);
   }
 
   for (const productoId of productosARecalcular) {
-    await recalcularProductoDesdeSusProcesos(productoId, usuarioId);
+    await recalcularProductoDesdeSusProcesos(productoId, empresaId);
   }
 
   return resultado;

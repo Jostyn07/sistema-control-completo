@@ -13,6 +13,7 @@
 // Ninguna fila puede dejar el stock en negativo.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { usuarioActual } = require('../../contexto');
 const { leerFilas } = require('../excel/lector');
 const { COLUMNAS, TIPOS_VALIDOS } = require('../excel/definiciones/inventario');
 const { aTextoLimpio, aNumero, requerido, numeroValido, enListaValido } = require('../excel/validador');
@@ -25,9 +26,9 @@ function extraerDatos(filaExcel) {
   return datos;
 }
 
-async function obtenerMaterialesPorCodigo(usuarioId) {
+async function obtenerMaterialesPorCodigo(empresaId) {
   const { data, error } = await supabase
-    .from('materiales').select('id, codigo, stock_actual').eq('usuario_id', usuarioId).not('codigo', 'is', null);
+    .from('materiales').select('id, codigo, stock_actual').eq('empresa_id', empresaId).not('codigo', 'is', null);
   if (error) throw new Error(error.message);
   return new Map((data || []).map((m) => [m.codigo.toLowerCase(), m]));
 }
@@ -43,9 +44,9 @@ function deltaSegunTipo(tipo, cantidad) {
 }
 
 // -------------------- 1. ANALIZAR --------------------
-async function analizarInventario(buffer, usuarioId) {
+async function analizarInventario(buffer, empresaId) {
   const filasExcel = leerFilas(buffer);
-  const materialesPorCodigo = await obtenerMaterialesPorCodigo(usuarioId);
+  const materialesPorCodigo = await obtenerMaterialesPorCodigo(empresaId);
 
   // Saldo proyectado por material a medida que se procesan las filas del
   // archivo EN ORDEN — así, si dos filas mueven el mismo material, la
@@ -115,7 +116,7 @@ async function analizarInventario(buffer, usuarioId) {
 // -------------------- 2. IMPORTAR --------------------
 // No recibe `modo` (crear/actualizar) porque no aplica aquí — cada fila
 // válida siempre se aplica, en el mismo orden en que aparece en el archivo.
-async function importarInventario(usuarioId, filas) {
+async function importarInventario(empresaId, filas) {
   const resultado = { aplicados: 0, omitidos: 0 };
 
   for (const fila of filas) {
@@ -125,7 +126,7 @@ async function importarInventario(usuarioId, filas) {
     // de confiar en el saldo proyectado del análisis) por si pasó tiempo
     // entre analizar y confirmar la importación.
     const { data: material, error: eGet } = await supabase
-      .from('materiales').select('id, stock_actual').eq('id', fila.material_id).eq('usuario_id', usuarioId).single();
+      .from('materiales').select('id, stock_actual').eq('id', fila.material_id).eq('empresa_id', empresaId).single();
     if (eGet || !material) throw new Error(`Fila ${fila.numero_fila}: el material ya no existe`);
 
     const stockAnterior = Number(material.stock_actual);
@@ -133,7 +134,7 @@ async function importarInventario(usuarioId, filas) {
     if (stockNuevo < 0) throw new Error(`Fila ${fila.numero_fila}: dejaría el stock en negativo, no se importó`);
 
     const { data: ajuste, error: eAjuste } = await supabase.from('inventario_ajustes').insert({
-      usuario_id: usuarioId,
+      empresa_id: empresaId, usuario_id: usuarioActual(),
       material_id: fila.material_id,
       stock_anterior: stockAnterior,
       stock_nuevo: stockNuevo,
@@ -144,13 +145,13 @@ async function importarInventario(usuarioId, filas) {
 
     const { error: eUpd } = await supabase
       .from('materiales').update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-      .eq('id', fila.material_id).eq('usuario_id', usuarioId);
+      .eq('id', fila.material_id).eq('empresa_id', empresaId);
     if (eUpd) throw new Error(`Fila ${fila.numero_fila}: ${eUpd.message}`);
 
     // Bitácora — igual que en el ajuste manual: si falla, el movimiento ya
     // se aplicó igual, solo queda sin registrar en el historial de gráficas.
     const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-      usuario_id: usuarioId,
+      empresa_id: empresaId, usuario_id: usuarioActual(),
       material_id: fila.material_id,
       tipo: 'ajuste',
       cantidad: fila.delta,

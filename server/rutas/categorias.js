@@ -1,6 +1,6 @@
 // ============================================================
 // MÓDULO — CATEGORÍAS DE PRODUCTOS  (/api/categorias)
-// Requiere sesión. Se filtra por req.usuarioId.
+// Requiere sesión. Se filtra por req.empresa.id.
 // Clasificación del catálogo (ej: "Flores", "Panadería"). Cada
 // producto pertenece a UNA categoría (o ninguna) vía
 // productos.categoria_id. Distinto de la "categoria" de
@@ -18,7 +18,7 @@ router.get('/', async (req, res, next) => {
     const { data, error } = await supabase
       .from('categorias_productos')
       .select('id, nombre')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .order('nombre');
     if (error) throw new Error(error.message);
     res.json(data);
@@ -38,7 +38,7 @@ router.post('/', async (req, res, next) => {
     const { data: existente, error: eGet } = await supabase
       .from('categorias_productos')
       .select('id, nombre')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .ilike('nombre', nombre)
       .maybeSingle();
     if (eGet) throw new Error(eGet.message);
@@ -46,7 +46,7 @@ router.post('/', async (req, res, next) => {
 
     const { data, error } = await supabase
       .from('categorias_productos')
-      .insert({ usuario_id: req.usuarioId, nombre })
+      .insert({ empresa_id: req.empresa.id, usuario_id: req.usuarioId, nombre })
       .select('id, nombre').single();
     if (error) throw new Error(error.message);
     res.status(201).json(data);

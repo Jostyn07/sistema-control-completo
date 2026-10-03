@@ -21,24 +21,24 @@
 const supabase = require('../supabase/cliente');
 
 // Devuelve el costo por MINUTO (la config se guarda por hora, más natural para el usuario)
-async function obtenerCostoMinutoManoObra(usuarioId) {
+async function obtenerCostoMinutoManoObra(empresaId) {
   const { data, error } = await supabase
     .from('configuracion_produccion')
     .select('costo_hora_mano_obra')
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   const costoHora = data ? Number(data.costo_hora_mano_obra) : 0;
   return costoHora / 60;
 }
 
-async function calcularCostoMateriales(materiales, usuarioId) {
+async function calcularCostoMateriales(materiales, empresaId) {
   if (!materiales || materiales.length === 0) return 0;
   const ids = materiales.map(m => m.material_id);
   const { data: filas, error } = await supabase
     .from('materiales')
     .select('id, costo_unitario')
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .in('id', ids);
   if (error) throw new Error(error.message);
 
@@ -54,9 +54,9 @@ async function calcularCostoMateriales(materiales, usuarioId) {
 
 // Costo total de un producto en modo "por ficha técnica" = materiales
 // directos + (minutos de fabricación × precio de hora global ÷ 60)
-async function calcularCostoProducto({ materiales, minutosFabricacion, usuarioId }) {
-  const costoMateriales = await calcularCostoMateriales(materiales, usuarioId);
-  const costoMinuto = await obtenerCostoMinutoManoObra(usuarioId);
+async function calcularCostoProducto({ materiales, minutosFabricacion, empresaId }) {
+  const costoMateriales = await calcularCostoMateriales(materiales, empresaId);
+  const costoMinuto = await obtenerCostoMinutoManoObra(empresaId);
   const costoManoObra = Number(minutosFabricacion || 0) * costoMinuto;
   return Math.round((costoMateriales + costoManoObra) * 100) / 100;
 }
@@ -65,7 +65,7 @@ async function calcularCostoProducto({ materiales, minutosFabricacion, usuarioId
 // su lista actual de procesos_materiales. Se llama cada vez que cambian
 // los materiales de un proceso, o cuando cambia el costo de un material
 // que algún proceso usa.
-async function recalcularCostoMaterialesDeProceso(procesoId, usuarioId) {
+async function recalcularCostoMaterialesDeProceso(procesoId, empresaId) {
   const { data: filas, error: eMat } = await supabase
     .from('procesos_materiales')
     .select('material_id, cantidad')
@@ -73,14 +73,14 @@ async function recalcularCostoMaterialesDeProceso(procesoId, usuarioId) {
   if (eMat) throw new Error(eMat.message);
 
   const costoMateriales = Math.round(
-    await calcularCostoMateriales((filas || []).map(f => ({ material_id: f.material_id, cantidad: f.cantidad })), usuarioId) * 100
+    await calcularCostoMateriales((filas || []).map(f => ({ material_id: f.material_id, cantidad: f.cantidad })), empresaId) * 100
   ) / 100;
 
   const { error: eUpd } = await supabase
     .from('procesos')
     .update({ costo_materiales: costoMateriales })
     .eq('id', procesoId)
-    .eq('usuario_id', usuarioId);
+    .eq('empresa_id', empresaId);
   if (eUpd) throw new Error(eUpd.message);
 
   return costoMateriales;
@@ -126,12 +126,12 @@ async function resolverModoCosteo(producto, tieneProcesos) {
 // guarda el resultado. Se llama cada vez que se crea/edita/elimina un
 // proceso de ese producto, o cuando cambia el costo de un material que
 // afecta a ese producto (directo o vía procesos).
-async function recalcularProductoDesdeSusProcesos(productoId, usuarioId) {
+async function recalcularProductoDesdeSusProcesos(productoId, empresaId) {
   const { data: producto, error: eProd } = await supabase
     .from('productos')
     .select('id, usa_costeo_por_procesos, minutos_fabricacion')
     .eq('id', productoId)
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .single();
   if (eProd || !producto) throw new Error('Producto no encontrado');
 
@@ -178,7 +178,7 @@ async function recalcularProductoDesdeSusProcesos(productoId, usuarioId) {
     costo = await calcularCostoProducto({
       materiales: (filasMateriales || []).map(f => ({ material_id: f.material_id, cantidad: f.cantidad })),
       minutosFabricacion,
-      usuarioId
+      empresaId
     });
   }
 
@@ -193,7 +193,7 @@ async function recalcularProductoDesdeSusProcesos(productoId, usuarioId) {
     .from('productos')
     .update(cambios)
     .eq('id', productoId)
-    .eq('usuario_id', usuarioId);
+    .eq('empresa_id', empresaId);
   if (eUpd) throw new Error(eUpd.message);
 
   return { minutos_fabricacion: minutosFabricacion, costo_calculado: costo, usa_costeo_por_procesos: usaCosteoPorProcesos };
@@ -201,17 +201,17 @@ async function recalcularProductoDesdeSusProcesos(productoId, usuarioId) {
 
 // Recalcula TODOS los productos activos de un usuario (cuando cambia el
 // precio de hora global — afecta a todos, tengan o no procesos).
-async function recalcularTodosLosProductos(usuarioId) {
+async function recalcularTodosLosProductos(empresaId) {
   const { data: productos, error } = await supabase
     .from('productos')
     .select('id')
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .eq('activo', true);
   if (error) throw new Error(error.message);
 
   let contador = 0;
   for (const producto of productos || []) {
-    await recalcularProductoDesdeSusProcesos(producto.id, usuarioId);
+    await recalcularProductoDesdeSusProcesos(producto.id, empresaId);
     contador++;
   }
   return contador;
@@ -226,14 +226,14 @@ async function recalcularTodosLosProductos(usuarioId) {
 // Lo usa Ventas para no depender solo de productos_materiales — así el
 // descuento de inventario funciona igual sin importar cómo se costeó
 // el producto.
-async function obtenerFichasEfectivasParaProductos(productoIds, usuarioId) {
+async function obtenerFichasEfectivasParaProductos(productoIds, empresaId) {
   if (!productoIds || productoIds.length === 0) return [];
   const idsUnicos = [...new Set(productoIds)];
 
   const { data: productos, error: eProd } = await supabase
     .from('productos')
     .select('id, usa_costeo_por_procesos')
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .in('id', idsUnicos);
   if (eProd) throw new Error(eProd.message);
 
@@ -255,7 +255,7 @@ async function obtenerFichasEfectivasParaProductos(productoIds, usuarioId) {
     const { data: procesos, error: eProc } = await supabase
       .from('procesos')
       .select('id, producto_id')
-      .eq('usuario_id', usuarioId)
+      .eq('empresa_id', empresaId)
       .in('producto_id', idsProcesos)
       .eq('activo', true);
     if (eProc) throw new Error(eProc.message);
@@ -293,30 +293,30 @@ async function obtenerFichasEfectivasParaProductos(productoIds, usuarioId) {
 // importación masiva por Excel (servicios/importadores/materiales.js),
 // para no mantener esta lógica duplicada en dos lugares.
 // Devuelve cuántos productos distintos se recalcularon.
-async function recalcularProductosQueUsanMaterial(materialId, usuarioId) {
+async function recalcularProductosQueUsanMaterial(materialId, empresaId) {
   const productoIds = new Set();
 
   const { data: directos, error: e1 } = await supabase
     .from('productos_materiales')
-    .select('producto_id, productos!inner(usuario_id)')
+    .select('producto_id, productos!inner(empresa_id)')
     .eq('material_id', materialId)
-    .eq('productos.usuario_id', usuarioId);
+    .eq('productos.empresa_id', empresaId);
   if (e1) throw new Error(e1.message);
   for (const f of directos || []) productoIds.add(f.producto_id);
 
   const { data: procesosQueLoUsan, error: e2 } = await supabase
     .from('procesos_materiales')
-    .select('proceso_id, procesos!inner(id, producto_id, usuario_id)')
+    .select('proceso_id, procesos!inner(id, producto_id, empresa_id)')
     .eq('material_id', materialId)
-    .eq('procesos.usuario_id', usuarioId);
+    .eq('procesos.empresa_id', empresaId);
   if (e2) throw new Error(e2.message);
   for (const f of procesosQueLoUsan || []) {
-    await recalcularCostoMaterialesDeProceso(f.proceso_id, usuarioId);
+    await recalcularCostoMaterialesDeProceso(f.proceso_id, empresaId);
     productoIds.add(f.procesos.producto_id);
   }
 
   for (const productoId of productoIds) {
-    await recalcularProductoDesdeSusProcesos(productoId, usuarioId);
+    await recalcularProductoDesdeSusProcesos(productoId, empresaId);
   }
   return productoIds.size;
 }

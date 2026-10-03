@@ -26,11 +26,11 @@ function generarPlantilla() {
   });
 }
 
-async function exportarVentas(usuarioId) {
+async function exportarVentas(empresaId) {
   const { data: ventas, error } = await supabase
     .from('ventas')
     .select('id, codigo, fecha, cliente, fecha_entrega, estado, pagado')
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .order('fecha', { ascending: false })
     .limit(LIMITE_HISTORIAL);
   if (error) throw new Error(error.message);

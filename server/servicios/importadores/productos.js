@@ -15,6 +15,7 @@
 //     técnica que ya tenía para no perderla ni recalcular mal el costo.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { usuarioActual } = require('../../contexto');
 const { leerFilas } = require('../excel/lector');
 const { COLUMNAS } = require('../excel/definiciones/productos');
 const { aTextoLimpio, aNumero, aBooleanoSiNo, requerido, numeroValido, siNoValido } = require('../excel/validador');
@@ -38,21 +39,21 @@ function validarFila(datos) {
   return errores;
 }
 
-async function obtenerCategoriasExistentes(usuarioId) {
-  const { data, error } = await supabase.from('categorias_productos').select('id, nombre').eq('usuario_id', usuarioId);
+async function obtenerCategoriasExistentes(empresaId) {
+  const { data, error } = await supabase.from('categorias_productos').select('id, nombre').eq('empresa_id', empresaId);
   if (error) throw new Error(error.message);
   return new Map((data || []).map((c) => [c.nombre.toLowerCase(), c]));
 }
 
-async function obtenerProductosExistentes(usuarioId) {
+async function obtenerProductosExistentes(empresaId) {
   const { data, error } = await supabase
     .from('productos')
     .select('id, codigo, nombre, precio_venta, minutos_fabricacion, foto_url, activo, categoria_id, usa_costeo_por_procesos, categorias_productos(nombre)')
-    .eq('usuario_id', usuarioId);
+    .eq('empresa_id', empresaId);
   if (error) throw new Error(error.message);
 
   const { data: procesos, error: eProc } = await supabase
-    .from('procesos').select('producto_id').eq('usuario_id', usuarioId).eq('activo', true);
+    .from('procesos').select('producto_id').eq('empresa_id', empresaId).eq('activo', true);
   if (eProc) throw new Error(eProc.message);
   const idsConProcesos = new Set((procesos || []).map((p) => p.producto_id));
 
@@ -66,9 +67,9 @@ async function obtenerProductosExistentes(usuarioId) {
   return { porCodigo, porNombre };
 }
 
-async function siguienteCodigoDisponible(usuarioId) {
+async function siguienteCodigoDisponible(empresaId) {
   const { data, error } = await supabase
-    .from('productos').select('codigo').eq('usuario_id', usuarioId).not('codigo', 'is', null).like('codigo', 'PROD%');
+    .from('productos').select('codigo').eq('empresa_id', empresaId).not('codigo', 'is', null).like('codigo', 'PROD%');
   if (error) throw new Error(error.message);
   let maximo = 0;
   for (const fila of data || []) {
@@ -79,11 +80,11 @@ async function siguienteCodigoDisponible(usuarioId) {
 }
 
 // -------------------- 1. ANALIZAR --------------------
-async function analizarProductos(buffer, usuarioId) {
+async function analizarProductos(buffer, empresaId) {
   const filasExcel = leerFilas(buffer);
   const [{ porCodigo, porNombre }, categorias] = await Promise.all([
-    obtenerProductosExistentes(usuarioId),
-    obtenerCategoriasExistentes(usuarioId)
+    obtenerProductosExistentes(empresaId),
+    obtenerCategoriasExistentes(empresaId)
   ]);
   const codigosVistosEnArchivo = new Set();
   const resumen = { nuevos: 0, actualizados: 0, sin_cambios: 0, advertencias: 0, errores: 0 };
@@ -151,25 +152,25 @@ async function analizarProductos(buffer, usuarioId) {
 
 // Devuelve el id de la categoría (existente o recién creada), usando
 // `cache` para no crear la misma categoría dos veces en una sola importación.
-async function obtenerOCrearCategoriaId(usuarioId, nombreCategoria, cache) {
+async function obtenerOCrearCategoriaId(empresaId, nombreCategoria, cache) {
   if (!nombreCategoria) return null;
   const clave = nombreCategoria.toLowerCase();
   if (cache.has(clave)) return cache.get(clave).id;
 
   const { data: existente, error: eGet } = await supabase
-    .from('categorias_productos').select('id, nombre').eq('usuario_id', usuarioId).ilike('nombre', nombreCategoria).maybeSingle();
+    .from('categorias_productos').select('id, nombre').eq('empresa_id', empresaId).ilike('nombre', nombreCategoria).maybeSingle();
   if (eGet) throw new Error(eGet.message);
   if (existente) { cache.set(clave, existente); return existente.id; }
 
   const { data: creada, error: eIns } = await supabase
-    .from('categorias_productos').insert({ usuario_id: usuarioId, nombre: nombreCategoria }).select('id, nombre').single();
+    .from('categorias_productos').insert({ empresa_id: empresaId, usuario_id: usuarioActual(), nombre: nombreCategoria }).select('id, nombre').single();
   if (eIns) throw new Error(eIns.message);
   cache.set(clave, creada);
   return creada.id;
 }
 
 // -------------------- 2. IMPORTAR --------------------
-async function importarProductos(usuarioId, filas, modo = 'crear_y_actualizar') {
+async function importarProductos(empresaId, filas, modo = 'crear_y_actualizar') {
   let siguienteConsecutivo = null;
   const cacheCategorias = new Map();
   const resultado = { creados: 0, actualizados: 0, sin_cambios: 0, omitidos: 0, categorias_creadas: 0 };
@@ -183,21 +184,21 @@ async function importarProductos(usuarioId, filas, modo = 'crear_y_actualizar') 
     const datos = fila.datos;
     const categoriaTexto = aTextoLimpio(datos.categoria);
     const categoriasAntes = cacheCategorias.size;
-    const categoriaId = categoriaTexto ? await obtenerOCrearCategoriaId(usuarioId, categoriaTexto, cacheCategorias) : null;
+    const categoriaId = categoriaTexto ? await obtenerOCrearCategoriaId(empresaId, categoriaTexto, cacheCategorias) : null;
     if (cacheCategorias.size > categoriasAntes) resultado.categorias_creadas++;
 
     if (fila.accion === 'crear') {
       let codigo = fila.codigo;
       if (!codigo) {
-        if (siguienteConsecutivo == null) siguienteConsecutivo = await siguienteCodigoDisponible(usuarioId);
+        if (siguienteConsecutivo == null) siguienteConsecutivo = await siguienteCodigoDisponible(empresaId);
         codigo = `PROD${String(siguienteConsecutivo).padStart(3, '0')}`;
         siguienteConsecutivo++;
       }
       const minutosFabricacion = aNumero(datos.minutos_fabricacion) ?? 0;
-      const costoCalculado = await calcularCostoProducto({ materiales: [], minutosFabricacion, usuarioId });
+      const costoCalculado = await calcularCostoProducto({ materiales: [], minutosFabricacion, empresaId });
 
       const { error } = await supabase.from('productos').insert({
-        usuario_id: usuarioId,
+        empresa_id: empresaId, usuario_id: usuarioActual(),
         codigo,
         nombre: aTextoLimpio(datos.nombre),
         categoria_id: categoriaId,
@@ -212,12 +213,12 @@ async function importarProductos(usuarioId, filas, modo = 'crear_y_actualizar') 
     } else if (fila.accion === 'actualizar') {
       const { data: actual, error: eActual } = await supabase
         .from('productos').select('minutos_fabricacion, categoria_id, foto_url, activo, usa_costeo_por_procesos')
-        .eq('id', fila.producto_id).eq('usuario_id', usuarioId).single();
+        .eq('id', fila.producto_id).eq('empresa_id', empresaId).single();
       if (eActual || !actual) throw new Error(`Fila ${fila.numero_fila}: el producto ya no existe`);
 
       const { count: countProcesos, error: eCount } = await supabase
         .from('procesos').select('id', { count: 'exact', head: true })
-        .eq('producto_id', fila.producto_id).eq('usuario_id', usuarioId).eq('activo', true);
+        .eq('producto_id', fila.producto_id).eq('empresa_id', empresaId).eq('activo', true);
       if (eCount) throw new Error(eCount.message);
       const tieneProcesos = countProcesos > 0;
 
@@ -244,14 +245,14 @@ async function importarProductos(usuarioId, filas, modo = 'crear_y_actualizar') 
         cambios.costo_calculado = await calcularCostoProducto({
           materiales: (filasMateriales || []).map((f) => ({ material_id: f.material_id, cantidad: f.cantidad })),
           minutosFabricacion,
-          usuarioId
+          empresaId
         });
       }
 
-      const { error } = await supabase.from('productos').update(cambios).eq('id', fila.producto_id).eq('usuario_id', usuarioId);
+      const { error } = await supabase.from('productos').update(cambios).eq('id', fila.producto_id).eq('empresa_id', empresaId);
       if (error) throw new Error(`Fila ${fila.numero_fila}: ${error.message}`);
 
-      if (tieneProcesos) await recalcularProductoDesdeSusProcesos(fila.producto_id, usuarioId);
+      if (tieneProcesos) await recalcularProductoDesdeSusProcesos(fila.producto_id, empresaId);
       resultado.actualizados++;
     }
   }

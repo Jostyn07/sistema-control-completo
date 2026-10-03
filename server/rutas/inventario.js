@@ -1,6 +1,6 @@
 // ============================================================
 // MÓDULO 3 — INVENTARIO EN TIEMPO REAL  (/api/inventario)
-// Requiere sesión. Todo se filtra por req.usuarioId.
+// Requiere sesión. Todo se filtra por req.empresa.id.
 // - GET  /materiales   stock, punto de reorden y estado (semáforo)
 // - GET  /capacidad    cuántas unidades de cada producto se pueden
 //                      fabricar ahora + cuál material es el limitante
@@ -18,7 +18,7 @@ const router = express.Router();
 // GET /api/inventario/materiales
 router.get('/materiales', async (req, res, next) => {
   try {
-    const inventario = await servicioInventario.obtenerInventarioMateriales(req.usuarioId);
+    const inventario = await servicioInventario.obtenerInventarioMateriales(req.empresa.id);
     res.json(inventario);
   } catch (err) { next(err); }
 });
@@ -26,7 +26,7 @@ router.get('/materiales', async (req, res, next) => {
 // GET /api/inventario/wip
 router.get('/wip', async (req, res, next) => {
   try {
-    const wip = await obtenerWIPParaInventario(req.usuarioId);
+    const wip = await obtenerWIPParaInventario(req.empresa.id);
     res.json(wip);
   } catch (err) { next(err); }
 });
@@ -37,7 +37,7 @@ router.get('/capacidad', async (req, res, next) => {
     const { data: productos, error: eProd } = await supabase
       .from('productos')
       .select('id, nombre, foto_url, precio_venta')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('activo', true)
       .order('nombre');
     if (eProd) throw new Error(eProd.message);
@@ -95,11 +95,11 @@ router.post('/ajuste', async (req, res, next) => {
       return res.status(400).json({ error: 'El motivo del ajuste es obligatorio (para trazabilidad)' });
 
     const { data: material, error: eGet } = await supabase
-      .from('materiales').select('id, stock_actual').eq('id', material_id).eq('usuario_id', req.usuarioId).single();
+      .from('materiales').select('id, stock_actual').eq('id', material_id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !material) return res.status(404).json({ error: 'Material no encontrado' });
 
     const { data: ajusteCreado, error: eAjuste } = await supabase.from('inventario_ajustes').insert({
-      usuario_id: req.usuarioId,
+      empresa_id: req.empresa.id, usuario_id: req.usuarioId,
       material_id,
       stock_anterior: material.stock_actual,
       stock_nuevo: Number(cantidad_nueva),
@@ -112,14 +112,14 @@ router.post('/ajuste', async (req, res, next) => {
       .from('materiales')
       .update({ stock_actual: Number(cantidad_nueva), actualizado_en: new Date().toISOString() })
       .eq('id', material_id)
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .select().single();
     if (eUpd) throw new Error(eUpd.message);
 
     // Bitácora (Fase 2) — misma regla que venta/compra: si falla, el
     // ajuste ya se aplicó igual, solo queda sin registrar en el historial.
     const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-      usuario_id: req.usuarioId,
+      empresa_id: req.empresa.id, usuario_id: req.usuarioId,
       material_id,
       tipo: 'ajuste',
       cantidad: Math.round((Number(cantidad_nueva) - Number(material.stock_actual)) * 100) / 100,
@@ -139,7 +139,7 @@ router.get('/ajustes', async (req, res, next) => {
     const { data, error } = await supabase
       .from('inventario_ajustes')
       .select('*, materiales(nombre, unidad)')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .order('fecha', { ascending: false })
       .limit(100);
     if (error) throw new Error(error.message);

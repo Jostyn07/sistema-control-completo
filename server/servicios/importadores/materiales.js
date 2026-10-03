@@ -2,13 +2,13 @@
 // IMPORTADOR — Materiales (server/servicios/importadores/materiales.js)
 // Dos pasos, igual que en el resto de la plataforma:
 //
-//   1. analizarMateriales(buffer, usuarioId)
+//   1. analizarMateriales(buffer, empresaId)
 //      Lee el Excel y VALIDA cada fila, pero no toca la base de
 //      datos. Devuelve un reporte fila por fila (para previsualizar)
 //      con un resumen (nuevos / actualizados / sin cambios /
 //      advertencias / errores).
 //
-//   2. importarMateriales(usuarioId, filas, modo)
+//   2. importarMateriales(empresaId, filas, modo)
 //      Recibe las filas que ya devolvió analizarMateriales() (el
 //      usuario las vio y confirmó) y ahí sí crea/actualiza en la
 //      base de datos. Las filas con error NUNCA se importan.
@@ -20,6 +20,7 @@
 // coincidencia, se crea uno nuevo y se le asigna un código.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { usuarioActual } = require('../../contexto');
 const { leerFilas } = require('../excel/lector');
 const { COLUMNAS } = require('../excel/definiciones/materiales');
 const { aTextoLimpio, aNumero, aBooleanoSiNo, requerido, numeroValido, siNoValido } = require('../excel/validador');
@@ -53,11 +54,11 @@ function validarFila(datos) {
   return errores;
 }
 
-async function obtenerMaterialesExistentes(usuarioId) {
+async function obtenerMaterialesExistentes(empresaId) {
   const { data, error } = await supabase
     .from('materiales')
     .select('id, codigo, nombre, costo_unitario, stock_actual')
-    .eq('usuario_id', usuarioId);
+    .eq('empresa_id', empresaId);
   if (error) throw new Error(error.message);
 
   const porCodigo = new Map();
@@ -69,11 +70,11 @@ async function obtenerMaterialesExistentes(usuarioId) {
   return { porCodigo, porNombre };
 }
 
-async function siguienteCodigoDisponible(usuarioId) {
+async function siguienteCodigoDisponible(empresaId) {
   const { data, error } = await supabase
     .from('materiales')
     .select('codigo')
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .not('codigo', 'is', null)
     .like('codigo', 'MAT%');
   if (error) throw new Error(error.message);
@@ -87,9 +88,9 @@ async function siguienteCodigoDisponible(usuarioId) {
 }
 
 // -------------------- 1. ANALIZAR (solo lectura) --------------------
-async function analizarMateriales(buffer, usuarioId) {
+async function analizarMateriales(buffer, empresaId) {
   const filasExcel = leerFilas(buffer);
-  const { porCodigo, porNombre } = await obtenerMaterialesExistentes(usuarioId);
+  const { porCodigo, porNombre } = await obtenerMaterialesExistentes(empresaId);
   const codigosVistosEnArchivo = new Set();
 
   const resumen = { nuevos: 0, actualizados: 0, sin_cambios: 0, advertencias: 0, errores: 0 };
@@ -153,7 +154,7 @@ async function analizarMateriales(buffer, usuarioId) {
 
 // -------------------- 2. IMPORTAR (escribe en la base) --------------------
 // modo: 'crear_solamente' | 'actualizar_solamente' | 'crear_y_actualizar'
-async function importarMateriales(usuarioId, filas, modo = 'crear_y_actualizar') {
+async function importarMateriales(empresaId, filas, modo = 'crear_y_actualizar') {
   let siguienteConsecutivo = null;
   const resultado = { creados: 0, actualizados: 0, sin_cambios: 0, omitidos: 0 };
 
@@ -168,12 +169,12 @@ async function importarMateriales(usuarioId, filas, modo = 'crear_y_actualizar')
     if (fila.accion === 'crear') {
       let codigo = fila.codigo;
       if (!codigo) {
-        if (siguienteConsecutivo == null) siguienteConsecutivo = await siguienteCodigoDisponible(usuarioId);
+        if (siguienteConsecutivo == null) siguienteConsecutivo = await siguienteCodigoDisponible(empresaId);
         codigo = `MAT${String(siguienteConsecutivo).padStart(3, '0')}`;
         siguienteConsecutivo++;
       }
       const nuevo = {
-        usuario_id: usuarioId,
+        empresa_id: empresaId, usuario_id: usuarioActual(),
         codigo,
         nombre: aTextoLimpio(datos.nombre),
         unidad: aTextoLimpio(datos.unidad),
@@ -203,19 +204,19 @@ async function importarMateriales(usuarioId, filas, modo = 'crear_y_actualizar')
         // stock_actual NUNCA se toca desde aquí — ver advertencia del importador.
       };
       const { error } = await supabase
-        .from('materiales').update(cambios).eq('id', fila.material_id).eq('usuario_id', usuarioId);
+        .from('materiales').update(cambios).eq('id', fila.material_id).eq('empresa_id', empresaId);
       if (error) throw new Error(`Fila ${fila.numero_fila}: ${error.message}`);
 
       if (costoCambio) {
         const { error: eHist } = await supabase.from('materiales_historial_precio').insert({
-          usuario_id: usuarioId,
+          empresa_id: empresaId, usuario_id: usuarioActual(),
           material_id: fila.material_id,
           costo_anterior: fila.costo_anterior,
           costo_nuevo: costoNuevo,
           origen: 'importacion_excel'
         });
         if (eHist) throw new Error(eHist.message);
-        await recalcularProductosQueUsanMaterial(fila.material_id, usuarioId);
+        await recalcularProductosQueUsanMaterial(fila.material_id, empresaId);
       }
       resultado.actualizados++;
     }

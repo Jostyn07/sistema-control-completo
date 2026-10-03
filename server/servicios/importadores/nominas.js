@@ -7,6 +7,7 @@
 //   procesos pendientes — ver definiciones/nominas.js.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { usuarioActual } = require('../../contexto');
 const { leerHoja } = require('../excel/lector');
 const {
   HOJA_COLABORADORES, HOJA_ENCARGOS, COLUMNAS_COLABORADORES, COLUMNAS_ENCARGOS
@@ -23,23 +24,23 @@ function extraer(filaExcel, mapaClaves) {
   return datos;
 }
 
-async function obtenerColaboradoresPorCodigo(usuarioId) {
+async function obtenerColaboradoresPorCodigo(empresaId) {
   const { data, error } = await supabase
-    .from('colaboradores').select('id, codigo, nombre').eq('usuario_id', usuarioId).not('codigo', 'is', null);
+    .from('colaboradores').select('id, codigo, nombre').eq('empresa_id', empresaId).not('codigo', 'is', null);
   if (error) throw new Error(error.message);
   return new Map((data || []).map((c) => [c.codigo.toLowerCase(), c]));
 }
 
-async function obtenerProcesosPorCodigo(usuarioId) {
+async function obtenerProcesosPorCodigo(empresaId) {
   const { data, error } = await supabase
-    .from('procesos').select('id, codigo').eq('usuario_id', usuarioId).not('codigo', 'is', null);
+    .from('procesos').select('id, codigo').eq('empresa_id', empresaId).not('codigo', 'is', null);
   if (error) throw new Error(error.message);
   return new Map((data || []).map((p) => [p.codigo.toLowerCase(), p]));
 }
 
-async function siguienteCodigoDisponible(usuarioId) {
+async function siguienteCodigoDisponible(empresaId) {
   const { data, error } = await supabase
-    .from('colaboradores').select('codigo').eq('usuario_id', usuarioId).not('codigo', 'is', null).like('codigo', 'COL%');
+    .from('colaboradores').select('codigo').eq('empresa_id', empresaId).not('codigo', 'is', null).like('codigo', 'COL%');
   if (error) throw new Error(error.message);
   let maximo = 0;
   for (const fila of data || []) {
@@ -50,10 +51,10 @@ async function siguienteCodigoDisponible(usuarioId) {
 }
 
 // -------------------- 1. ANALIZAR --------------------
-async function analizarNominas(buffer, usuarioId) {
+async function analizarNominas(buffer, empresaId) {
   // ---- COLABORADORES ----
   const filasColabExcel = leerHoja(buffer, HOJA_COLABORADORES);
-  const colaboradoresPorCodigo = await obtenerColaboradoresPorCodigo(usuarioId);
+  const colaboradoresPorCodigo = await obtenerColaboradoresPorCodigo(empresaId);
 
   const codigosVistos = new Set();
   const resumenColaboradores = { nuevos: 0, actualizados: 0, errores: 0 };
@@ -85,7 +86,7 @@ async function analizarNominas(buffer, usuarioId) {
 
   // ---- ENCARGOS ----
   const filasEncargosExcel = leerHoja(buffer, HOJA_ENCARGOS, { opcional: true });
-  const procesosPorCodigo = await obtenerProcesosPorCodigo(usuarioId);
+  const procesosPorCodigo = await obtenerProcesosPorCodigo(empresaId);
   const colaboradorLocalPorCodigo = new Map(
     filasColaboradores.filter((f) => f.codigo).map((f) => [f.codigo.toLowerCase(), f])
   );
@@ -142,7 +143,7 @@ async function analizarNominas(buffer, usuarioId) {
 }
 
 // -------------------- 2. IMPORTAR --------------------
-async function importarNominas(usuarioId, reporte) {
+async function importarNominas(empresaId, reporte) {
   const resultado = {
     colaboradores: { creados: 0, actualizados: 0, omitidos: 0 },
     encargos: { registrados: 0, omitidos: 0 }
@@ -158,12 +159,12 @@ async function importarNominas(usuarioId, reporte) {
     if (fila.accion === 'crear') {
       let codigo = fila.codigo;
       if (!codigo) {
-        if (siguienteConsecutivo == null) siguienteConsecutivo = await siguienteCodigoDisponible(usuarioId);
+        if (siguienteConsecutivo == null) siguienteConsecutivo = await siguienteCodigoDisponible(empresaId);
         codigo = `COL${String(siguienteConsecutivo).padStart(3, '0')}`;
         siguienteConsecutivo++;
       }
       const { data: nuevo, error } = await supabase.from('colaboradores').insert({
-        usuario_id: usuarioId,
+        empresa_id: empresaId, usuario_id: usuarioActual(),
         codigo,
         nombre: aTextoLimpio(datos.nombre),
         cedula_cifrada: cifrar(aTextoLimpio(datos.cedula) || null),
@@ -180,7 +181,7 @@ async function importarNominas(usuarioId, reporte) {
         direccion_cifrada: cifrar(aTextoLimpio(datos.direccion) || null),
         activo: aBooleanoSiNo(datos.activo) ?? true,
         actualizado_en: new Date().toISOString()
-      }).eq('id', fila.colaborador_id).eq('usuario_id', usuarioId);
+      }).eq('id', fila.colaborador_id).eq('empresa_id', empresaId);
       if (error) throw new Error(`Fila ${fila.numero_fila}: ${error.message}`);
       resultado.colaboradores.actualizados++;
     }
@@ -203,7 +204,7 @@ async function importarNominas(usuarioId, reporte) {
     const pagado = aBooleanoSiNo(datos.pagado) ?? false;
 
     const { error } = await supabase.from('colaboradores_encargos').insert({
-      usuario_id: usuarioId,
+      empresa_id: empresaId, usuario_id: usuarioActual(),
       colaborador_id: colaboradorId,
       proceso_id: fila.proceso_id,
       cantidad_requerida: cantidad,

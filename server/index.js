@@ -9,6 +9,8 @@ const path = require('path');
 const requiereAutenticacion = require('./middleware/auth');
 const requiereSuscripcionActiva = require('./middleware/suscripcion');
 const exigirAdmin = require('./middleware/admin');
+const resolverEmpresa = require('./middleware/tenant');
+const requierePermiso = require('./middleware/permissions');
 const rutasAuth = require('./rutas/auth');
 const rutasMateriales = require('./rutas/materiales');
 const rutasProductos = require('./rutas/productos');
@@ -37,38 +39,51 @@ app.use('/api/webhooks', require('./rutas/webhooks'));
 // ---- A partir de aquí, toda ruta de /api/* exige sesión válida ----
 app.use('/api', requiereAutenticacion);
 
+// ---- Admin de PLATAFORMA (platform_owner): mira métricas de toda la
+// plataforma, no una empresa. Va antes del contexto de empresa.
+app.use('/api/admin', exigirAdmin, require('./rutas/admin'));
+
+// ---- Desde aquí toda petición trabaja dentro de UNA empresa:
+// tenant.js valida la membresía y deja req.empresa = { id, rol, permisos }.
+app.use('/api', resolverEmpresa);
+
+// ---- Empresas y equipo (permisos se validan ruta por ruta adentro).
+app.use('/api/empresas', require('./rutas/empresas'));
+
 // ---- Suscripción va ANTES del bloqueo por vencimiento: aunque la
 // cuenta esté vencida, la persona siempre debe poder pagar/renovar.
-app.use('/api/suscripcion', require('./rutas/suscripcion'));
-
-// ---- Admin: mira TODA la base de suscriptores, no un solo tenant —
-// no depende de tu propio estado de suscripción, por eso va antes
-// del bloqueo por vencimiento.
-app.use('/api/admin', exigirAdmin, require('./rutas/admin'));
+app.use('/api/suscripcion', requierePermiso('suscripcion'), require('./rutas/suscripcion'));
 
 // ---- De aquí en adelante, si la suscripción está vencida más allá
 // del período de gracia, se bloquea crear/editar (nunca lectura).
 app.use('/api', requiereSuscripcionActiva);
 
-// ---- Rutas de API (una por módulo; se van sumando en orden) ----
-app.use('/api/materiales', rutasMateriales);
-app.use('/api/productos', rutasProductos);
-app.use('/api/categorias', require('./rutas/categorias'));
-app.use('/api/procesos', require('./rutas/procesos'));
-app.use('/api/colaboradores', require('./rutas/colaboradores'));
-app.use('/api/inventario', require('./rutas/inventario'));
-app.use('/api/ventas', require('./rutas/ventas'));
-app.use('/api/compras', require('./rutas/compras'));
-app.use('/api/finanzas', require('./rutas/finanzas'));
-app.use('/api/dashboard', require('./rutas/dashboard'));
-app.use('/api/facturacion', require('./rutas/facturacion'));
-app.use('/api/configuracion', require('./rutas/configuracion'));
-app.use('/api/almacenamiento', require('./rutas/almacenamiento'));
-app.use('/api/excel', require('./rutas/excel'));
+// ---- Rutas de negocio: cada una exige el permiso de su módulo.
+// La acción sale del método: GET=ver, POST=crear, PUT/PATCH=editar, DELETE=eliminar.
+app.use('/api/materiales', requierePermiso('materiales'), rutasMateriales);
+app.use('/api/productos', requierePermiso('productos'), rutasProductos);
+app.use('/api/categorias', requierePermiso('categorias'), require('./rutas/categorias'));
+app.use('/api/procesos', requierePermiso('procesos'), require('./rutas/procesos'));
+app.use('/api/colaboradores', requierePermiso('colaboradores'), require('./rutas/colaboradores'));
+app.use('/api/inventario', requierePermiso('inventario'), require('./rutas/inventario'));
+app.use('/api/ventas', requierePermiso('ventas'), require('./rutas/ventas'));
+app.use('/api/compras', requierePermiso('compras'), require('./rutas/compras'));
+app.use('/api/finanzas', requierePermiso('finanzas'), require('./rutas/finanzas'));
+app.use('/api/dashboard', requierePermiso('dashboard'), require('./rutas/dashboard'));
+app.use('/api/facturacion', requierePermiso('facturacion'), require('./rutas/facturacion'));
+// /onboarding (¿ya vio el recorrido?) lo usa cualquier rol al entrar;
+// el resto de configuración (costo de mano de obra, metas) exige permiso.
+const permisoConfiguracion = requierePermiso('configuracion');
+app.use('/api/configuracion',
+  (req, res, next) => (req.path.startsWith('/onboarding') ? next() : permisoConfiguracion(req, res, next)),
+  require('./rutas/configuracion'));
+app.use('/api/almacenamiento', requierePermiso('almacenamiento'), require('./rutas/almacenamiento'));
+app.use('/api/excel', requierePermiso('excel'), require('./rutas/excel'));
 
 // Manejador de errores único: cualquier ruta que haga next(error) cae aquí
+// (La sanitización de mensajes para logs/Sentry llega en la Fase 6.)
 app.use((err, req, res, next) => {
-  console.error('[ERROR]', err.message);
+  console.error('[ERROR]', req.method, req.baseUrl || req.path, err.message);
   res.status(err.status || 500).json({ error: err.message || 'Error interno' });
 });
 

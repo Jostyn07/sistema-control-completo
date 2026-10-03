@@ -1,8 +1,8 @@
-// ============================================================
+    // ============================================================
 // server/tests/tenant.test.js — pruebas de Fase 3 y 5 sin base real.
 // Simula @supabase/supabase-js: registra cada consulta (tabla, filtros,
 // payload, y con qué llave se creó el cliente) y responde datos fijos.
-// Correr:  npm test   (o: node --test server/tests/tenant.test.js)
+// Correr:  node --test server/tests/
 // ============================================================
 const test = require('node:test');
 const assert = require('node:assert');
@@ -58,7 +58,7 @@ Module.prototype.require = function (id) {
 };
 
 function arrancar(env) {
-  for (const k of Object.keys(require.cache)) if (/[\\/]server[\\/]/.test(k)) delete require.cache[k]; // Windows usa \, Linux /
+  for (const k of Object.keys(require.cache)) if (k.includes('/server/')) delete require.cache[k];
   Object.assign(process.env, { SUPABASE_URL: 'http://x', SUPABASE_SERVICE_ROLE_KEY: 'SERVICE', SUPABASE_ANON_KEY: 'ANON', SUPABASE_RLS_ACTIVO: 'false' }, env);
   const app = require('../index');
   return new Promise(r => { const s = http.createServer(app).listen(0, () => r(s)); });

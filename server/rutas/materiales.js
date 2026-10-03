@@ -1,7 +1,7 @@
 // ============================================================
 // MÓDULO 1 — MATERIALES  (/api/materiales)
 // Requiere sesión (ver server/middleware/auth.js). Cada consulta
-// se filtra por req.usuarioId, y cada creación guarda ese dueño.
+// se filtra por req.empresa.id, y cada creación guarda ese dueño.
 // - GET    /                    lista con stock actual (solo del usuario)
 // - POST   /                    crear material
 // - PUT    /:id                 editar; si cambia el costo: guarda historial
@@ -31,11 +31,11 @@ function validarMaterial(datos) {
 // GET /api/materiales — solo los del usuario que hace la petición
 router.get('/', async (req, res, next) => {
   try {
-    await procesarComprasVencidas(req.usuarioId); // suma stock de pedidos que ya deberían haber llegado
+    await procesarComprasVencidas(req.empresa.id); // suma stock de pedidos que ya deberían haber llegado
     const { data, error } = await supabase
       .from('materiales')
       .select('*')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('activo', true)
       .order('nombre');
     if (error) throw new Error(error.message);
@@ -50,7 +50,7 @@ router.post('/', async (req, res, next) => {
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
     const nuevo = {
-      usuario_id: req.usuarioId,
+      empresa_id: req.empresa.id, usuario_id: req.usuarioId,
       nombre: req.body.nombre.trim(),
       unidad: req.body.unidad.trim(),
       costo_unitario: Number(req.body.costo_unitario),
@@ -72,7 +72,7 @@ router.put('/:id', async (req, res, next) => {
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
     const { data: actual, error: eGet } = await supabase
-      .from('materiales').select('*').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('materiales').select('*').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !actual) return res.status(404).json({ error: 'Material no encontrado' });
 
     const costoNuevo = Number(req.body.costo_unitario);
@@ -88,20 +88,20 @@ router.put('/:id', async (req, res, next) => {
       actualizado_en: new Date().toISOString()
     };
     const { data, error } = await supabase
-      .from('materiales').update(cambios).eq('id', req.params.id).eq('usuario_id', req.usuarioId).select().single();
+      .from('materiales').update(cambios).eq('id', req.params.id).eq('empresa_id', req.empresa.id).select().single();
     if (error) throw new Error(error.message);
 
     let productosRecalculados = 0;
     if (costoCambio) {
       const { error: eHist } = await supabase.from('materiales_historial_precio').insert({
-        usuario_id: req.usuarioId,
+        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
         material_id: req.params.id,
         costo_anterior: actual.costo_unitario,
         costo_nuevo: costoNuevo,
         origen: 'edicion'
       });
       if (eHist) throw new Error(eHist.message);
-      productosRecalculados = await recalcularProductosQueUsanMaterial(req.params.id, req.usuarioId);
+      productosRecalculados = await recalcularProductosQueUsanMaterial(req.params.id, req.empresa.id);
     }
 
     res.json({ ...data, productos_recalculados: productosRecalculados });
@@ -112,7 +112,7 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const { data: material, error: eGet } = await supabase
-      .from('materiales').select('id').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('materiales').select('id').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !material) return res.status(404).json({ error: 'Material no encontrado' });
 
     const { count, error: eRef } = await supabase
@@ -156,7 +156,7 @@ router.delete('/:id', async (req, res, next) => {
       });
     }
 
-    const { error } = await supabase.from('materiales').delete().eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+    const { error } = await supabase.from('materiales').delete().eq('id', req.params.id).eq('empresa_id', req.empresa.id);
     if (error) throw new Error(error.message);
     res.json({ eliminado: true });
   } catch (err) { next(err); }
@@ -169,7 +169,7 @@ router.get('/:id/historial-precio', async (req, res, next) => {
       .from('materiales_historial_precio')
       .select('*')
       .eq('material_id', req.params.id)
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .order('fecha', { ascending: false });
     if (error) throw new Error(error.message);
     res.json(data);

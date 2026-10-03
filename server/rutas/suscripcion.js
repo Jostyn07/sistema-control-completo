@@ -16,7 +16,10 @@
 //                         en el estado que reporta el navegador
 // ============================================================
 const express = require('express');
-const supabase = require('../supabase/cliente');
+// Suscripciones y pagos se escriben SOLO con service_role (con RLS los
+// usuarios no pueden tocarlas); siempre filtradas por la empresa ya
+// validada en middleware/tenant.js. La suscripción es de la EMPRESA.
+const { supabaseAdmin: supabase } = require('../supabase/cliente');
 const wompi = require('../servicios/wompi');
 const { enviarSuscripcionMeta } = require('../servicios/meta-capi');
 const { sincronizarEstadoSuscripcion, calcularBloqueo, tienePagoAceptadoPrevio, crearPruebaGratis } = require('../servicios/suscripcion');
@@ -43,7 +46,7 @@ router.get('/planes', async (req, res, next) => {
 // GET /api/suscripcion/mi-suscripcion
 router.get('/mi-suscripcion', async (req, res, next) => {
   try {
-    let sub = await sincronizarEstadoSuscripcion(req.usuarioId); // marca "vencida" si ya tocaba
+    let sub = await sincronizarEstadoSuscripcion(req.empresa.id); // marca "vencida" si ya tocaba
 
     // Red de seguridad: si por cualquier motivo nunca se le creó la
     // prueba (falla puntual en el registro, o entró por primera vez
@@ -52,8 +55,8 @@ router.get('/mi-suscripcion', async (req, res, next) => {
     // su propio estado. Así no depende de un único punto de falla.
     if (!sub) {
       try {
-        await crearPruebaGratis(req.usuarioId);
-        sub = await sincronizarEstadoSuscripcion(req.usuarioId);
+        await crearPruebaGratis(req.usuarioId, req.empresa.id);
+        sub = await sincronizarEstadoSuscripcion(req.empresa.id);
       } catch (errRed) {
         console.error('[mi-suscripcion] La red de seguridad tampoco pudo crear la prueba:', errRed.message);
       }
@@ -67,7 +70,7 @@ router.get('/mi-suscripcion', async (req, res, next) => {
         nombre, precio_mensual, limite_materiales, limite_productos, limite_ventas_mes,
         incluye_rentabilidad_productos, incluye_analisis_clientes, incluye_meta_ventas, incluye_valor_inventario
       )`)
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     const bloqueo = calcularBloqueo(data);
@@ -94,7 +97,7 @@ router.post('/iniciar-pago', async (req, res, next) => {
 
     // El 50% de descuento solo aplica la primera vez que alguien paga
     // de verdad — no en cada renovación ni cada vez que cambia de plan.
-    const yaPagoAntes = await tienePagoAceptadoPrevio(req.usuarioId);
+    const yaPagoAntes = await tienePagoAceptadoPrevio(req.empresa.id);
     const precioLista = Number(plan.precio_mensual);
     const monto = yaPagoAntes ? precioLista : Math.round(precioLista / 2);
     const montoEnCentavos = monto * 100;
@@ -113,7 +116,7 @@ router.post('/iniciar-pago', async (req, res, next) => {
     // confirmación síncrona como el webhook sepan a quién activar sin
     // tener que confiar en nada más que mande el navegador.
     const { publicKey } = wompi.obtenerCredenciales();
-    const referencia = `SUB_${req.usuarioId}_${plan.id}_${Date.now()}`;
+    const referencia = `SUB_${req.empresa.id}_${plan.id}_${Date.now()}`; // empresa, no usuario: la suscripción es de la empresa
     const firma = wompi.generarFirmaIntegridad({ referencia, montoEnCentavos, moneda: 'COP' });
 
     res.json({
@@ -154,9 +157,9 @@ router.post('/confirmar-pago', async (req, res, next) => {
     // La referencia debe corresponder a este usuario y a este plan —
     // si no calza, alguien está intentando activar su cuenta con la
     // transacción de otra persona.
-    const [prefijo, usuarioReferencia, planReferencia] = String(transaccion.reference || '').split('_');
-    if (prefijo !== 'SUB' || usuarioReferencia !== req.usuarioId || planReferencia !== plan.id)
-      return res.status(400).json({ error: 'La transacción no corresponde a este usuario/plan' });
+    const [prefijo, empresaReferencia, planReferencia] = String(transaccion.reference || '').split('_');
+    if (prefijo !== 'SUB' || empresaReferencia !== req.empresa.id || planReferencia !== plan.id)
+      return res.status(400).json({ error: 'La transacción no corresponde a esta empresa/plan' });
 
     // Idempotencia: si el webhook ya la procesó (o si el navegador
     // reintenta esta llamada), no se duplica el registro del pago.
@@ -164,6 +167,7 @@ router.post('/confirmar-pago', async (req, res, next) => {
       .from('pagos_suscripcion').select('id').eq('wompi_transaction_id', transaccion.id).maybeSingle();
     if (!yaExiste) {
       await supabase.from('pagos_suscripcion').insert({
+        empresa_id: req.empresa.id,
         usuario_id: req.usuarioId,
         plan_id: plan.id,
         wompi_transaction_id: transaccion.id,
@@ -183,13 +187,14 @@ router.post('/confirmar-pago', async (req, res, next) => {
       const { error: eSusc } = await supabase
         .from('suscripciones')
         .upsert({
+          empresa_id: req.empresa.id,
           usuario_id: req.usuarioId,
           plan_id: plan.id,
           estado: 'activa',
           fecha_inicio: ahora.toISOString(),
           fecha_vencimiento: vencimiento.toISOString(),
           actualizado_en: ahora.toISOString()
-        });
+        }, { onConflict: 'empresa_id' });
       if (eSusc) throw new Error(eSusc.message);
 
       // Conversión para Meta (servidor). Mismo event_id que el pixel del
@@ -206,7 +211,7 @@ router.post('/confirmar-pago', async (req, res, next) => {
 router.post('/cancelar', async (req, res, next) => {
   try {
     const { data: actual, error: eGet } = await supabase
-      .from('suscripciones').select('estado, fecha_vencimiento').eq('usuario_id', req.usuarioId).maybeSingle();
+      .from('suscripciones').select('estado, fecha_vencimiento').eq('empresa_id', req.empresa.id).maybeSingle();
     if (eGet) throw new Error(eGet.message);
     if (!actual || !['activa', 'prueba'].includes(actual.estado))
       return res.status(400).json({ error: 'No tienes una suscripción activa para cancelar' });
@@ -214,7 +219,7 @@ router.post('/cancelar', async (req, res, next) => {
     const { error } = await supabase
       .from('suscripciones')
       .update({ estado: 'cancelada', actualizado_en: new Date().toISOString() })
-      .eq('usuario_id', req.usuarioId);
+      .eq('empresa_id', req.empresa.id);
     if (error) throw new Error(error.message);
 
     res.json({ cancelada: true, fecha_vencimiento: actual.fecha_vencimiento });
@@ -226,7 +231,7 @@ router.post('/cancelar', async (req, res, next) => {
 router.post('/reactivar', async (req, res, next) => {
   try {
     const { data: actual, error: eGet } = await supabase
-      .from('suscripciones').select('estado, fecha_vencimiento').eq('usuario_id', req.usuarioId).maybeSingle();
+      .from('suscripciones').select('estado, fecha_vencimiento').eq('empresa_id', req.empresa.id).maybeSingle();
     if (eGet) throw new Error(eGet.message);
     if (!actual || actual.estado !== 'cancelada')
       return res.status(400).json({ error: 'Esta suscripción no está cancelada' });
@@ -236,7 +241,7 @@ router.post('/reactivar', async (req, res, next) => {
     const { error } = await supabase
       .from('suscripciones')
       .update({ estado: 'activa', actualizado_en: new Date().toISOString() })
-      .eq('usuario_id', req.usuarioId);
+      .eq('empresa_id', req.empresa.id);
     if (error) throw new Error(error.message);
 
     res.json({ reactivada: true });

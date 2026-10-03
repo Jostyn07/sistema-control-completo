@@ -1,6 +1,6 @@
 // ============================================================
 // MÓDULO — PROCESOS  (/api/procesos)
-// Requiere sesión. Cada consulta se filtra por req.usuarioId.
+// Requiere sesión. Cada consulta se filtra por req.empresa.id.
 //
 // Cada proceso pertenece a UNA ficha técnica (producto) — no puede
 // existir un proceso suelto.
@@ -66,12 +66,12 @@ async function reemplazarMaterialesDeProceso(procesoId, materiales) {
 }
 
 // Si no se manda `orden`, asigna el siguiente disponible dentro de esa ficha técnica.
-async function siguienteOrden(productoId, usuarioId) {
+async function siguienteOrden(productoId, empresaId) {
   const { data, error } = await supabase
     .from('procesos')
     .select('orden')
     .eq('producto_id', productoId)
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .order('orden', { ascending: false })
     .limit(1);
   if (error) throw new Error(error.message);
@@ -85,7 +85,7 @@ router.get('/', async (req, res, next) => {
     let consulta = supabase
       .from('procesos')
       .select(SELECT_PROCESO)
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('activo', true)
       .order('orden', { ascending: true, nullsFirst: false })
       .order('nombre');
@@ -104,19 +104,19 @@ router.post('/', async (req, res, next) => {
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
     const { data: producto, error: eProd } = await supabase
-      .from('productos').select('id').eq('id', req.body.producto_id).eq('usuario_id', req.usuarioId).single();
+      .from('productos').select('id').eq('id', req.body.producto_id).eq('empresa_id', req.empresa.id).single();
     if (eProd || !producto) return res.status(404).json({ error: 'La ficha técnica elegida no existe o no te pertenece' });
 
-    const costoMinuto = await obtenerCostoMinutoManoObra(req.usuarioId);
+    const costoMinuto = await obtenerCostoMinutoManoObra(req.empresa.id);
     const tiempoMinutos = Number(req.body.tiempo_minutos);
     const costoUnitario = Math.round(tiempoMinutos * costoMinuto * 100) / 100;
-    const orden = req.body.orden != null ? Number(req.body.orden) : await siguienteOrden(req.body.producto_id, req.usuarioId);
+    const orden = req.body.orden != null ? Number(req.body.orden) : await siguienteOrden(req.body.producto_id, req.empresa.id);
     const repeticiones = req.body.repeticiones_por_unidad != null ? Number(req.body.repeticiones_por_unidad) : 1;
 
     const { data: nuevo, error } = await supabase
       .from('procesos')
       .insert({
-        usuario_id: req.usuarioId,
+        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
         producto_id: req.body.producto_id,
         nombre: req.body.nombre.trim(),
         unidad: 'minutos',
@@ -131,8 +131,8 @@ router.post('/', async (req, res, next) => {
     if (error) throw new Error(error.message);
 
     await reemplazarMaterialesDeProceso(nuevo.id, req.body.materiales);
-    await recalcularCostoMaterialesDeProceso(nuevo.id, req.usuarioId);
-    const ficha = await recalcularProductoDesdeSusProcesos(req.body.producto_id, req.usuarioId);
+    await recalcularCostoMaterialesDeProceso(nuevo.id, req.empresa.id);
+    const ficha = await recalcularProductoDesdeSusProcesos(req.body.producto_id, req.empresa.id);
 
     const { data: completo, error: eGet } = await supabase
       .from('procesos').select(SELECT_PROCESO).eq('id', nuevo.id).single();
@@ -149,14 +149,14 @@ router.put('/:id', async (req, res, next) => {
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
     const { data: actual, error: eGet } = await supabase
-      .from('procesos').select('id, producto_id, orden').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('procesos').select('id, producto_id, orden').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !actual) return res.status(404).json({ error: 'Proceso no encontrado' });
 
     const { data: producto, error: eProd } = await supabase
-      .from('productos').select('id').eq('id', req.body.producto_id).eq('usuario_id', req.usuarioId).single();
+      .from('productos').select('id').eq('id', req.body.producto_id).eq('empresa_id', req.empresa.id).single();
     if (eProd || !producto) return res.status(404).json({ error: 'La ficha técnica elegida no existe o no te pertenece' });
 
-    const costoMinuto = await obtenerCostoMinutoManoObra(req.usuarioId);
+    const costoMinuto = await obtenerCostoMinutoManoObra(req.empresa.id);
     const tiempoMinutos = Number(req.body.tiempo_minutos);
     const costoUnitario = Math.round(tiempoMinutos * costoMinuto * 100) / 100;
     const orden = req.body.orden != null ? Number(req.body.orden) : actual.orden;
@@ -174,17 +174,17 @@ router.put('/:id', async (req, res, next) => {
         descripcion: (req.body.descripcion || '').trim() || null,
         actualizado_en: new Date().toISOString()
       })
-      .eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+      .eq('id', req.params.id).eq('empresa_id', req.empresa.id);
     if (error) throw new Error(error.message);
 
     await reemplazarMaterialesDeProceso(req.params.id, req.body.materiales);
-    await recalcularCostoMaterialesDeProceso(req.params.id, req.usuarioId);
+    await recalcularCostoMaterialesDeProceso(req.params.id, req.empresa.id);
 
     // Si se movió de ficha técnica, hay que recalcular AMBAS (la
     // vieja pierde este proceso, la nueva lo gana).
-    const fichaNueva = await recalcularProductoDesdeSusProcesos(req.body.producto_id, req.usuarioId);
+    const fichaNueva = await recalcularProductoDesdeSusProcesos(req.body.producto_id, req.empresa.id);
     if (actual.producto_id && actual.producto_id !== req.body.producto_id) {
-      await recalcularProductoDesdeSusProcesos(actual.producto_id, req.usuarioId);
+      await recalcularProductoDesdeSusProcesos(actual.producto_id, req.empresa.id);
     }
 
     const { data: completo, error: eFinal } = await supabase
@@ -199,7 +199,7 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const { data: proceso, error: eGet } = await supabase
-      .from('procesos').select('id, producto_id').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('procesos').select('id, producto_id').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !proceso) return res.status(404).json({ error: 'Proceso no encontrado' });
 
     const { count, error: eRef } = await supabase
@@ -217,10 +217,10 @@ router.delete('/:id', async (req, res, next) => {
     const { error: eDelMat } = await supabase.from('procesos_materiales').delete().eq('proceso_id', req.params.id);
     if (eDelMat) throw new Error(eDelMat.message);
 
-    const { error } = await supabase.from('procesos').delete().eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+    const { error } = await supabase.from('procesos').delete().eq('id', req.params.id).eq('empresa_id', req.empresa.id);
     if (error) throw new Error(error.message);
 
-    const ficha = await recalcularProductoDesdeSusProcesos(proceso.producto_id, req.usuarioId);
+    const ficha = await recalcularProductoDesdeSusProcesos(proceso.producto_id, req.empresa.id);
     res.json({ eliminado: true, ficha_tecnica_recalculada: ficha });
   } catch (err) { next(err); }
 });

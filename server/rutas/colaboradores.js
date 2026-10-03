@@ -33,7 +33,7 @@ router.get('/', async (req, res, next) => {
     const { data, error } = await supabase
       .from('colaboradores')
       .select('*')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('activo', true)
       .order('nombre');
     if (error) throw new Error(error.message);
@@ -51,7 +51,7 @@ router.post('/', async (req, res, next) => {
     if (errorMetodos) return res.status(400).json({ error: errorMetodos });
 
     const nuevo = {
-      usuario_id: req.usuarioId,
+      empresa_id: req.empresa.id, usuario_id: req.usuarioId,
       nombre: req.body.nombre.trim(),
       cedula_cifrada: cifrar(req.body.cedula),
       direccion_cifrada: cifrar(req.body.direccion),
@@ -80,7 +80,7 @@ router.put('/:id', async (req, res, next) => {
       actualizado_en: new Date().toISOString()
     };
     const { data, error } = await supabase
-      .from('colaboradores').update(cambios).eq('id', req.params.id).eq('usuario_id', req.usuarioId).select().single();
+      .from('colaboradores').update(cambios).eq('id', req.params.id).eq('empresa_id', req.empresa.id).select().single();
     if (error) throw new Error(error.message);
     if (!data) return res.status(404).json({ error: 'Colaborador no encontrado' });
     res.json(conDatosDescifrados(data));
@@ -92,7 +92,7 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const { data: colaborador, error: eGet } = await supabase
-      .from('colaboradores').select('id').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('colaboradores').select('id').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !colaborador) return res.status(404).json({ error: 'Colaborador no encontrado' });
 
     const { count, error: eCount } = await supabase
@@ -105,7 +105,7 @@ router.delete('/:id', async (req, res, next) => {
       const { error } = await supabase
         .from('colaboradores')
         .update({ activo: false, actualizado_en: new Date().toISOString() })
-        .eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+        .eq('id', req.params.id).eq('empresa_id', req.empresa.id);
       if (error) throw new Error(error.message);
       return res.json({
         eliminado: false, desactivado: true,
@@ -113,7 +113,7 @@ router.delete('/:id', async (req, res, next) => {
       });
     }
 
-    const { error } = await supabase.from('colaboradores').delete().eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+    const { error } = await supabase.from('colaboradores').delete().eq('id', req.params.id).eq('empresa_id', req.empresa.id);
     if (error) throw new Error(error.message);
     res.json({ eliminado: true, desactivado: false });
   } catch (err) { next(err); }
@@ -126,7 +126,7 @@ router.get('/:id/encargos', async (req, res, next) => {
       .from('colaboradores_encargos')
       .select(SELECT_ENCARGO)
       .eq('colaborador_id', req.params.id)
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .order('creado_en', { ascending: false });
     if (error) throw new Error(error.message);
     res.json(data);
@@ -142,7 +142,7 @@ router.get('/encargos/pendientes', async (req, res, next) => {
     const { data, error } = await supabase
       .from('colaboradores_encargos')
       .select('id, cantidad_requerida, cantidad_entregada, creado_en, procesos(id, nombre, orden, tiempo_minutos, producto_id, productos(nombre))')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .is('colaborador_id', null)
       .order('creado_en', { ascending: true });
     if (error) throw new Error(error.message);
@@ -154,7 +154,7 @@ router.get('/encargos/pendientes', async (req, res, next) => {
       const { data: wipFilas, error: eWip } = await supabase
         .from('produccion_wip')
         .select('producto_id, proceso_id, cantidad')
-        .eq('usuario_id', req.usuarioId)
+        .eq('empresa_id', req.empresa.id)
         .in('producto_id', productoIds);
       if (eWip) throw new Error(eWip.message);
       wipPorClave = new Map((wipFilas || []).map(f => [f.producto_id + '|' + f.proceso_id, Number(f.cantidad)]));
@@ -164,7 +164,7 @@ router.get('/encargos/pendientes', async (req, res, next) => {
           .from('procesos')
           .select('id, orden')
           .eq('producto_id', productoId)
-          .eq('usuario_id', req.usuarioId)
+          .eq('empresa_id', req.empresa.id)
           .eq('activo', true)
           .order('orden', { ascending: true, nullsFirst: false })
           .order('creado_en', { ascending: true });
@@ -212,13 +212,13 @@ router.put('/encargos/:id/asignar', async (req, res, next) => {
     if (!colaborador_id) return res.status(400).json({ error: 'Elige a qué colaborador se lo vas a asignar' });
 
     const { data: colaborador, error: eCol } = await supabase
-      .from('colaboradores').select('id').eq('id', colaborador_id).eq('usuario_id', req.usuarioId).single();
+      .from('colaboradores').select('id').eq('id', colaborador_id).eq('empresa_id', req.empresa.id).single();
     if (eCol || !colaborador) return res.status(404).json({ error: 'Colaborador no encontrado' });
 
     const { data: pendiente, error: eGet } = await supabase
       .from('colaboradores_encargos')
       .select('*')
-      .eq('id', req.params.id).eq('usuario_id', req.usuarioId).is('colaborador_id', null)
+      .eq('id', req.params.id).eq('empresa_id', req.empresa.id).is('colaborador_id', null)
       .maybeSingle();
     if (eGet) throw new Error(eGet.message);
     if (!pendiente) return res.status(404).json({ error: 'Ese encargo no existe o ya estaba asignado a alguien' });
@@ -238,13 +238,13 @@ router.put('/encargos/:id/asignar', async (req, res, next) => {
       const { error: eRed } = await supabase
         .from('colaboradores_encargos')
         .update({ cantidad_requerida: Math.round((totalPendiente - aAsignar) * 10000) / 10000, actualizado_en: new Date().toISOString() })
-        .eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+        .eq('id', req.params.id).eq('empresa_id', req.empresa.id);
       if (eRed) throw new Error(eRed.message);
 
       const { data: nuevo, error: eNuevo } = await supabase
         .from('colaboradores_encargos')
         .insert({
-          usuario_id: req.usuarioId,
+          empresa_id: req.empresa.id, usuario_id: req.usuarioId,
           colaborador_id,
           proceso_id: pendiente.proceso_id,
           cantidad_requerida: Math.round(aAsignar * 10000) / 10000,
@@ -261,7 +261,7 @@ router.put('/encargos/:id/asignar', async (req, res, next) => {
       const { error: eAsig } = await supabase
         .from('colaboradores_encargos')
         .update({ colaborador_id, actualizado_en: new Date().toISOString() })
-        .eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+        .eq('id', req.params.id).eq('empresa_id', req.empresa.id);
       if (eAsig) throw new Error(eAsig.message);
     }
 
@@ -277,13 +277,13 @@ router.put('/encargos/:id/asignar', async (req, res, next) => {
 router.get('/carga', async (req, res, next) => {
   try {
     const { data: colaboradores, error: eCol } = await supabase
-      .from('colaboradores').select('id, nombre').eq('usuario_id', req.usuarioId).eq('activo', true).order('nombre');
+      .from('colaboradores').select('id, nombre').eq('empresa_id', req.empresa.id).eq('activo', true).order('nombre');
     if (eCol) throw new Error(eCol.message);
 
     const { data: encargos, error: eEnc } = await supabase
       .from('colaboradores_encargos')
       .select('id, colaborador_id, cantidad_requerida, cantidad_entregada, procesos(nombre, tiempo_minutos, productos(nombre))')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .not('colaborador_id', 'is', null);
     if (eEnc) throw new Error(eEnc.message);
 
@@ -325,13 +325,13 @@ router.post('/:id/encargos', async (req, res, next) => {
       return res.status(400).json({ error: 'La cantidad a entregar del proceso debe ser mayor a 0' });
 
     const { data: colaborador, error: eCol } = await supabase
-      .from('colaboradores').select('id').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('colaboradores').select('id').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eCol || !colaborador) return res.status(404).json({ error: 'Colaborador no encontrado' });
 
     const { data: proceso, error: eProc } = await supabase
       .from('procesos')
       .select('id, costo_unitario, procesos_materiales(material_id, cantidad)')
-      .eq('id', proceso_id).eq('usuario_id', req.usuarioId).single();
+      .eq('id', proceso_id).eq('empresa_id', req.empresa.id).single();
     if (eProc || !proceso) return res.status(404).json({ error: 'Proceso no encontrado' });
 
     const cantidadReq = Number(cantidad_requerida);
@@ -344,7 +344,7 @@ router.post('/:id/encargos', async (req, res, next) => {
     const costoUnitarioColaborador = Math.round(Number(proceso.costo_unitario));
 
     const nuevo = {
-      usuario_id: req.usuarioId,
+      empresa_id: req.empresa.id, usuario_id: req.usuarioId,
       colaborador_id: req.params.id,
       proceso_id,
       cantidad_requerida: cantidadReq,
@@ -404,7 +404,7 @@ router.put('/encargos/:id/entrega', async (req, res, next) => {
       referenciaId: req.params.id,
       cantidad,
       fecha,
-      usuarioId: req.usuarioId,
+      empresaId: req.empresa.id,
       forzar
     });
     if (!resultado.ok) {
@@ -417,7 +417,7 @@ router.put('/encargos/:id/entrega', async (req, res, next) => {
     }
 
     const { data, error } = await supabase
-      .from('colaboradores_encargos').select(SELECT_ENCARGO).eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('colaboradores_encargos').select(SELECT_ENCARGO).eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (error) throw new Error(error.message);
     res.json(data);
   } catch (err) { next(err); }
@@ -427,7 +427,7 @@ router.put('/encargos/:id/entrega', async (req, res, next) => {
 // puntuales de un encargo (más reciente primero).
 router.get('/encargos/:id/entregas', async (req, res, next) => {
   try {
-    const historial = await obtenerHistorial('proceso_colaborador', req.params.id, req.usuarioId);
+    const historial = await obtenerHistorial('proceso_colaborador', req.params.id, req.empresa.id);
     res.json(historial);
   } catch (err) { next(err); }
 });
@@ -437,7 +437,7 @@ router.get('/encargos/:id/entregas', async (req, res, next) => {
 // había movido).
 router.delete('/entregas/:id', async (req, res, next) => {
   try {
-    const resultado = await eliminarEntrega(req.params.id, req.usuarioId);
+    const resultado = await eliminarEntrega(req.params.id, req.empresa.id);
     res.json(resultado);
   } catch (err) { next(err); }
 });
@@ -453,7 +453,7 @@ router.put('/encargos/:id/pago', async (req, res, next) => {
     const { data, error } = await supabase
       .from('colaboradores_encargos')
       .update({ pagado, fecha_pago: pagado ? new Date().toISOString() : null })
-      .eq('id', req.params.id).eq('usuario_id', req.usuarioId)
+      .eq('id', req.params.id).eq('empresa_id', req.empresa.id)
       .select(SELECT_ENCARGO).single();
     if (error) throw new Error(error.message);
     if (!data) return res.status(404).json({ error: 'Encargo no encontrado' });
@@ -467,13 +467,13 @@ router.put('/encargos/:id/pago', async (req, res, next) => {
 router.delete('/encargos/:id', async (req, res, next) => {
   try {
     const { data: encargo, error: eGet } = await supabase
-      .from('colaboradores_encargos').select('id').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('colaboradores_encargos').select('id').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !encargo) return res.status(404).json({ error: 'Encargo no encontrado' });
 
     await supabase.from('colaboradores_encargos_materiales').delete().eq('encargo_id', req.params.id);
 
     const { error } = await supabase
-      .from('colaboradores_encargos').delete().eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+      .from('colaboradores_encargos').delete().eq('id', req.params.id).eq('empresa_id', req.empresa.id);
     if (error) throw new Error(error.message);
     res.json({ eliminado: true });
   } catch (err) { next(err); }
@@ -486,14 +486,14 @@ router.delete('/encargos/:id', async (req, res, next) => {
 router.get('/:id/rendimiento', async (req, res, next) => {
   try {
     const { data: colaborador, error: eCol } = await supabase
-      .from('colaboradores').select('id, nombre').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('colaboradores').select('id, nombre').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eCol || !colaborador) return res.status(404).json({ error: 'Colaborador no encontrado' });
 
     const { data: encargos, error } = await supabase
       .from('colaboradores_encargos')
       .select('cantidad_requerida, cantidad_entregada, costo_total_proceso, pagado, fecha_entrega, creado_en')
       .eq('colaborador_id', req.params.id)
-      .eq('usuario_id', req.usuarioId);
+      .eq('empresa_id', req.empresa.id);
     if (error) throw new Error(error.message);
 
     const lista = encargos || [];

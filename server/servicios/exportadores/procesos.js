@@ -21,12 +21,12 @@ function generarPlantilla() {
   });
 }
 
-async function exportarProcesos(usuarioId) {
+async function exportarProcesos(empresaId) {
   const { data: procesos, error } = await supabase
     .from('procesos')
-    .select('codigo, nombre, orden, tiempo_minutos, repeticiones_por_unidad, activo, productos!inner(codigo, usuario_id)')
-    .eq('usuario_id', usuarioId)
-    .eq('productos.usuario_id', usuarioId)
+    .select('codigo, nombre, orden, tiempo_minutos, repeticiones_por_unidad, activo, productos!inner(codigo, empresa_id)')
+    .eq('empresa_id', empresaId)
+    .eq('productos.empresa_id', empresaId)
     .order('orden');
   if (error) throw new Error(error.message);
 
@@ -42,8 +42,8 @@ async function exportarProcesos(usuarioId) {
 
   const { data: materiales, error: eMat } = await supabase
     .from('procesos_materiales')
-    .select('cantidad, procesos!inner(codigo, usuario_id), materiales(codigo)')
-    .eq('procesos.usuario_id', usuarioId);
+    .select('cantidad, procesos!inner(codigo, empresa_id), materiales(codigo)')
+    .eq('procesos.empresa_id', empresaId);
   if (eMat) throw new Error(eMat.message);
 
   const filasMateriales = (materiales || [])

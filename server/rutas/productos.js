@@ -46,9 +46,9 @@ function conMargen(producto) {
 // Lista agregada de materiales (sumados por material) desde los
 // procesos activos de un producto — es lo que se muestra de solo
 // lectura cuando usa_costeo_por_procesos = true.
-async function materialesAgregadosDesdeProcesos(productoId, usuarioId) {
+async function materialesAgregadosDesdeProcesos(productoId, empresaId) {
   const { data: procesos, error: eProc } = await supabase
-    .from('procesos').select('id, repeticiones_por_unidad').eq('producto_id', productoId).eq('usuario_id', usuarioId).eq('activo', true);
+    .from('procesos').select('id, repeticiones_por_unidad').eq('producto_id', productoId).eq('empresa_id', empresaId).eq('activo', true);
   if (eProc) throw new Error(eProc.message);
   if ((procesos || []).length === 0) return [];
   const repeticionesPorProceso = new Map(procesos.map(p => [p.id, Number(p.repeticiones_por_unidad || 1)]));
@@ -85,13 +85,13 @@ router.get('/', async (req, res, next) => {
     const { data, error } = await supabase
       .from('productos')
       .select('*, categorias_productos(id, nombre)')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('activo', true)
       .order('nombre');
     if (error) throw new Error(error.message);
 
     const { data: procesos, error: eProc } = await supabase
-      .from('procesos').select('producto_id').eq('usuario_id', req.usuarioId).eq('activo', true);
+      .from('procesos').select('producto_id').eq('empresa_id', req.empresa.id).eq('activo', true);
     if (eProc) throw new Error(eProc.message);
     const idsConProcesos = new Set((procesos || []).map(p => p.producto_id));
 
@@ -108,7 +108,7 @@ router.get('/conflictos-materiales', async (req, res, next) => {
     const { data: productos, error } = await supabase
       .from('productos')
       .select('id, nombre')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('activo', true)
       .is('usa_costeo_por_procesos', null);
     if (error) throw new Error(error.message);
@@ -122,7 +122,7 @@ router.get('/conflictos-materiales', async (req, res, next) => {
       if (eProp) throw new Error(eProp.message);
       if (!propios || propios.length === 0) continue; // sin materiales propios: no hay conflicto, se resuelve solo
 
-      const desdeProcesos = await materialesAgregadosDesdeProcesos(producto.id, req.usuarioId);
+      const desdeProcesos = await materialesAgregadosDesdeProcesos(producto.id, req.empresa.id);
       if (desdeProcesos.length === 0) continue; // el producto tiene procesos pero ninguno tiene materiales aún
 
       conflictos.push({
@@ -147,16 +147,16 @@ router.put('/:id/costeo-materiales', async (req, res, next) => {
       return res.status(400).json({ error: '"usar_procesos" debe ser true o false' });
 
     const { data: producto, error: eGet } = await supabase
-      .from('productos').select('id').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('productos').select('id').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !producto) return res.status(404).json({ error: 'Producto no encontrado' });
 
     const { error } = await supabase
       .from('productos')
       .update({ usa_costeo_por_procesos: req.body.usar_procesos, actualizado_en: new Date().toISOString() })
-      .eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+      .eq('id', req.params.id).eq('empresa_id', req.empresa.id);
     if (error) throw new Error(error.message);
 
-    const ficha = await recalcularProductoDesdeSusProcesos(req.params.id, req.usuarioId);
+    const ficha = await recalcularProductoDesdeSusProcesos(req.params.id, req.empresa.id);
     res.json(ficha);
   } catch (err) { next(err); }
 });
@@ -175,13 +175,13 @@ router.post('/', async (req, res, next) => {
     const costoCalculado = await calcularCostoProducto({
       materiales: req.body.materiales || [],
       minutosFabricacion,
-      usuarioId: req.usuarioId
+      empresaId: req.empresa.id
     });
 
     const { data: producto, error: eProd } = await supabase
       .from('productos')
       .insert({
-        usuario_id: req.usuarioId,
+        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
         nombre: req.body.nombre.trim(),
         foto_url: req.body.foto_url || null,
         categoria_id: req.body.categoria_id || null,
@@ -216,12 +216,12 @@ router.put('/:id', async (req, res, next) => {
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
     const { data: actual, error: eActual } = await supabase
-      .from('productos').select('minutos_fabricacion, usa_costeo_por_procesos').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('productos').select('minutos_fabricacion, usa_costeo_por_procesos').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eActual || !actual) return res.status(404).json({ error: 'Producto no encontrado' });
 
     const { count: countProcesos, error: eCountProc } = await supabase
       .from('procesos').select('id', { count: 'exact', head: true })
-      .eq('producto_id', req.params.id).eq('usuario_id', req.usuarioId).eq('activo', true);
+      .eq('producto_id', req.params.id).eq('empresa_id', req.empresa.id).eq('activo', true);
     if (eCountProc) throw new Error(eCountProc.message);
     const tieneProcesos = countProcesos > 0;
 
@@ -238,7 +238,7 @@ router.put('/:id', async (req, res, next) => {
       ? await calcularCostoProducto({
           materiales: req.body.materiales || [],
           minutosFabricacion,
-          usuarioId: req.usuarioId
+          empresaId: req.empresa.id
         })
       : null; // se recalcula abajo con recalcularProductoDesdeSusProcesos
 
@@ -256,7 +256,7 @@ router.put('/:id', async (req, res, next) => {
       .from('productos')
       .update(cambios)
       .eq('id', req.params.id)
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .select('*, categorias_productos(id, nombre)').single();
     if (eProd) throw new Error(eProd.message);
     if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
@@ -277,7 +277,7 @@ router.put('/:id', async (req, res, next) => {
     } else {
       // El precio pudo cambiar el margen aunque el costo no cambió aquí;
       // y por seguridad, sincroniza el costo con lo que digan los procesos.
-      const ficha = await recalcularProductoDesdeSusProcesos(req.params.id, req.usuarioId);
+      const ficha = await recalcularProductoDesdeSusProcesos(req.params.id, req.empresa.id);
       producto.costo_calculado = ficha.costo_calculado;
       producto.minutos_fabricacion = ficha.minutos_fabricacion;
     }
@@ -290,7 +290,7 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const { data: producto, error: eGet } = await supabase
-      .from('productos').select('id').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('productos').select('id').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !producto) return res.status(404).json({ error: 'Producto no encontrado' });
 
     const { count, error: eVentas } = await supabase
@@ -304,7 +304,7 @@ router.delete('/:id', async (req, res, next) => {
         .from('productos')
         .update({ activo: false, actualizado_en: new Date().toISOString() })
         .eq('id', req.params.id)
-        .eq('usuario_id', req.usuarioId);
+        .eq('empresa_id', req.empresa.id);
       if (error) throw new Error(error.message);
       return res.json({
         eliminado: false,
@@ -315,7 +315,7 @@ router.delete('/:id', async (req, res, next) => {
 
     const { error: eDelRel } = await supabase.from('productos_materiales').delete().eq('producto_id', req.params.id);
     if (eDelRel) throw new Error(eDelRel.message);
-    const { error } = await supabase.from('productos').delete().eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+    const { error } = await supabase.from('productos').delete().eq('id', req.params.id).eq('empresa_id', req.empresa.id);
     if (error) throw new Error(error.message);
     res.json({ eliminado: true, desactivado: false });
   } catch (err) { next(err); }
@@ -325,11 +325,11 @@ router.delete('/:id', async (req, res, next) => {
 router.get('/:id/costo', async (req, res, next) => {
   try {
     const { data: producto, error: eProd } = await supabase
-      .from('productos').select('*').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('productos').select('*').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eProd || !producto) return res.status(404).json({ error: 'Producto no encontrado' });
 
     const materiales = producto.usa_costeo_por_procesos
-      ? await materialesAgregadosDesdeProcesos(req.params.id, req.usuarioId)
+      ? await materialesAgregadosDesdeProcesos(req.params.id, req.empresa.id)
       : (await (async () => {
           const { data: filas, error: eRel } = await supabase
             .from('productos_materiales')
@@ -347,7 +347,7 @@ router.get('/:id/costo', async (req, res, next) => {
         })());
     const costoMateriales = Math.round(materiales.reduce((s, m) => s + m.subtotal, 0) * 100) / 100;
 
-    const costoMinuto = await obtenerCostoMinutoManoObra(req.usuarioId);
+    const costoMinuto = await obtenerCostoMinutoManoObra(req.empresa.id);
     const costoManoObra = Math.round(Number(producto.minutos_fabricacion) * costoMinuto * 100) / 100;
 
     res.json({

@@ -12,6 +12,7 @@
 //   - consumirWIPYGenerarNecesidad      → productos con Procesos activos
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { usuarioActual } = require('../../contexto');
 const { leerHoja } = require('../excel/lector');
 const {
   ESTADOS_VALIDOS, HOJA_VENTAS, HOJA_VENTAS_ITEMS, COLUMNAS_VENTAS, COLUMNAS_VENTAS_ITEMS
@@ -30,17 +31,17 @@ function extraer(filaExcel, mapaClaves) {
   return datos;
 }
 
-async function obtenerProductosPorCodigo(usuarioId) {
+async function obtenerProductosPorCodigo(empresaId) {
   const { data, error } = await supabase
     .from('productos').select('id, codigo, nombre, precio_venta, costo_calculado, activo, categoria_id')
-    .eq('usuario_id', usuarioId).not('codigo', 'is', null);
+    .eq('empresa_id', empresaId).not('codigo', 'is', null);
   if (error) throw new Error(error.message);
   return new Map((data || []).map((p) => [p.codigo.toLowerCase(), p]));
 }
 
-async function siguienteCodigoDisponible(usuarioId) {
+async function siguienteCodigoDisponible(empresaId) {
   const { data, error } = await supabase
-    .from('ventas').select('codigo').eq('usuario_id', usuarioId).not('codigo', 'is', null).like('codigo', 'VEN%');
+    .from('ventas').select('codigo').eq('empresa_id', empresaId).not('codigo', 'is', null).like('codigo', 'VEN%');
   if (error) throw new Error(error.message);
   let maximo = 0;
   for (const fila of data || []) {
@@ -51,10 +52,10 @@ async function siguienteCodigoDisponible(usuarioId) {
 }
 
 // -------------------- 1. ANALIZAR --------------------
-async function analizarVentas(buffer, usuarioId) {
+async function analizarVentas(buffer, empresaId) {
   const filasVentasExcel = leerHoja(buffer, HOJA_VENTAS);
   const filasItemsExcel = leerHoja(buffer, HOJA_VENTAS_ITEMS);
-  const productosPorCodigo = await obtenerProductosPorCodigo(usuarioId);
+  const productosPorCodigo = await obtenerProductosPorCodigo(empresaId);
 
   const codigosVistosEnArchivo = new Set();
   const resumen = { validas: 0, errores: 0 };
@@ -145,7 +146,7 @@ async function analizarVentas(buffer, usuarioId) {
 }
 
 // -------------------- 2. IMPORTAR --------------------
-async function importarVentas(usuarioId, filas) {
+async function importarVentas(empresaId, filas) {
   const resultado = { creadas: 0, omitidas: 0, ventas_con_stock_insuficiente: [], productos_con_produccion_generada: 0 };
   let siguienteConsecutivo = null;
   let codigosExistentes = null;
@@ -160,7 +161,7 @@ async function importarVentas(usuarioId, filas) {
     // costo pueden haber cambiado desde que se analizó el archivo).
     const { data: productosFrescos, error: eProd } = await supabase
       .from('productos').select('id, nombre, precio_venta, costo_calculado, activo, categoria_id, categorias_productos(nombre)')
-      .eq('usuario_id', usuarioId).in('id', productoIds);
+      .eq('empresa_id', empresaId).in('id', productoIds);
     if (eProd) throw new Error(eProd.message);
     const productoPorId = new Map((productosFrescos || []).map((p) => [p.id, p]));
     for (const id of productoIds) {
@@ -171,7 +172,7 @@ async function importarVentas(usuarioId, filas) {
     }
 
     const { data: procesosActivos, error: eProc } = await supabase
-      .from('procesos').select('producto_id').eq('usuario_id', usuarioId).eq('activo', true).in('producto_id', productoIds);
+      .from('procesos').select('producto_id').eq('empresa_id', empresaId).eq('activo', true).in('producto_id', productoIds);
     if (eProc) throw new Error(eProc.message);
     const idsConProcesos = new Set((procesosActivos || []).map((p) => p.producto_id));
 
@@ -203,13 +204,13 @@ async function importarVentas(usuarioId, filas) {
     // en vez de fallar por la restricción de unicidad.
     if (codigosExistentes == null) {
       const { data: existentes, error: eCod } = await supabase
-        .from('ventas').select('codigo').eq('usuario_id', usuarioId).not('codigo', 'is', null);
+        .from('ventas').select('codigo').eq('empresa_id', empresaId).not('codigo', 'is', null);
       if (eCod) throw new Error(eCod.message);
       codigosExistentes = new Set((existentes || []).map((v) => v.codigo.toLowerCase()));
     }
     let codigo = fila.codigo;
     if (!codigo || codigosExistentes.has(codigo.toLowerCase())) {
-      if (siguienteConsecutivo == null) siguienteConsecutivo = await siguienteCodigoDisponible(usuarioId);
+      if (siguienteConsecutivo == null) siguienteConsecutivo = await siguienteCodigoDisponible(empresaId);
       do {
         codigo = `VEN${String(siguienteConsecutivo).padStart(3, '0')}`;
         siguienteConsecutivo++;
@@ -218,7 +219,7 @@ async function importarVentas(usuarioId, filas) {
     codigosExistentes.add(codigo.toLowerCase());
 
     const { data: venta, error: eVenta } = await supabase.from('ventas').insert({
-      usuario_id: usuarioId,
+      empresa_id: empresaId, usuario_id: usuarioActual(),
       codigo,
       cliente: aTextoLimpio(datos.cliente) || null,
       cliente_telefono_cifrado: cifrar(aTextoLimpio(datos.telefono) || null),
@@ -243,7 +244,7 @@ async function importarVentas(usuarioId, filas) {
     const itemsConProcesos = itemsValidos.filter((i) => idsConProcesos.has(i.producto_id));
 
     if (itemsSinProcesos.length > 0) {
-      const fichas = await obtenerFichasEfectivasParaProductos(itemsSinProcesos.map((i) => i.producto_id), usuarioId);
+      const fichas = await obtenerFichasEfectivasParaProductos(itemsSinProcesos.map((i) => i.producto_id), empresaId);
       const requeridoPorMaterial = new Map();
       for (const item of itemsSinProcesos) {
         for (const f of (fichas || []).filter((f) => f.producto_id === item.producto_id)) {
@@ -256,7 +257,7 @@ async function importarVentas(usuarioId, filas) {
       const materialesInsuficientes = [];
       for (const [materialId, { nombre, requerido }] of requeridoPorMaterial) {
         const { data: material, error: eMat } = await supabase
-          .from('materiales').select('stock_actual').eq('id', materialId).eq('usuario_id', usuarioId).single();
+          .from('materiales').select('stock_actual').eq('id', materialId).eq('empresa_id', empresaId).single();
         if (eMat || !material) continue; // material borrado entre analizar e importar: se ignora esta línea, no rompe la venta
         const stockAnterior = Number(material.stock_actual);
         if (stockAnterior < requerido) materialesInsuficientes.push(nombre);
@@ -264,11 +265,11 @@ async function importarVentas(usuarioId, filas) {
 
         const { error: eStock } = await supabase
           .from('materiales').update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-          .eq('id', materialId).eq('usuario_id', usuarioId);
+          .eq('id', materialId).eq('empresa_id', empresaId);
         if (eStock) throw new Error(eStock.message);
 
         const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-          usuario_id: usuarioId, material_id: materialId, tipo: 'venta',
+          empresa_id: empresaId, usuario_id: usuarioActual(), material_id: materialId, tipo: 'venta',
           cantidad: -requerido, stock_anterior: stockAnterior, stock_nuevo: stockNuevo, referencia_id: venta.id
         });
         if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de importación:', eMov.message);
@@ -279,7 +280,7 @@ async function importarVentas(usuarioId, filas) {
     }
 
     for (const item of itemsConProcesos) {
-      const generado = await consumirWIPYGenerarNecesidad({ productoId: item.producto_id, cantidadVendida: item.cantidad, usuarioId });
+      const generado = await consumirWIPYGenerarNecesidad({ productoId: item.producto_id, cantidadVendida: item.cantidad, empresaId });
       if (generado.generado && generado.generado.length > 0) resultado.productos_con_produccion_generada++;
     }
 

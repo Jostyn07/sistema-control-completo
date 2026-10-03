@@ -15,6 +15,7 @@
 //     se cargó aparte por Materiales o por Inventario).
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { usuarioActual } = require('../../contexto');
 const { leerFilas } = require('../excel/lector');
 const { COLUMNAS, ESTADOS_VALIDOS } = require('../excel/definiciones/compras');
 const { aTextoLimpio, aNumero, aFechaISO, requerido, numeroValido, enListaValido, fechaValida } = require('../excel/validador');
@@ -28,18 +29,18 @@ function extraerDatos(filaExcel) {
   return datos;
 }
 
-async function obtenerMaterialesPorCodigo(usuarioId) {
+async function obtenerMaterialesPorCodigo(empresaId) {
   const { data, error } = await supabase
     .from('materiales').select('id, codigo, costo_unitario, tiempo_entrega_dias, stock_actual')
-    .eq('usuario_id', usuarioId).not('codigo', 'is', null);
+    .eq('empresa_id', empresaId).not('codigo', 'is', null);
   if (error) throw new Error(error.message);
   return new Map((data || []).map((m) => [m.codigo.toLowerCase(), m]));
 }
 
 // -------------------- 1. ANALIZAR --------------------
-async function analizarCompras(buffer, usuarioId) {
+async function analizarCompras(buffer, empresaId) {
   const filasExcel = leerFilas(buffer);
-  const materialesPorCodigo = await obtenerMaterialesPorCodigo(usuarioId);
+  const materialesPorCodigo = await obtenerMaterialesPorCodigo(empresaId);
   const resumen = { validas: 0, errores: 0 };
   let hayFilasRecibidas = false;
 
@@ -81,7 +82,7 @@ async function analizarCompras(buffer, usuarioId) {
 // -------------------- 2. IMPORTAR --------------------
 // opciones.afectarInventario (default true): si es false, las filas
 // RECIBIDA quedan en el historial pero no tocan el stock.
-async function importarCompras(usuarioId, filas, { afectarInventario = true } = {}) {
+async function importarCompras(empresaId, filas, { afectarInventario = true } = {}) {
   const resultado = { registradas_pendientes: 0, registradas_recibidas: 0, stock_actualizado: afectarInventario, omitidos: 0 };
 
   for (const fila of filas) {
@@ -96,12 +97,12 @@ async function importarCompras(usuarioId, filas, { afectarInventario = true } = 
 
     const { data: material, error: eMat } = await supabase
       .from('materiales').select('id, costo_unitario, tiempo_entrega_dias, stock_actual')
-      .eq('id', fila.material_id).eq('usuario_id', usuarioId).single();
+      .eq('id', fila.material_id).eq('empresa_id', empresaId).single();
     if (eMat || !material) throw new Error(`Fila ${fila.numero_fila}: el material ya no existe`);
 
     const esRecibida = fila.estado === 'RECIBIDA';
     const cambios = {
-      usuario_id: usuarioId,
+      empresa_id: empresaId, usuario_id: usuarioActual(),
       material_id: fila.material_id,
       proveedor: aTextoLimpio(datos.proveedor),
       cantidad,
@@ -119,7 +120,7 @@ async function importarCompras(usuarioId, filas, { afectarInventario = true } = 
     // Historial de precio — igual que registrar una compra manual.
     if (Number(precioUnitario) !== Number(material.costo_unitario)) {
       const { error: eHist } = await supabase.from('materiales_historial_precio').insert({
-        usuario_id: usuarioId,
+        empresa_id: empresaId, usuario_id: usuarioActual(),
         material_id: fila.material_id,
         costo_anterior: material.costo_unitario,
         costo_nuevo: precioUnitario,
@@ -135,11 +136,11 @@ async function importarCompras(usuarioId, filas, { afectarInventario = true } = 
         const stockNuevo = Math.round((stockAnterior + cantidad) * 100) / 100;
         const { error: eStock } = await supabase
           .from('materiales').update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-          .eq('id', fila.material_id).eq('usuario_id', usuarioId);
+          .eq('id', fila.material_id).eq('empresa_id', empresaId);
         if (eStock) throw new Error(`Fila ${fila.numero_fila}: ${eStock.message}`);
 
         const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-          usuario_id: usuarioId,
+          empresa_id: empresaId, usuario_id: usuarioActual(),
           material_id: fila.material_id,
           tipo: 'compra',
           cantidad,

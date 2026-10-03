@@ -1,7 +1,7 @@
 // ============================================================
 // SERVICIO INTERNO DE INVENTARIO — no es un endpoint.
 // Lo usan el módulo 3 (Inventario) y el módulo 5 (Compras).
-// Todas las funciones reciben usuarioId y filtran por él, para
+// Todas las funciones reciben empresaId y filtran por él, para
 // que el punto de reorden se calcule solo con los datos de ese usuario.
 // ============================================================
 const supabase = require('../supabase/cliente');
@@ -10,14 +10,14 @@ const { procesarComprasVencidas } = require('./compras');
 const DIAS_VENTANA_CONSUMO = 30;
 
 // Devuelve un Map material_id -> consumo diario promedio, solo del usuario dado
-async function calcularConsumoDiarioPromedio(usuarioId) {
+async function calcularConsumoDiarioPromedio(empresaId) {
   const desde = new Date();
   desde.setDate(desde.getDate() - DIAS_VENTANA_CONSUMO);
 
   const { data: items, error: eItems } = await supabase
     .from('ventas_items')
-    .select('producto_id, cantidad, ventas!inner(fecha, usuario_id)')
-    .eq('ventas.usuario_id', usuarioId)
+    .select('producto_id, cantidad, ventas!inner(fecha, empresa_id)')
+    .eq('ventas.empresa_id', empresaId)
     .gte('ventas.fecha', desde.toISOString());
   if (eItems) throw new Error(eItems.message);
 
@@ -66,18 +66,18 @@ function estadoSemaforo(stockActual, puntoReorden) {
 }
 
 // Vista completa de inventario por material, solo del usuario dado
-async function obtenerInventarioMateriales(usuarioId) {
-  await procesarComprasVencidas(usuarioId); // suma stock de pedidos que ya deberían haber llegado
+async function obtenerInventarioMateriales(empresaId) {
+  await procesarComprasVencidas(empresaId); // suma stock de pedidos que ya deberían haber llegado
 
   const { data: materiales, error } = await supabase
     .from('materiales')
     .select('*')
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .eq('activo', true)
     .order('nombre');
   if (error) throw new Error(error.message);
 
-  const consumoDiario = await calcularConsumoDiarioPromedio(usuarioId);
+  const consumoDiario = await calcularConsumoDiarioPromedio(empresaId);
 
   return (materiales || []).map(m => {
     const consumo = consumoDiario.get(m.id) || 0;

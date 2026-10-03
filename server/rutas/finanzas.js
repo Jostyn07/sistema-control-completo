@@ -1,6 +1,6 @@
 // ============================================================
 // MÓDULO 6 — FINANZAS Y PUNTO DE EQUILIBRIO  (/api/finanzas)
-// Requiere sesión. Todo se filtra por req.usuarioId.
+// Requiere sesión. Todo se filtra por req.empresa.id.
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
@@ -15,9 +15,9 @@ function claveMes(fecha) {
   return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}`;
 }
 
-async function obtenerCostosFijosMensuales(usuarioId) {
+async function obtenerCostosFijosMensuales(empresaId) {
   const { data, error } = await supabase
-    .from('costos_fijos').select('*').eq('usuario_id', usuarioId).eq('activo', true).order('nombre');
+    .from('costos_fijos').select('*').eq('empresa_id', empresaId).eq('activo', true).order('nombre');
   if (error) throw new Error(error.message);
   const total = (data || []).reduce((s, c) => s + Number(c.valor_mensual), 0);
   return { lista: data || [], total: Math.round(total * 100) / 100 };
@@ -30,7 +30,7 @@ router.get('/resumen', async (req, res, next) => {
     const desdeMes = inicioDeMes(ahora).toISOString();
 
     const { data: ventasMes, error: eMes } = await supabase
-      .from('ventas').select('total, costo_total').eq('usuario_id', req.usuarioId).gte('fecha', desdeMes);
+      .from('ventas').select('total, costo_total').eq('empresa_id', req.empresa.id).gte('fecha', desdeMes);
     if (eMes) throw new Error(eMes.message);
 
     const ingresosMes = (ventasMes || []).reduce((s, v) => s + Number(v.total), 0);
@@ -42,7 +42,7 @@ router.get('/resumen', async (req, res, next) => {
     const { data: nominaPagadaMes, error: eNominaMes } = await supabase
       .from('colaboradores_encargos')
       .select('costo_total_proceso')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('pagado', true)
       .gte('fecha_pago', desdeMes);
     if (eNominaMes) throw new Error(eNominaMes.message);
@@ -50,7 +50,7 @@ router.get('/resumen', async (req, res, next) => {
 
     // Meta de ventas y avance del mes en curso
     const { data: configProd, error: eConfigProd } = await supabase
-      .from('configuracion_produccion').select('meta_ventas_mensual, fecha_inicio_operacion').eq('usuario_id', req.usuarioId).maybeSingle();
+      .from('configuracion_produccion').select('meta_ventas_mensual, fecha_inicio_operacion').eq('empresa_id', req.empresa.id).maybeSingle();
     if (eConfigProd) throw new Error(eConfigProd.message);
     const metaVentas = configProd && configProd.meta_ventas_mensual != null ? Number(configProd.meta_ventas_mensual) : null;
     const fechaInicioOperacion = configProd && configProd.fecha_inicio_operacion ? configProd.fecha_inicio_operacion : null;
@@ -76,7 +76,7 @@ router.get('/resumen', async (req, res, next) => {
     // toda la contabilidad de utilidad/equilibrio usa la suma de ambos.
     const costosVariablesMes = costoVentasMes + costosNominaMes;
 
-    const costosFijos = await obtenerCostosFijosMensuales(req.usuarioId);
+    const costosFijos = await obtenerCostosFijosMensuales(req.empresa.id);
     const utilidadMes = ingresosMes - costosVariablesMes - costosFijos.total;
 
     // Estado de resultados en cascada: utilidad bruta (antes de fijos)
@@ -90,7 +90,7 @@ router.get('/resumen', async (req, res, next) => {
     // Valor del inventario: cuánto dinero tienes inmovilizado en materiales
     // sin vender todavía (stock actual × costo unitario de cada uno).
     const { data: materialesInv, error: eInv } = await supabase
-      .from('materiales').select('stock_actual, costo_unitario').eq('usuario_id', req.usuarioId).eq('activo', true);
+      .from('materiales').select('stock_actual, costo_unitario').eq('empresa_id', req.empresa.id).eq('activo', true);
     if (eInv) throw new Error(eInv.message);
     const valorInventario = (materialesInv || []).reduce(
       (s, m) => s + Number(m.stock_actual) * Number(m.costo_unitario), 0);
@@ -101,7 +101,7 @@ router.get('/resumen', async (req, res, next) => {
     // se VENDIÓ; esto es lo que salió del bolsillo comprando materiales,
     // se hayan usado ya o no. Ambos importan para entender el negocio.
     const { data: comprasMes, error: eComprasMes } = await supabase
-      .from('compras').select('total').eq('usuario_id', req.usuarioId).gte('fecha', desdeMes);
+      .from('compras').select('total').eq('empresa_id', req.empresa.id).gte('fecha', desdeMes);
     if (eComprasMes) throw new Error(eComprasMes.message);
     const comprasMesTotal = (comprasMes || []).reduce((s, c) => s + Number(c.total), 0);
     const flujoCajaMes = ingresosMes - comprasMesTotal - costosFijos.total - costosNominaMes;
@@ -121,7 +121,7 @@ router.get('/resumen', async (req, res, next) => {
     }
 
     const { data: todasVentas, error: eTodas } = await supabase
-      .from('ventas').select('total, costo_total, fecha').eq('usuario_id', req.usuarioId).order('fecha', { ascending: true });
+      .from('ventas').select('total, costo_total, fecha').eq('empresa_id', req.empresa.id).order('fecha', { ascending: true });
     if (eTodas) throw new Error(eTodas.message);
 
     // Nómina pagada en TODA la historia (no solo este mes) — también sale
@@ -130,7 +130,7 @@ router.get('/resumen', async (req, res, next) => {
     const { data: nominaPagadaTotal, error: eNominaTotal } = await supabase
       .from('colaboradores_encargos')
       .select('costo_total_proceso')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('pagado', true);
     if (eNominaTotal) throw new Error(eNominaTotal.message);
     const costosNominaTotal = (nominaPagadaTotal || []).reduce((s, e) => s + Number(e.costo_total_proceso), 0);
@@ -162,7 +162,7 @@ router.get('/resumen', async (req, res, next) => {
     const utilidadAcumulada = margenAcumulado - costosFijos.total * mesesTranscurridos;
 
     const { data: capital, error: eCap } = await supabase
-      .from('capital_invertido').select('valor').eq('usuario_id', req.usuarioId);
+      .from('capital_invertido').select('valor').eq('empresa_id', req.empresa.id);
     if (eCap) throw new Error(eCap.message);
     const capitalTotal = (capital || []).reduce((s, c) => s + Number(c.valor), 0);
 
@@ -213,7 +213,7 @@ router.get('/resumen', async (req, res, next) => {
 // GET /api/finanzas/costos-fijos
 router.get('/costos-fijos', async (req, res, next) => {
   try {
-    const costos = await obtenerCostosFijosMensuales(req.usuarioId);
+    const costos = await obtenerCostosFijosMensuales(req.empresa.id);
     res.json(costos);
   } catch (err) { next(err); }
 });
@@ -232,12 +232,12 @@ router.post('/costos-fijos', async (req, res, next) => {
         .from('costos_fijos')
         .update({ nombre: nombre.trim(), valor_mensual: Number(valor_mensual) })
         .eq('id', id)
-        .eq('usuario_id', req.usuarioId)
+        .eq('empresa_id', req.empresa.id)
         .select().single();
     } else {
       resultado = await supabase
         .from('costos_fijos')
-        .insert({ usuario_id: req.usuarioId, nombre: nombre.trim(), valor_mensual: Number(valor_mensual) })
+        .insert({ empresa_id: req.empresa.id, usuario_id: req.usuarioId, nombre: nombre.trim(), valor_mensual: Number(valor_mensual) })
         .select().single();
     }
     if (resultado.error) throw new Error(resultado.error.message);
@@ -249,7 +249,7 @@ router.post('/costos-fijos', async (req, res, next) => {
 router.delete('/costos-fijos/:id', async (req, res, next) => {
   try {
     const { error } = await supabase
-      .from('costos_fijos').update({ activo: false }).eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+      .from('costos_fijos').update({ activo: false }).eq('id', req.params.id).eq('empresa_id', req.empresa.id);
     if (error) throw new Error(error.message);
     res.json({ desactivado: true });
   } catch (err) { next(err); }
@@ -259,7 +259,7 @@ router.delete('/costos-fijos/:id', async (req, res, next) => {
 router.get('/capital', async (req, res, next) => {
   try {
     const { data, error } = await supabase
-      .from('capital_invertido').select('*').eq('usuario_id', req.usuarioId).order('fecha', { ascending: false });
+      .from('capital_invertido').select('*').eq('empresa_id', req.empresa.id).order('fecha', { ascending: false });
     if (error) throw new Error(error.message);
     const total = (data || []).reduce((s, c) => s + Number(c.valor), 0);
     res.json({ lista: data || [], total: Math.round(total * 100) / 100 });
@@ -276,7 +276,7 @@ router.post('/capital', async (req, res, next) => {
 
     const { data, error } = await supabase
       .from('capital_invertido')
-      .insert({ usuario_id: req.usuarioId, concepto: concepto.trim(), valor: Number(valor) })
+      .insert({ empresa_id: req.empresa.id, usuario_id: req.usuarioId, concepto: concepto.trim(), valor: Number(valor) })
       .select().single();
     if (error) throw new Error(error.message);
     res.status(201).json(data);
@@ -293,14 +293,14 @@ router.get('/historico-mensual', async (req, res, next) => {
     const { data: ventas, error } = await supabase
       .from('ventas')
       .select('total, costo_total, fecha')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .gte('fecha', desde.toISOString());
     if (error) throw new Error(error.message);
 
     const { data: compras, error: eCompras } = await supabase
       .from('compras')
       .select('total, fecha')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .gte('fecha', desde.toISOString());
     if (eCompras) throw new Error(eCompras.message);
 
@@ -309,12 +309,12 @@ router.get('/historico-mensual', async (req, res, next) => {
     const { data: nomina, error: eNomina } = await supabase
       .from('colaboradores_encargos')
       .select('costo_total_proceso, fecha_pago')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('pagado', true)
       .gte('fecha_pago', desde.toISOString());
     if (eNomina) throw new Error(eNomina.message);
 
-    const costosFijos = await obtenerCostosFijosMensuales(req.usuarioId);
+    const costosFijos = await obtenerCostosFijosMensuales(req.empresa.id);
 
     const historico = [];
     for (let i = meses - 1; i >= 0; i--) {
@@ -371,8 +371,8 @@ router.get('/rentabilidad-productos', async (req, res, next) => {
 
     let consulta = supabase
       .from('ventas_items')
-      .select('cantidad, precio_unitario, costo_unitario, producto_id, productos(nombre), ventas!inner(fecha, usuario_id)')
-      .eq('ventas.usuario_id', req.usuarioId)
+      .select('cantidad, precio_unitario, costo_unitario, producto_id, productos(nombre), ventas!inner(fecha, empresa_id)')
+      .eq('ventas.empresa_id', req.empresa.id)
       .gte('ventas.fecha', desde);
     if (hasta) consulta = consulta.lte('ventas.fecha', hasta);
 
@@ -429,7 +429,7 @@ router.get('/clientes', async (req, res, next) => {
     const { data: ventas, error } = await supabase
       .from('ventas')
       .select('cliente, total, fecha')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .order('fecha', { ascending: true });
     if (error) throw new Error(error.message);
 

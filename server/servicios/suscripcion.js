@@ -7,7 +7,9 @@
 // - tienePagoAceptadoPrevio()    decide si aplica el 50% del
 //   primer mes (solo la primera vez que alguien paga de verdad)
 // ============================================================
-const supabase = require('../supabase/cliente');
+// service_role: suscripciones y pagos no son editables por los usuarios.
+// Todo se filtra por empresa (la suscripción es de la EMPRESA).
+const { supabaseAdmin: supabase } = require('../supabase/cliente');
 
 const DIAS_PRUEBA_GRATIS = 7;
 const DIAS_GRACIA = 3; // días de solo-lectura extra después de vencer, antes de bloquear la edición
@@ -16,7 +18,9 @@ const ESTADOS_ACEPTADOS = ['Aceptada', 'Aceptado'];
 // Al registrarse, cualquier usuario nuevo arranca con el plan más
 // completo disponible (para que pueda ver todo el valor del sistema
 // durante la prueba), sin necesidad de pagar nada todavía.
-async function crearPruebaGratis(usuarioId) {
+// empresaId es opcional: al registrarse aún no se conoce y el trigger
+// de la base (003) la completa con la empresa propia del usuario.
+async function crearPruebaGratis(usuarioId, empresaId = null) {
   const { data: planPrueba, error: ePlan } = await supabase
     .from('planes_suscripcion')
     .select('id')
@@ -35,6 +39,7 @@ async function crearPruebaGratis(usuarioId) {
   vencimiento.setDate(vencimiento.getDate() + DIAS_PRUEBA_GRATIS);
 
   const { error } = await supabase.from('suscripciones').insert({
+    ...(empresaId ? { empresa_id: empresaId } : {}),
     usuario_id: usuarioId,
     plan_id: planPrueba.id,
     estado: 'prueba',
@@ -50,9 +55,9 @@ async function crearPruebaGratis(usuarioId) {
 // siempre está al día sin depender de un proceso programado aparte.
 // Incluye "cancelada" a propósito: cancelar solo significa "no renueves",
 // pero una vez pasa la fecha ya pagada, debe tratarse igual que vencida.
-async function sincronizarEstadoSuscripcion(usuarioId) {
+async function sincronizarEstadoSuscripcion(empresaId) {
   const { data, error } = await supabase
-    .from('suscripciones').select('estado, fecha_vencimiento').eq('usuario_id', usuarioId).maybeSingle();
+    .from('suscripciones').select('estado, fecha_vencimiento').eq('empresa_id', empresaId).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
 
@@ -61,7 +66,7 @@ async function sincronizarEstadoSuscripcion(usuarioId) {
     const { error: eUpd } = await supabase
       .from('suscripciones')
       .update({ estado: 'vencida', actualizado_en: new Date().toISOString() })
-      .eq('usuario_id', usuarioId);
+      .eq('empresa_id', empresaId);
     if (eUpd) throw new Error(eUpd.message);
     data.estado = 'vencida';
   }
@@ -86,11 +91,11 @@ function calcularBloqueo(sub) {
 
 // ¿Ya pagó alguna vez de verdad? Si nunca ha tenido un pago aceptado,
 // su primer pago real es elegible para el 50% de descuento.
-async function tienePagoAceptadoPrevio(usuarioId) {
+async function tienePagoAceptadoPrevio(empresaId) {
   const { count, error } = await supabase
     .from('pagos_suscripcion')
     .select('id', { count: 'exact', head: true })
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .in('estado', ESTADOS_ACEPTADOS);
   if (error) throw new Error(error.message);
   return (count || 0) > 0;

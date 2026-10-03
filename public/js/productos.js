@@ -388,7 +388,7 @@ async function subirFotoProducto() {
 
     const respuesta = await fetch('/api/almacenamiento/foto-producto', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` }, // sin Content-Type: el navegador arma el multipart solo
+      headers: { Authorization: `Bearer ${token}`, ...API.encabezadoEmpresa() }, // sin Content-Type: el navegador arma el multipart solo
       body: formData
     });
     const datos = await respuesta.json();

@@ -26,12 +26,12 @@ function tipoYMotivoDesde(motivoGuardado) {
   return { tipo: 'AJUSTE', motivo: motivoGuardado || '' };
 }
 
-async function exportarInventario(usuarioId) {
+async function exportarInventario(empresaId) {
   const { data, error } = await supabase
     .from('inventario_ajustes')
-    .select('fecha, stock_anterior, stock_nuevo, motivo, materiales!inner(codigo, usuario_id)')
-    .eq('usuario_id', usuarioId)
-    .eq('materiales.usuario_id', usuarioId)
+    .select('fecha, stock_anterior, stock_nuevo, motivo, materiales!inner(codigo, empresa_id)')
+    .eq('empresa_id', empresaId)
+    .eq('materiales.empresa_id', empresaId)
     .order('fecha', { ascending: false })
     .limit(LIMITE_HISTORIAL);
   if (error) throw new Error(error.message);

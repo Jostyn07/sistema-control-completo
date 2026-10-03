@@ -733,7 +733,7 @@ function pintarKpisVentas(lista) {
 async function exportarVentasExcel() {
   try {
     const token = localStorage.getItem('token_sesion');
-    const respuesta = await fetch('/api/excel/ventas/exportar', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    const respuesta = await fetch('/api/excel/ventas/exportar', { headers: token ? { Authorization: `Bearer ${token}`, ...API.encabezadoEmpresa() } : {} });
     if (!respuesta.ok) {
       const datos = await respuesta.json().catch(() => ({}));
       throw new Error(datos.error || `Error ${respuesta.status}`);

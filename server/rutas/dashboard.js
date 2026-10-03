@@ -1,6 +1,6 @@
 // ============================================================
 // MÓDULO — DASHBOARD ANALÍTICO  (/api/dashboard)
-// Requiere sesión. Todo se filtra por req.usuarioId.
+// Requiere sesión. Todo se filtra por req.empresa.id.
 // Varios endpoints específicos, NO uno monolítico: si uno falla,
 // los demás bloques de Inicio siguen funcionando (misma resiliencia
 // que ya tenía Promise.all en inicio.js).
@@ -25,11 +25,11 @@ const { calcularRango, variacion } = require('../servicios/periodo');
 const { obtenerInventarioMateriales } = require('../servicios/inventario');
 const router = express.Router();
 
-async function totalesDelRango(usuarioId, desde, hasta) {
+async function totalesDelRango(empresaId, desde, hasta) {
   const { data, error } = await supabase
     .from('ventas')
     .select('total, costo_total')
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .gte('fecha', desde.toISOString())
     .lte('fecha', hasta.toISOString());
   if (error) throw new Error(error.message);
@@ -51,8 +51,8 @@ router.get('/ventas', async (req, res, next) => {
     const rango = calcularRango(req.query);
 
     const [actual, anterior] = await Promise.all([
-      totalesDelRango(req.usuarioId, rango.desde, rango.hasta),
-      totalesDelRango(req.usuarioId, rango.desdeAnterior, rango.hastaAnterior)
+      totalesDelRango(req.empresa.id, rango.desde, rango.hasta),
+      totalesDelRango(req.empresa.id, rango.desdeAnterior, rango.hastaAnterior)
     ]);
 
     res.json({
@@ -95,7 +95,7 @@ router.get('/ventas', async (req, res, next) => {
 // tiene sentido compararlo contra un rango de fechas).
 router.get('/inventario', async (req, res, next) => {
   try {
-    const materiales = await obtenerInventarioMateriales(req.usuarioId);
+    const materiales = await obtenerInventarioMateriales(req.empresa.id);
 
     const valorInventario = materiales.reduce((s, m) => s + m.stock_actual * m.costo_unitario, 0);
     // "estado" ya lo calcula servicios/inventario.js igual que Inventario y
@@ -161,7 +161,7 @@ router.get('/serie-ventas-utilidad', async (req, res, next) => {
     const { data, error } = await supabase
       .from('ventas')
       .select('total, costo_total, fecha')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .gte('fecha', rango.desde.toISOString())
       .lte('fecha', rango.hasta.toISOString());
     if (error) throw new Error(error.message);
@@ -197,7 +197,7 @@ router.get('/movimientos-inventario', async (req, res, next) => {
     let consulta = supabase
       .from('inventario_movimientos')
       .select('tipo, cantidad, fecha')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .gte('fecha', rango.desde.toISOString())
       .lte('fecha', rango.hasta.toISOString());
     if (req.query.material_id) consulta = consulta.eq('material_id', req.query.material_id);

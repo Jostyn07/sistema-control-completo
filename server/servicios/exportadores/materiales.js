@@ -24,11 +24,11 @@ function filaDesdeMaterial(material) {
   });
 }
 
-async function exportarMateriales(usuarioId) {
+async function exportarMateriales(empresaId) {
   const { data, error } = await supabase
     .from('materiales')
     .select('codigo, nombre, unidad, costo_unitario, proveedor, tiempo_entrega_dias, stock_actual, stock_seguridad, activo')
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .order('nombre');
   if (error) throw new Error(error.message);
 

@@ -14,9 +14,9 @@ const supabase = require('../supabase/cliente');
 const { recalcularTodosLosProductos } = require('../servicios/costos');
 const router = express.Router();
 
-async function obtenerConfiguracion(usuarioId) {
+async function obtenerConfiguracion(empresaId) {
   const { data, error } = await supabase
-    .from('configuracion_produccion').select('*').eq('usuario_id', usuarioId).maybeSingle();
+    .from('configuracion_produccion').select('*').eq('empresa_id', empresaId).maybeSingle();
   if (error) throw new Error(error.message);
   return data; // null si el usuario todavía no ha guardado nada
 }
@@ -24,7 +24,7 @@ async function obtenerConfiguracion(usuarioId) {
 // GET /api/configuracion/produccion
 router.get('/produccion', async (req, res, next) => {
   try {
-    const data = await obtenerConfiguracion(req.usuarioId);
+    const data = await obtenerConfiguracion(req.empresa.id);
     res.json(data || { costo_hora_mano_obra: 0, meta_ventas_mensual: null, fecha_inicio_operacion: null });
   } catch (err) { next(err); }
 });
@@ -36,23 +36,23 @@ router.put('/produccion', async (req, res, next) => {
     if (costo_hora_mano_obra == null || isNaN(costo_hora_mano_obra) || Number(costo_hora_mano_obra) < 0)
       return res.status(400).json({ error: 'El precio por hora debe ser un número mayor o igual a 0' });
 
-    const existente = await obtenerConfiguracion(req.usuarioId);
+    const existente = await obtenerConfiguracion(req.empresa.id);
     let resultado;
     if (existente) {
       resultado = await supabase
         .from('configuracion_produccion')
         .update({ costo_hora_mano_obra: Number(costo_hora_mano_obra), actualizado_en: new Date().toISOString() })
-        .eq('usuario_id', req.usuarioId)
+        .eq('empresa_id', req.empresa.id)
         .select().single();
     } else {
       resultado = await supabase
         .from('configuracion_produccion')
-        .insert({ usuario_id: req.usuarioId, costo_hora_mano_obra: Number(costo_hora_mano_obra) })
+        .insert({ empresa_id: req.empresa.id, usuario_id: req.usuarioId, costo_hora_mano_obra: Number(costo_hora_mano_obra) })
         .select().single();
     }
     if (resultado.error) throw new Error(resultado.error.message);
 
-    const productosRecalculados = await recalcularTodosLosProductos(req.usuarioId);
+    const productosRecalculados = await recalcularTodosLosProductos(req.empresa.id);
     res.json({ ...resultado.data, productos_recalculados: productosRecalculados });
   } catch (err) { next(err); }
 });
@@ -64,18 +64,18 @@ router.put('/meta-ventas', async (req, res, next) => {
     if (meta_ventas_mensual == null || isNaN(meta_ventas_mensual) || Number(meta_ventas_mensual) < 0)
       return res.status(400).json({ error: 'La meta debe ser un número mayor o igual a 0' });
 
-    const existente = await obtenerConfiguracion(req.usuarioId);
+    const existente = await obtenerConfiguracion(req.empresa.id);
     let resultado;
     if (existente) {
       resultado = await supabase
         .from('configuracion_produccion')
         .update({ meta_ventas_mensual: Number(meta_ventas_mensual), actualizado_en: new Date().toISOString() })
-        .eq('usuario_id', req.usuarioId)
+        .eq('empresa_id', req.empresa.id)
         .select().single();
     } else {
       resultado = await supabase
         .from('configuracion_produccion')
-        .insert({ usuario_id: req.usuarioId, meta_ventas_mensual: Number(meta_ventas_mensual) })
+        .insert({ empresa_id: req.empresa.id, usuario_id: req.usuarioId, meta_ventas_mensual: Number(meta_ventas_mensual) })
         .select().single();
     }
     if (resultado.error) throw new Error(resultado.error.message);
@@ -94,18 +94,18 @@ router.put('/fecha-inicio-roi', async (req, res, next) => {
     if (isNaN(new Date(fecha_inicio_operacion).getTime()))
       return res.status(400).json({ error: 'La fecha de inicio no es válida' });
 
-    const existente = await obtenerConfiguracion(req.usuarioId);
+    const existente = await obtenerConfiguracion(req.empresa.id);
     let resultado;
     if (existente) {
       resultado = await supabase
         .from('configuracion_produccion')
         .update({ fecha_inicio_operacion, actualizado_en: new Date().toISOString() })
-        .eq('usuario_id', req.usuarioId)
+        .eq('empresa_id', req.empresa.id)
         .select().single();
     } else {
       resultado = await supabase
         .from('configuracion_produccion')
-        .insert({ usuario_id: req.usuarioId, fecha_inicio_operacion })
+        .insert({ empresa_id: req.empresa.id, usuario_id: req.usuarioId, fecha_inicio_operacion })
         .select().single();
     }
     if (resultado.error) throw new Error(resultado.error.message);
@@ -116,7 +116,7 @@ router.put('/fecha-inicio-roi', async (req, res, next) => {
 // GET /api/configuracion/onboarding — ¿ya vio el recorrido inicial?
 router.get('/onboarding', async (req, res, next) => {
   try {
-    const data = await obtenerConfiguracion(req.usuarioId);
+    const data = await obtenerConfiguracion(req.empresa.id);
     res.json({ completado: !!(data && data.onboarding_completado) });
   } catch (err) { next(err); }
 });
@@ -127,18 +127,18 @@ router.get('/onboarding', async (req, res, next) => {
 router.put('/onboarding', async (req, res, next) => {
   try {
     const completado = req.body.completado !== false; // por defecto true
-    const existente = await obtenerConfiguracion(req.usuarioId);
+    const existente = await obtenerConfiguracion(req.empresa.id);
     let resultado;
     if (existente) {
       resultado = await supabase
         .from('configuracion_produccion')
         .update({ onboarding_completado: completado, actualizado_en: new Date().toISOString() })
-        .eq('usuario_id', req.usuarioId)
+        .eq('empresa_id', req.empresa.id)
         .select().single();
     } else {
       resultado = await supabase
         .from('configuracion_produccion')
-        .insert({ usuario_id: req.usuarioId, onboarding_completado: completado })
+        .insert({ empresa_id: req.empresa.id, usuario_id: req.usuarioId, onboarding_completado: completado })
         .select().single();
     }
     if (resultado.error) throw new Error(resultado.error.message);

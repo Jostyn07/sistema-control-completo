@@ -14,7 +14,21 @@ const API = {
     const token = localStorage.getItem('token_sesion');
     const encabezados = { 'Content-Type': 'application/json' };
     if (token) encabezados['Authorization'] = `Bearer ${token}`;
-    return encabezados;
+    return { ...encabezados, ...this.encabezadoEmpresa() };
+  },
+
+  // Empresa activa (multiempresa). Si no hay ninguna guardada, el
+  // servidor usa la empresa predeterminada del usuario. El servidor
+  // SIEMPRE valida que la persona pertenezca a esa empresa.
+  encabezadoEmpresa() {
+    const empresa = localStorage.getItem('empresa_activa');
+    return empresa ? { 'X-Empresa-Id': empresa } : {};
+  },
+
+  cambiarEmpresa(empresaId) {
+    if (empresaId) localStorage.setItem('empresa_activa', empresaId);
+    else localStorage.removeItem('empresa_activa');
+    window.location.reload();
   },
 
   // Los tokens de Supabase expiran cada hora, y el "refresh token" se
@@ -53,6 +67,7 @@ const API = {
   },
 
   _cerrarSesionYRedirigir() {
+    localStorage.removeItem('empresa_activa');
     localStorage.removeItem('token_sesion');
     localStorage.removeItem('refresh_token_sesion');
     localStorage.removeItem('usuario_sesion');
@@ -72,6 +87,14 @@ const API = {
     }
 
     const datos = await respuesta.json().catch(() => ({}));
+
+    // La empresa guardada ya no es válida (lo sacaron, se suspendió):
+    // se olvida y se reintenta una vez con la predeterminada.
+    if (respuesta.status === 403 && datos.empresa_invalida && !reintentado && localStorage.getItem('empresa_activa')) {
+      localStorage.removeItem('empresa_activa');
+      return this._peticion(ruta, { ...opciones, headers: this._encabezados() }, true);
+    }
+
     if (!respuesta.ok) throw new Error(datos.error || `Error ${respuesta.status}`);
     return datos;
   },

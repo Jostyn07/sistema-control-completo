@@ -22,9 +22,9 @@ function generarPlantilla() {
   });
 }
 
-async function exportarFacturacion(usuarioId) {
+async function exportarFacturacion(empresaId) {
   const { data: config, error: eConfig } = await supabase
-    .from('configuracion_fiscal').select('*').eq('usuario_id', usuarioId).maybeSingle();
+    .from('configuracion_fiscal').select('*').eq('empresa_id', empresaId).maybeSingle();
   if (eConfig) throw new Error(eConfig.message);
 
   const filasConfig = config ? [[
@@ -40,9 +40,9 @@ async function exportarFacturacion(usuarioId) {
 
   const { data: facturas, error: eFact } = await supabase
     .from('facturas')
-    .select('numero, cufe, estado, fecha, ventas!inner(codigo, usuario_id)')
-    .eq('usuario_id', usuarioId)
-    .eq('ventas.usuario_id', usuarioId)
+    .select('numero, cufe, estado, fecha, ventas!inner(codigo, empresa_id)')
+    .eq('empresa_id', empresaId)
+    .eq('ventas.empresa_id', empresaId)
     .order('fecha', { ascending: false })
     .limit(LIMITE_HISTORIAL);
   if (eFact) throw new Error(eFact.message);

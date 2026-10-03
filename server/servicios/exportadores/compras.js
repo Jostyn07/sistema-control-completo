@@ -13,12 +13,12 @@ function generarPlantilla() {
   return crearLibro({ titulo: TITULO, paraQueSirve: PARA_QUE_SIRVE, columnas: COLUMNAS, advertencias: ADVERTENCIAS });
 }
 
-async function exportarCompras(usuarioId) {
+async function exportarCompras(empresaId) {
   const { data, error } = await supabase
     .from('compras')
-    .select('fecha, proveedor, cantidad, precio_unitario, estado, notas, materiales!inner(codigo, usuario_id)')
-    .eq('usuario_id', usuarioId)
-    .eq('materiales.usuario_id', usuarioId)
+    .select('fecha, proveedor, cantidad, precio_unitario, estado, notas, materiales!inner(codigo, empresa_id)')
+    .eq('empresa_id', empresaId)
+    .eq('materiales.empresa_id', empresaId)
     .order('fecha', { ascending: false })
     .limit(LIMITE_HISTORIAL);
   if (error) throw new Error(error.message);

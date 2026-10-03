@@ -9,6 +9,7 @@
 //     venta como facturada, sin tocar ningún consecutivo de la DIAN.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { usuarioActual } = require('../../contexto');
 const { leerHoja } = require('../excel/lector');
 const {
   HOJA_CONFIGURACION_FISCAL, HOJA_FACTURAS, COLUMNAS_CONFIGURACION_FISCAL, COLUMNAS_FACTURAS
@@ -25,7 +26,7 @@ function extraer(filaExcel, mapaClaves) {
 }
 
 // -------------------- 1. ANALIZAR --------------------
-async function analizarFacturacion(buffer, usuarioId) {
+async function analizarFacturacion(buffer, empresaId) {
   // ---- CONFIGURACION_FISCAL (a lo más una fila con datos) ----
   const filasConfigExcel = leerHoja(buffer, HOJA_CONFIGURACION_FISCAL, { opcional: true })
     .filter((f) => Object.values(f).some((v) => aTextoLimpio(v) !== '')); // ignora filas de ejemplo vacías
@@ -57,12 +58,12 @@ async function analizarFacturacion(buffer, usuarioId) {
   // ---- FACTURAS ----
   const filasFacturasExcel = leerHoja(buffer, HOJA_FACTURAS, { opcional: true });
   const { data: ventasExistentes, error: eVentas } = await supabase
-    .from('ventas').select('id, codigo, facturada').eq('usuario_id', usuarioId).not('codigo', 'is', null);
+    .from('ventas').select('id, codigo, facturada').eq('empresa_id', empresaId).not('codigo', 'is', null);
   if (eVentas) throw new Error(eVentas.message);
   const ventasPorCodigo = new Map((ventasExistentes || []).map((v) => [v.codigo.toLowerCase(), v]));
 
   const { data: facturasExistentes, error: eFact } = await supabase
-    .from('facturas').select('numero').eq('usuario_id', usuarioId);
+    .from('facturas').select('numero').eq('empresa_id', empresaId);
   if (eFact) throw new Error(eFact.message);
   const numerosExistentes = new Set((facturasExistentes || []).map((f) => (f.numero || '').toLowerCase()).filter(Boolean));
 
@@ -111,14 +112,14 @@ async function analizarFacturacion(buffer, usuarioId) {
 }
 
 // -------------------- 2. IMPORTAR --------------------
-async function importarFacturacion(usuarioId, reporte) {
+async function importarFacturacion(empresaId, reporte) {
   const resultado = { configuracion_guardada: false, facturas_registradas: 0, facturas_omitidas: 0 };
 
   const filaConfig = (reporte.filas_configuracion_fiscal || []).find((f) => !f.errores || f.errores.length === 0);
   if (filaConfig) {
     const datos = filaConfig.datos;
     const fila = {
-      usuario_id: usuarioId,
+      empresa_id: empresaId, usuario_id: usuarioActual(),
       razon_social: aTextoLimpio(datos.razon_social),
       nit: filaConfig.tiene_nit ? aTextoLimpio(datos.nit) : null,
       regimen: filaConfig.tiene_nit ? (aTextoLimpio(datos.regimen) || null) : null,
@@ -128,7 +129,7 @@ async function importarFacturacion(usuarioId, reporte) {
       resolucion_hasta: filaConfig.tiene_resolucion ? aNumero(datos.resolucion_hasta) : null,
       resolucion_vigencia: filaConfig.tiene_resolucion ? (aFechaISO(datos.resolucion_vigencia) || null) : null
     };
-    const { error } = await supabase.from('configuracion_fiscal').upsert(fila);
+    const { error } = await supabase.from('configuracion_fiscal').upsert(fila, { onConflict: 'empresa_id' });
     if (error) throw new Error(`Configuración fiscal: ${error.message}`);
     resultado.configuracion_guardada = true;
   }
@@ -139,7 +140,7 @@ async function importarFacturacion(usuarioId, reporte) {
     const fecha = aFechaISO(datos.fecha) || new Date().toISOString().slice(0, 10);
 
     const { error: eFact } = await supabase.from('facturas').insert({
-      usuario_id: usuarioId,
+      empresa_id: empresaId, usuario_id: usuarioActual(),
       venta_id: fila.venta_id,
       numero: fila.numero,
       cufe: aTextoLimpio(datos.cufe) || null,
@@ -149,7 +150,7 @@ async function importarFacturacion(usuarioId, reporte) {
     });
     if (eFact) throw new Error(`Fila ${fila.numero_fila}: ${eFact.message}`);
 
-    const { error: eVenta } = await supabase.from('ventas').update({ facturada: true }).eq('id', fila.venta_id).eq('usuario_id', usuarioId);
+    const { error: eVenta } = await supabase.from('ventas').update({ facturada: true }).eq('id', fila.venta_id).eq('empresa_id', empresaId);
     if (eVenta) throw new Error(`Fila ${fila.numero_fila}: ${eVenta.message}`);
 
     resultado.facturas_registradas++;

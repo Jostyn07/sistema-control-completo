@@ -1,6 +1,6 @@
 // ============================================================
 // MÓDULO 4 — VENTAS  (/api/ventas)
-// Requiere sesión. Todo se filtra por req.usuarioId.
+// Requiere sesión. Todo se filtra por req.empresa.id.
 // - GET  /productos-disponibles  productos con capacidad producible actual
 // - POST /                       registra la venta; descuenta materiales
 // - GET  /                       historial con filtros (desde, hasta, estado)
@@ -37,15 +37,15 @@ router.get('/productos-disponibles', async (req, res, next) => {
     const { data: productos, error: eProd } = await supabase
       .from('productos')
       .select('id, nombre, precio_venta, costo_calculado, minutos_fabricacion, categoria_id, categorias_productos(nombre)')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('activo', true)
       .order('nombre');
     if (eProd) throw new Error(eProd.message);
     if (!productos || productos.length === 0) return res.json([]);
 
-    const fichas = await obtenerFichasEfectivasParaProductos(productos.map(p => p.id), req.usuarioId);
+    const fichas = await obtenerFichasEfectivasParaProductos(productos.map(p => p.id), req.empresa.id);
 
-    const costoMinuto = await obtenerCostoMinutoManoObra(req.usuarioId);
+    const costoMinuto = await obtenerCostoMinutoManoObra(req.empresa.id);
 
     const fichasPorProducto = new Map();
     for (const f of fichas || []) {
@@ -85,8 +85,8 @@ router.get('/categorias-por-producto', async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from('ventas_items')
-      .select('producto_id, categoria, ventas!inner(usuario_id)')
-      .eq('ventas.usuario_id', req.usuarioId)
+      .select('producto_id, categoria, ventas!inner(empresa_id)')
+      .eq('ventas.empresa_id', req.empresa.id)
       .not('categoria', 'is', null);
     if (error) throw new Error(error.message);
 
@@ -115,7 +115,7 @@ router.post('/', async (req, res, next) => {
     const { data: productos, error: eProd } = await supabase
       .from('productos')
       .select('id, nombre, precio_venta, costo_calculado, activo, categoria_id, categorias_productos(nombre)')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .in('id', productoIds);
     if (eProd) throw new Error(eProd.message);
     const productoPorId = new Map((productos || []).map(p => [p.id, p]));
@@ -126,7 +126,7 @@ router.post('/', async (req, res, next) => {
       if (!p.categoria_id) return res.status(400).json({ error: `"${p.nombre}" no tiene categoría asignada. Asígnale una en Productos antes de venderlo.` });
     }
 
-    const fichas = await obtenerFichasEfectivasParaProductos(productoIds, req.usuarioId);
+    const fichas = await obtenerFichasEfectivasParaProductos(productoIds, req.empresa.id);
 
     // Productos con procesos activos van por el flujo de WIP (el
     // material se descuenta cuando se entrega cada proceso, no aquí,
@@ -135,7 +135,7 @@ router.post('/', async (req, res, next) => {
     const { data: procesosActivos, error: eProcActivos } = await supabase
       .from('procesos')
       .select('producto_id')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('activo', true)
       .in('producto_id', productoIds);
     if (eProcActivos) throw new Error(eProcActivos.message);
@@ -197,7 +197,7 @@ router.post('/', async (req, res, next) => {
     const { data: venta, error: eVenta } = await supabase
       .from('ventas')
       .insert({
-        usuario_id: req.usuarioId,
+        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
         cliente: (cliente || '').trim() || null,
         cliente_telefono_cifrado: cifrar(cliente_telefono),
         cliente_cedula_cifrada: cifrar(cliente_cedula),
@@ -219,14 +219,14 @@ router.post('/', async (req, res, next) => {
         .from('materiales')
         .update({ stock_actual: nuevoStock, actualizado_en: new Date().toISOString() })
         .eq('id', materialId)
-        .eq('usuario_id', req.usuarioId);
+        .eq('empresa_id', req.empresa.id);
       if (eStock) throw new Error(eStock.message);
 
       // Bitácora (Fase 2 del plan de dashboard) — si esto falla, no se
       // revierte la venta ni el stock: la bitácora es "buena, no
       // perfecta", como quedó documentado en el plan.
       const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-        usuario_id: req.usuarioId,
+        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
         material_id: materialId,
         tipo: 'venta',
         cantidad: -requerido,
@@ -246,7 +246,7 @@ router.post('/', async (req, res, next) => {
       const resultado = await consumirWIPYGenerarNecesidad({
         productoId: item.producto_id,
         cantidadVendida: Number(item.cantidad),
-        usuarioId: req.usuarioId
+        empresaId: req.empresa.id
       });
       if (resultado.generado.length > 0) {
         produccionGenerada.push({
@@ -272,7 +272,7 @@ router.get('/', async (req, res, next) => {
     let consulta = supabase
       .from('ventas')
       .select('*, ventas_items(id, producto_id, cantidad, cantidad_entregada, precio_unitario, costo_unitario, categoria, productos(nombre))')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .order('fecha', { ascending: false })
       .limit(200);
 
@@ -308,7 +308,7 @@ router.put('/:id/estado', async (req, res, next) => {
       .from('ventas')
       .update({ estado })
       .eq('id', req.params.id)
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .select().single();
     if (error) throw new Error(error.message);
     if (!data) return res.status(404).json({ error: 'Venta no encontrada' });
@@ -329,7 +329,7 @@ router.put('/:id/pago', async (req, res, next) => {
       .from('ventas')
       .update({ pagado, fecha_pago: pagado ? new Date().toISOString() : null })
       .eq('id', req.params.id)
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .select().single();
     if (error) throw new Error(error.message);
     if (!data) return res.status(404).json({ error: 'Venta no encontrada' });
@@ -345,7 +345,7 @@ router.put('/:id/fecha-entrega', async (req, res, next) => {
       .from('ventas')
       .update({ fecha_entrega: fecha_entrega || null })
       .eq('id', req.params.id)
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .select().single();
     if (error) throw new Error(error.message);
     if (!data) return res.status(404).json({ error: 'Venta no encontrada' });
@@ -381,7 +381,7 @@ router.put('/:id', async (req, res, next) => {
         .from('ventas')
         .update(cambiosVenta)
         .eq('id', req.params.id)
-        .eq('usuario_id', req.usuarioId)
+        .eq('empresa_id', req.empresa.id)
         .select().single();
       if (error) throw new Error(error.message);
       if (!data) return res.status(404).json({ error: 'Venta no encontrada' });
@@ -405,7 +405,7 @@ router.put('/:id', async (req, res, next) => {
 
     const { data: ventaActual, error: eGet } = await supabase
       .from('ventas').select('*, ventas_items(producto_id, cantidad)')
-      .eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !ventaActual) return res.status(404).json({ error: 'Venta no encontrada' });
 
     const { data: facturasAsociadas, error: eFact } = await supabase
@@ -421,7 +421,7 @@ router.put('/:id', async (req, res, next) => {
     const { data: productos, error: eProd } = await supabase
       .from('productos')
       .select('id, nombre, precio_venta, costo_calculado, activo, categoria_id, categorias_productos(nombre)')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .in('id', productoIds);
     if (eProd) throw new Error(eProd.message);
     const productoPorId = new Map((productos || []).map(p => [p.id, p]));
@@ -445,7 +445,7 @@ router.put('/:id', async (req, res, next) => {
       const { data: procesosActivos, error: eProcActivos } = await supabase
         .from('procesos')
         .select('producto_id')
-        .eq('usuario_id', req.usuarioId)
+        .eq('empresa_id', req.empresa.id)
         .eq('activo', true)
         .in('producto_id', idsUnion);
       if (eProcActivos) throw new Error(eProcActivos.message);
@@ -456,7 +456,7 @@ router.put('/:id', async (req, res, next) => {
       }
     }
 
-    const fichas = idsUnion.length ? await obtenerFichasEfectivasParaProductos(idsUnion, req.usuarioId) : [];
+    const fichas = idsUnion.length ? await obtenerFichasEfectivasParaProductos(idsUnion, req.empresa.id) : [];
 
     function requeridoPorMaterialDe(listaItems) {
       const mapa = new Map();
@@ -528,11 +528,11 @@ router.put('/:id', async (req, res, next) => {
       const { error: eStock } = await supabase
         .from('materiales')
         .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-        .eq('id', materialId).eq('usuario_id', req.usuarioId);
+        .eq('id', materialId).eq('empresa_id', req.empresa.id);
       if (eStock) throw new Error(eStock.message);
 
       await supabase.from('inventario_ajustes').insert({
-        usuario_id: req.usuarioId,
+        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
         material_id: materialId,
         stock_anterior: stockAnterior,
         stock_nuevo: stockNuevo,
@@ -540,7 +540,7 @@ router.put('/:id', async (req, res, next) => {
         usuario: req.usuarioEmail || null
       });
       await supabase.from('inventario_movimientos').insert({
-        usuario_id: req.usuarioId,
+        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
         material_id: materialId,
         tipo: 'ajuste',
         cantidad: -neto,
@@ -561,7 +561,7 @@ router.put('/:id', async (req, res, next) => {
       .from('ventas')
       .update({ ...cambiosVenta, total, costo_total: costoTotal })
       .eq('id', req.params.id)
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .select().single();
     if (eUpd) throw new Error(eUpd.message);
 
@@ -591,7 +591,7 @@ router.delete('/:id', async (req, res, next) => {
 
     const { data: venta, error: eGet } = await supabase
       .from('ventas').select('*, ventas_items(producto_id, cantidad)')
-      .eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !venta) return res.status(404).json({ error: 'Venta no encontrada' });
 
     // OJO: se revisa si existe CUALQUIER factura (aunque esté anulada),
@@ -619,14 +619,14 @@ router.delete('/:id', async (req, res, next) => {
     const { data: procesosActivos, error: eProcActivos } = await supabase
       .from('procesos')
       .select('producto_id')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('activo', true)
       .in('producto_id', productoIds.length ? productoIds : ['00000000-0000-0000-0000-000000000000']);
     if (eProcActivos) throw new Error(eProcActivos.message);
     const idsConProcesos = new Set((procesosActivos || []).map(p => p.producto_id));
 
     const itemsSinProcesos = (venta.ventas_items || []).filter(i => !idsConProcesos.has(i.producto_id));
-    const fichas = await obtenerFichasEfectivasParaProductos(itemsSinProcesos.map(i => i.producto_id), req.usuarioId);
+    const fichas = await obtenerFichasEfectivasParaProductos(itemsSinProcesos.map(i => i.producto_id), req.empresa.id);
 
     const requeridoPorMaterial = new Map();
     for (const item of itemsSinProcesos) {
@@ -643,11 +643,11 @@ router.delete('/:id', async (req, res, next) => {
       const { error: eStock } = await supabase
         .from('materiales')
         .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-        .eq('id', materialId).eq('usuario_id', req.usuarioId);
+        .eq('id', materialId).eq('empresa_id', req.empresa.id);
       if (eStock) throw new Error(eStock.message);
 
       await supabase.from('inventario_ajustes').insert({
-        usuario_id: req.usuarioId,
+        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
         material_id: materialId,
         stock_anterior: stockActual,
         stock_nuevo: stockNuevo,
@@ -655,7 +655,7 @@ router.delete('/:id', async (req, res, next) => {
         usuario: req.usuarioEmail || null
       });
       await supabase.from('inventario_movimientos').insert({
-        usuario_id: req.usuarioId,
+        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
         material_id: materialId,
         tipo: 'ajuste',
         cantidad: requerido,
@@ -666,7 +666,7 @@ router.delete('/:id', async (req, res, next) => {
     }
 
     const { error: eDel } = await supabase
-      .from('ventas').delete().eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+      .from('ventas').delete().eq('id', req.params.id).eq('empresa_id', req.empresa.id);
     if (eDel) throw new Error(eDel.message);
 
     res.json({ eliminada: true, stock_revertido: requeridoPorMaterial.size > 0 });
@@ -680,7 +680,7 @@ router.get('/por-entregar', async (req, res, next) => {
     const { data, error } = await supabase
       .from('ventas')
       .select('id, cliente, fecha_entrega, estado, total, ventas_items(cantidad, productos(nombre))')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .neq('estado', 'entregado')
       .not('fecha_entrega', 'is', null)
       .order('fecha_entrega', { ascending: true });
@@ -709,7 +709,7 @@ router.post('/:id/entregas', async (req, res, next) => {
       return res.status(400).json({ error: 'Elige al menos un producto para esta entrega' });
 
     const { data: venta, error: eVenta } = await supabase
-      .from('ventas').select('id, ventas_items(id)').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('ventas').select('id, ventas_items(id)').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eVenta || !venta) return res.status(404).json({ error: 'Venta no encontrada' });
 
     const idsDeLaVenta = new Set((venta.ventas_items || []).map(i => i.id));
@@ -726,7 +726,7 @@ router.post('/:id/entregas', async (req, res, next) => {
         referenciaId: item.venta_item_id,
         cantidad: item.cantidad,
         fecha,
-        usuarioId: req.usuarioId,
+        empresaId: req.empresa.id,
         grupoId
       });
       registradas.push(resultado.entrega);
@@ -741,7 +741,7 @@ router.post('/:id/entregas', async (req, res, next) => {
 router.get('/:id/entregas', async (req, res, next) => {
   try {
     const { data: venta, error: eVenta } = await supabase
-      .from('ventas').select('id, ventas_items(id, producto_id, categoria, productos(nombre))').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('ventas').select('id, ventas_items(id, producto_id, categoria, productos(nombre))').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eVenta || !venta) return res.status(404).json({ error: 'Venta no encontrada' });
 
     // Nombre Y categoría de cada línea (la categoría es la que tenía el
@@ -758,7 +758,7 @@ router.get('/:id/entregas', async (req, res, next) => {
       .from('entregas_parciales')
       .select('*')
       .eq('tipo', 'venta_item')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .in('referencia_id', idsItems)
       .order('fecha', { ascending: false })
       .order('creado_en', { ascending: false });
@@ -784,7 +784,7 @@ router.get('/:id/entregas', async (req, res, next) => {
 // DELETE /api/ventas/entregas/:id — borra UN registro puntual (corrección).
 router.delete('/entregas/:id', async (req, res, next) => {
   try {
-    const resultado = await eliminarEntrega(req.params.id, req.usuarioId);
+    const resultado = await eliminarEntrega(req.params.id, req.empresa.id);
     res.json(resultado);
   } catch (err) { next(err); }
 });
@@ -797,12 +797,12 @@ router.delete('/entregas/grupo/:grupoId', async (req, res, next) => {
       .from('entregas_parciales')
       .select('id')
       .eq('grupo_id', req.params.grupoId)
-      .eq('usuario_id', req.usuarioId);
+      .eq('empresa_id', req.empresa.id);
     if (error) throw new Error(error.message);
     if (!filas || filas.length === 0) return res.status(404).json({ error: 'Ese grupo de entregas no existe' });
 
     for (const fila of filas) {
-      await eliminarEntrega(fila.id, req.usuarioId);
+      await eliminarEntrega(fila.id, req.empresa.id);
     }
     res.json({ eliminado: true, cantidad: filas.length });
   } catch (err) { next(err); }

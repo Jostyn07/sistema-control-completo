@@ -53,7 +53,7 @@ function inicializarPaginaExcel() {
 // -------------------- Descargas (requieren el token, pero no son JSON) --------------------
 async function descargarConAuth(ruta, nombreArchivo) {
   const token = localStorage.getItem('token_sesion');
-  const respuesta = await fetch(ruta, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  const respuesta = await fetch(ruta, { headers: token ? { Authorization: `Bearer ${token}`, ...API.encabezadoEmpresa() } : {} });
   if (!respuesta.ok) {
     const datos = await respuesta.json().catch(() => ({}));
     throw new Error(datos.error || `Error ${respuesta.status}`);
@@ -119,7 +119,7 @@ async function alSeleccionarArchivo(evento) {
     formData.append('archivo', archivo);
     const respuesta = await fetch(`/api/excel/${moduloActualExcel.clave}/analizar`, {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: token ? { Authorization: `Bearer ${token}`, ...API.encabezadoEmpresa() } : {},
       body: formData
     });
     const datos = await respuesta.json().catch(() => ({}));

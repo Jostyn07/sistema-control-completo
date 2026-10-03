@@ -10,6 +10,7 @@
 // ============================================================
 const supabase = require('../supabase/cliente');
 
+const { usuarioActual } = require('../contexto');
 // Fecha estimada de llegada = hoy + días de entrega del material
 function calcularFechaEstimada(tiempoEntregaDias) {
   const fecha = new Date();
@@ -33,12 +34,12 @@ function calcularFechaEstimada(tiempoEntregaDias) {
 // condicionado a `estado = 'pendiente'`: Postgres solo deja que UNA
 // de las peticiones concurrentes gane esa condición — la otra no
 // actualiza ninguna fila y se detiene ahí, sin duplicar nada.
-async function recibirCompra(compraId, usuarioId) {
+async function recibirCompra(compraId, empresaId) {
   const { data: reclamada, error: eReclamo } = await supabase
     .from('compras')
     .update({ estado: 'recibida', fecha_llegada: new Date().toISOString() })
     .eq('id', compraId)
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .eq('estado', 'pendiente')
     .select()
     .maybeSingle();
@@ -51,13 +52,13 @@ async function recibirCompra(compraId, usuarioId) {
     // que el stock de esta compra ya se sumó (o se está sumando en la
     // otra llamada), y no hay nada más que hacer aquí.
     const { data: actual } = await supabase
-      .from('compras').select('*').eq('id', compraId).eq('usuario_id', usuarioId).maybeSingle();
+      .from('compras').select('*').eq('id', compraId).eq('empresa_id', empresaId).maybeSingle();
     if (!actual) throw new Error('Compra no encontrada');
     return actual;
   }
 
   const { data: material, error: eMat } = await supabase
-    .from('materiales').select('stock_actual').eq('id', reclamada.material_id).eq('usuario_id', usuarioId).single();
+    .from('materiales').select('stock_actual').eq('id', reclamada.material_id).eq('empresa_id', empresaId).single();
   if (eMat || !material) throw new Error('El material de esta compra ya no existe');
 
   const stockAnterior = Number(material.stock_actual);
@@ -66,13 +67,13 @@ async function recibirCompra(compraId, usuarioId) {
     .from('materiales')
     .update({ stock_actual: nuevoStock, actualizado_en: new Date().toISOString() })
     .eq('id', reclamada.material_id)
-    .eq('usuario_id', usuarioId);
+    .eq('empresa_id', empresaId);
   if (eStock) throw new Error(eStock.message);
 
   // Bitácora (Fase 2) — misma regla: si falla, no se revierte la
   // recepción de la compra, solo queda sin registrar en el historial.
   const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-    usuario_id: usuarioId,
+    empresa_id: empresaId, usuario_id: usuarioActual(),
     material_id: reclamada.material_id,
     tipo: 'compra',
     cantidad: Number(reclamada.cantidad),
@@ -89,18 +90,18 @@ async function recibirCompra(compraId, usuarioId) {
 // ya pasó, y las marca como recibidas automáticamente (sumando su stock).
 // Se llama al principio de cualquier consulta que muestre stock, para
 // que siempre esté al día sin depender de un proceso programado aparte.
-async function procesarComprasVencidas(usuarioId) {
+async function procesarComprasVencidas(empresaId) {
   const hoy = new Date().toISOString().slice(0, 10);
   const { data: vencidas, error } = await supabase
     .from('compras')
     .select('id')
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .eq('estado', 'pendiente')
     .lte('fecha_estimada_llegada', hoy);
   if (error) throw new Error(error.message);
 
   for (const compra of vencidas || []) {
-    await recibirCompra(compra.id, usuarioId);
+    await recibirCompra(compra.id, empresaId);
   }
   return (vencidas || []).length;
 }

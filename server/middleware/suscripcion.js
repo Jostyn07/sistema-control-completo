@@ -12,7 +12,7 @@ async function requiereSuscripcionActiva(req, res, next) {
   if (req.method === 'GET') return next(); // lectura siempre permitida
 
   try {
-    const sub = await sincronizarEstadoSuscripcion(req.usuarioId);
+    const sub = await sincronizarEstadoSuscripcion(req.empresa.id);
 
     // Sin ninguna fila de suscripción (nunca se creó la prueba, por ejemplo)
     // se trata igual que vencida-sin-gracia: no se deja crear ni editar.

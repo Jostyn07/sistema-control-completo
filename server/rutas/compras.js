@@ -1,6 +1,6 @@
 // ============================================================
 // MÓDULO 5 — COMPRAS  (/api/compras)
-// Requiere sesión. Todo se filtra por req.usuarioId.
+// Requiere sesión. Todo se filtra por req.empresa.id.
 // - GET  /pendientes    materiales por debajo del punto de reorden
 //                       (también muestra si ya hay un pedido en camino)
 // - POST /              registra el PEDIDO — NO suma stock todavía;
@@ -18,13 +18,13 @@ const router = express.Router();
 // GET /api/compras/pendientes
 router.get('/pendientes', async (req, res, next) => {
   try {
-    const inventario = await servicioInventario.obtenerInventarioMateriales(req.usuarioId);
+    const inventario = await servicioInventario.obtenerInventarioMateriales(req.empresa.id);
 
     // Pedidos ya en camino, para no sugerir comprar algo que ya se pidió
     const { data: enCamino, error: eCamino } = await supabase
       .from('compras')
       .select('material_id, cantidad, fecha_estimada_llegada')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('estado', 'pendiente');
     if (eCamino) throw new Error(eCamino.message);
 
@@ -78,7 +78,7 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ error: 'El precio unitario debe ser un número mayor o igual a 0' });
 
     const { data: material, error: eGet } = await supabase
-      .from('materiales').select('*').eq('id', material_id).eq('usuario_id', req.usuarioId).single();
+      .from('materiales').select('*').eq('id', material_id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !material) return res.status(404).json({ error: 'Material no encontrado' });
 
     const fechaEstimada = calcularFechaEstimada(material.tiempo_entrega_dias);
@@ -86,7 +86,7 @@ router.post('/', async (req, res, next) => {
     const { data: compra, error: eCompra } = await supabase
       .from('compras')
       .insert({
-        usuario_id: req.usuarioId,
+        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
         material_id,
         proveedor: proveedor.trim(),
         cantidad: Number(cantidad),
@@ -103,7 +103,7 @@ router.post('/', async (req, res, next) => {
     const precioDiferente = Number(precio_unitario) !== Number(material.costo_unitario);
     if (precioDiferente) {
       const { error: eHist } = await supabase.from('materiales_historial_precio').insert({
-        usuario_id: req.usuarioId,
+        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
         material_id,
         costo_anterior: material.costo_unitario,
         costo_nuevo: Number(precio_unitario),
@@ -126,7 +126,7 @@ router.post('/', async (req, res, next) => {
 // POST /api/compras/:id/recibir — confirma la llegada manualmente (llegó antes de lo previsto)
 router.post('/:id/recibir', async (req, res, next) => {
   try {
-    const compra = await recibirCompra(req.params.id, req.usuarioId);
+    const compra = await recibirCompra(req.params.id, req.empresa.id);
     res.json({ ...compra, mensaje: 'Llegada confirmada. El stock ya se sumó.' });
   } catch (err) { next(err); }
 });
@@ -134,11 +134,11 @@ router.post('/:id/recibir', async (req, res, next) => {
 // GET /api/compras/en-camino — pedidos hechos que aún no llegan
 router.get('/en-camino', async (req, res, next) => {
   try {
-    await procesarComprasVencidas(req.usuarioId); // pone al día los que ya se vencieron
+    await procesarComprasVencidas(req.empresa.id); // pone al día los que ya se vencieron
     const { data, error } = await supabase
       .from('compras')
       .select('*, materiales(nombre, unidad)')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .eq('estado', 'pendiente')
       .order('fecha_estimada_llegada', { ascending: true });
     if (error) throw new Error(error.message);
@@ -149,12 +149,12 @@ router.get('/en-camino', async (req, res, next) => {
 // GET /api/compras/historial?proveedor=...&desde=YYYY-MM-DD&hasta=YYYY-MM-DD
 router.get('/historial', async (req, res, next) => {
   try {
-    await procesarComprasVencidas(req.usuarioId);
+    await procesarComprasVencidas(req.empresa.id);
 
     let consulta = supabase
       .from('compras')
       .select('*, materiales(nombre, unidad)')
-      .eq('usuario_id', req.usuarioId)
+      .eq('empresa_id', req.empresa.id)
       .order('fecha', { ascending: false })
       .limit(200);
 
@@ -179,13 +179,13 @@ router.delete('/:id', async (req, res, next) => {
       return res.status(400).json({ error: 'Escribe el motivo de la eliminación (para trazabilidad)' });
 
     const { data: compra, error: eGet } = await supabase
-      .from('compras').select('*').eq('id', req.params.id).eq('usuario_id', req.usuarioId).single();
+      .from('compras').select('*').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !compra) return res.status(404).json({ error: 'Compra no encontrada' });
 
     let stockRevertido = false;
     if (compra.estado === 'recibida') {
       const { data: material, error: eMat } = await supabase
-        .from('materiales').select('stock_actual, unidad').eq('id', compra.material_id).eq('usuario_id', req.usuarioId).single();
+        .from('materiales').select('stock_actual, unidad').eq('id', compra.material_id).eq('empresa_id', req.empresa.id).single();
       if (eMat || !material) throw new Error('El material de esta compra ya no existe');
 
       const stockAnterior = Number(material.stock_actual);
@@ -195,11 +195,11 @@ router.delete('/:id', async (req, res, next) => {
         .from('materiales')
         .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
         .eq('id', compra.material_id)
-        .eq('usuario_id', req.usuarioId);
+        .eq('empresa_id', req.empresa.id);
       if (eStock) throw new Error(eStock.message);
 
       const { error: eAjuste } = await supabase.from('inventario_ajustes').insert({
-        usuario_id: req.usuarioId,
+        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
         material_id: compra.material_id,
         stock_anterior: stockAnterior,
         stock_nuevo: stockNuevo,
@@ -210,7 +210,7 @@ router.delete('/:id', async (req, res, next) => {
       stockRevertido = true;
     }
 
-    const { error: eDel } = await supabase.from('compras').delete().eq('id', req.params.id).eq('usuario_id', req.usuarioId);
+    const { error: eDel } = await supabase.from('compras').delete().eq('id', req.params.id).eq('empresa_id', req.empresa.id);
     if (eDel) throw new Error(eDel.message);
 
     res.json({ eliminado: true, stock_revertido: stockRevertido });

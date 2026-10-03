@@ -8,6 +8,7 @@
 //     sobre la única fila de configuración del usuario.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { usuarioActual } = require('../../contexto');
 const { leerHoja } = require('../excel/lector');
 const {
   PARAMETROS_VALIDOS, HOJA_COSTOS_FIJOS, HOJA_CAPITAL, HOJA_CONFIGURACION,
@@ -27,11 +28,11 @@ function extraer(filaExcel, mapaClaves) {
 }
 
 // -------------------- 1. ANALIZAR --------------------
-async function analizarFinanzas(buffer, usuarioId) {
+async function analizarFinanzas(buffer, empresaId) {
   // ---- COSTOS_FIJOS ----
   const filasCostosExcel = leerHoja(buffer, HOJA_COSTOS_FIJOS);
   const { data: costosExistentes, error: eCostos } = await supabase
-    .from('costos_fijos').select('id, nombre, valor_mensual, activo').eq('usuario_id', usuarioId);
+    .from('costos_fijos').select('id, nombre, valor_mensual, activo').eq('empresa_id', empresaId);
   if (eCostos) throw new Error(eCostos.message);
   const costosPorNombre = new Map((costosExistentes || []).map((c) => [c.nombre.toLowerCase(), c]));
 
@@ -137,7 +138,7 @@ async function analizarFinanzas(buffer, usuarioId) {
 // -------------------- 2. IMPORTAR --------------------
 // Recibe exactamente lo que devolvió analizarFinanzas() (o esas mismas
 // tres listas ya editadas/confirmadas por el usuario).
-async function importarFinanzas(usuarioId, reporte) {
+async function importarFinanzas(empresaId, reporte) {
   const resultado = {
     costos_fijos: { creados: 0, actualizados: 0, sin_cambios: 0, omitidos: 0 },
     capital: { creados: 0, omitidos: 0 },
@@ -152,7 +153,7 @@ async function importarFinanzas(usuarioId, reporte) {
     const datos = fila.datos;
     if (fila.accion === 'crear') {
       const { error } = await supabase.from('costos_fijos').insert({
-        usuario_id: usuarioId,
+        empresa_id: empresaId, usuario_id: usuarioActual(),
         nombre: aTextoLimpio(datos.nombre),
         valor_mensual: aNumero(datos.valor_mensual),
         activo: aBooleanoSiNo(datos.activo) ?? true
@@ -164,7 +165,7 @@ async function importarFinanzas(usuarioId, reporte) {
         nombre: aTextoLimpio(datos.nombre),
         valor_mensual: aNumero(datos.valor_mensual),
         activo: aBooleanoSiNo(datos.activo) ?? true
-      }).eq('id', fila.costo_fijo_id).eq('usuario_id', usuarioId);
+      }).eq('id', fila.costo_fijo_id).eq('empresa_id', empresaId);
       if (error) throw new Error(`Fila ${fila.numero_fila}: ${error.message}`);
       resultado.costos_fijos.actualizados++;
     }
@@ -175,7 +176,7 @@ async function importarFinanzas(usuarioId, reporte) {
     if (fila.errores && fila.errores.length) { resultado.capital.omitidos++; continue; }
     const datos = fila.datos;
     const { error } = await supabase.from('capital_invertido').insert({
-      usuario_id: usuarioId,
+      empresa_id: empresaId, usuario_id: usuarioActual(),
       concepto: aTextoLimpio(datos.concepto),
       valor: aNumero(datos.valor),
       fecha: aFechaISO(datos.fecha) || new Date().toISOString().slice(0, 10)
@@ -200,17 +201,17 @@ async function importarFinanzas(usuarioId, reporte) {
 
   if (Object.keys(cambios).length > 0) {
     const { data: existente, error: eGet } = await supabase
-      .from('configuracion_produccion').select('usuario_id').eq('usuario_id', usuarioId).maybeSingle();
+      .from('configuracion_produccion').select('usuario_id').eq('empresa_id', empresaId).maybeSingle();
     if (eGet) throw new Error(eGet.message);
 
     cambios.actualizado_en = new Date().toISOString();
     const operacion = existente
-      ? supabase.from('configuracion_produccion').update(cambios).eq('usuario_id', usuarioId)
-      : supabase.from('configuracion_produccion').insert({ usuario_id: usuarioId, ...cambios });
+      ? supabase.from('configuracion_produccion').update(cambios).eq('empresa_id', empresaId)
+      : supabase.from('configuracion_produccion').insert({ empresa_id: empresaId, usuario_id: usuarioActual(), ...cambios });
     const { error: eUpd } = await operacion;
     if (eUpd) throw new Error(eUpd.message);
 
-    if (costoHoraCambio) await recalcularTodosLosProductos(usuarioId);
+    if (costoHoraCambio) await recalcularTodosLosProductos(empresaId);
   }
 
   return resultado;

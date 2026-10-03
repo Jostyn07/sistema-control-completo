@@ -24,14 +24,14 @@ function generarPlantilla() {
   });
 }
 
-async function exportarFinanzas(usuarioId) {
+async function exportarFinanzas(empresaId) {
   const { data: costosFijos, error: eCostos } = await supabase
-    .from('costos_fijos').select('nombre, valor_mensual, activo').eq('usuario_id', usuarioId).order('nombre');
+    .from('costos_fijos').select('nombre, valor_mensual, activo').eq('empresa_id', empresaId).order('nombre');
   if (eCostos) throw new Error(eCostos.message);
   const filasCostos = (costosFijos || []).map((c) => [c.nombre, c.valor_mensual, c.activo ? 'SI' : 'NO']);
 
   const { data: capital, error: eCapital } = await supabase
-    .from('capital_invertido').select('fecha, concepto, valor').eq('usuario_id', usuarioId)
+    .from('capital_invertido').select('fecha, concepto, valor').eq('empresa_id', empresaId)
     .order('fecha', { ascending: false }).limit(LIMITE_CAPITAL);
   if (eCapital) throw new Error(eCapital.message);
   const filasCapital = (capital || []).map((c) => [new Date(c.fecha).toLocaleDateString('es-CO'), c.concepto, c.valor]);
@@ -39,7 +39,7 @@ async function exportarFinanzas(usuarioId) {
   const { data: config, error: eConfig } = await supabase
     .from('configuracion_produccion')
     .select('costo_hora_mano_obra, meta_ventas_mensual, fecha_inicio_operacion')
-    .eq('usuario_id', usuarioId).maybeSingle();
+    .eq('empresa_id', empresaId).maybeSingle();
   if (eConfig) throw new Error(eConfig.message);
   const filasConfig = [
     ['Costo hora mano de obra', config && config.costo_hora_mano_obra != null ? config.costo_hora_mano_obra : ''],

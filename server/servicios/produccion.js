@@ -25,16 +25,17 @@
 // ============================================================
 const supabase = require('../supabase/cliente');
 
+const { usuarioActual } = require('../contexto');
 // Procesos activos de un producto, en el orden de su ruta de
 // producción. Los procesos sin `orden` asignado quedan al final (por
 // fecha de creación) — es solo para que la lista se vea ordenada, NO
 // para decidir dependencias entre etapas (ver procesoAnteriorDe).
-async function obtenerRutaProcesos(productoId, usuarioId) {
+async function obtenerRutaProcesos(productoId, empresaId) {
   const { data, error } = await supabase
     .from('procesos')
     .select('id, nombre, orden, costo_unitario, repeticiones_por_unidad, procesos_materiales(material_id, cantidad, materiales(id, nombre, unidad, stock_actual))')
     .eq('producto_id', productoId)
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .eq('activo', true)
     .order('orden', { ascending: true, nullsFirst: false })
     .order('creado_en', { ascending: true });
@@ -63,23 +64,23 @@ function procesoAnteriorDe(ruta, indice) {
 }
 
 // Mapa proceso_id -> cantidad en WIP, para un producto.
-async function obtenerWIPPorProducto(productoId, usuarioId) {
+async function obtenerWIPPorProducto(productoId, empresaId) {
   const { data, error } = await supabase
     .from('produccion_wip')
     .select('proceso_id, cantidad')
     .eq('producto_id', productoId)
-    .eq('usuario_id', usuarioId);
+    .eq('empresa_id', empresaId);
   if (error) throw new Error(error.message);
   return new Map((data || []).map(f => [f.proceso_id, Number(f.cantidad)]));
 }
 
 // Suma (o resta, con delta negativo) cantidad al WIP de un
 // producto+proceso. Nunca deja el WIP en negativo (se topa en 0).
-async function ajustarWIP(productoId, procesoId, usuarioId, delta) {
+async function ajustarWIP(productoId, procesoId, empresaId, delta) {
   const { data: fila, error: eGet } = await supabase
     .from('produccion_wip')
     .select('id, cantidad')
-    .eq('producto_id', productoId).eq('proceso_id', procesoId).eq('usuario_id', usuarioId)
+    .eq('producto_id', productoId).eq('proceso_id', procesoId).eq('empresa_id', empresaId)
     .maybeSingle();
   if (eGet) throw new Error(eGet.message);
 
@@ -95,7 +96,7 @@ async function ajustarWIP(productoId, procesoId, usuarioId, delta) {
   } else if (nuevo > 0) {
     const { error } = await supabase
       .from('produccion_wip')
-      .insert({ usuario_id: usuarioId, producto_id: productoId, proceso_id: procesoId, cantidad: nuevo });
+      .insert({ empresa_id: empresaId, usuario_id: usuarioActual(), producto_id: productoId, proceso_id: procesoId, cantidad: nuevo });
     if (error) throw new Error(error.message);
   }
   return nuevo;
@@ -104,12 +105,12 @@ async function ajustarWIP(productoId, procesoId, usuarioId, delta) {
 // Suma de lo que ya está en cola (asignado o no) para un proceso
 // puntual — para no generar trabajo duplicado si ya hay encargos
 // pendientes de entregar.
-async function obtenerPendienteEnCola(procesoId, usuarioId) {
+async function obtenerPendienteEnCola(procesoId, empresaId) {
   const { data, error } = await supabase
     .from('colaboradores_encargos')
     .select('cantidad_requerida, cantidad_entregada')
     .eq('proceso_id', procesoId)
-    .eq('usuario_id', usuarioId);
+    .eq('empresa_id', empresaId);
   if (error) throw new Error(error.message);
   return (data || []).reduce((s, e) => s + Math.max(0, Number(e.cantidad_requerida) - Number(e.cantidad_entregada)), 0);
 }
@@ -136,20 +137,20 @@ function wipAnteriorConsumidoPorDelta(delta, procesoActual, procesoAnterior) {
 
 // ---- 1) Al registrar una venta: genera la cola de lo que falta producir ----
 // Devuelve { tomado_de_wip, faltante, generado: [{proceso_id, nombre, cantidad}] }
-async function consumirWIPYGenerarNecesidad({ productoId, cantidadVendida, usuarioId }) {
-  const ruta = await obtenerRutaProcesos(productoId, usuarioId);
+async function consumirWIPYGenerarNecesidad({ productoId, cantidadVendida, empresaId }) {
+  const ruta = await obtenerRutaProcesos(productoId, empresaId);
   if (ruta.length === 0) {
     // Sin procesos: no hay nada que hacer aquí — este producto se
     // maneja con el flujo clásico de material directo en Ventas.
     return { tomado_de_wip: 0, faltante: 0, generado: [] };
   }
 
-  const wip = await obtenerWIPPorProducto(productoId, usuarioId);
+  const wip = await obtenerWIPPorProducto(productoId, empresaId);
   const ultimoProceso = ruta[ruta.length - 1];
   const disponibleTerminado = wip.get(ultimoProceso.id) || 0;
 
   const tomado = Math.min(cantidadVendida, disponibleTerminado);
-  if (tomado > 0) await ajustarWIP(productoId, ultimoProceso.id, usuarioId, -tomado);
+  if (tomado > 0) await ajustarWIP(productoId, ultimoProceso.id, empresaId, -tomado);
 
   // Esta necesidad está siempre en "unidades de producto final
   // equivalentes" (girasoles, no pétalos) — se convierte a las
@@ -168,7 +169,7 @@ async function consumirWIPYGenerarNecesidad({ productoId, cantidadVendida, usuar
 
       let necesidadEjecuciones = Math.round(necesidadEquivalente * rep * 10000) / 10000;
 
-      const pendienteEnCola = await obtenerPendienteEnCola(proceso.id, usuarioId);
+      const pendienteEnCola = await obtenerPendienteEnCola(proceso.id, empresaId);
       const cubiertoPorCola = Math.min(necesidadEjecuciones, pendienteEnCola);
       necesidadEjecuciones = Math.round((necesidadEjecuciones - cubiertoPorCola) * 10000) / 10000;
       necesidadEquivalente = Math.round((necesidadEjecuciones / rep) * 10000) / 10000;
@@ -189,7 +190,7 @@ async function consumirWIPYGenerarNecesidad({ productoId, cantidadVendida, usuar
         const { data: nuevoEncargo, error } = await supabase
           .from('colaboradores_encargos')
           .insert({
-            usuario_id: usuarioId,
+            empresa_id: empresaId, usuario_id: usuarioActual(),
             colaborador_id: null, // sin asignar — aparece en Nóminas para asignarlo
             proceso_id: proceso.id,
             cantidad_requerida: cubiertoConEntradaEjecuciones,
@@ -215,10 +216,10 @@ async function consumirWIPYGenerarNecesidad({ productoId, cantidadVendida, usuar
 // ---- 2) Al registrar una entrega: descuenta material + avanza el WIP ----
 // delta = cuánto AUMENTÓ cantidad_entregada respecto a lo que ya tenía
 // (nunca se admite que baje — ver colaboradores.js).
-async function registrarProduccionProceso({ procesoId, productoId, delta, usuarioId, encargoId, forzar }) {
+async function registrarProduccionProceso({ procesoId, productoId, delta, empresaId, encargoId, forzar }) {
   if (delta <= 0) return { faltantes: [] };
 
-  const ruta = await obtenerRutaProcesos(productoId, usuarioId);
+  const ruta = await obtenerRutaProcesos(productoId, empresaId);
   const indice = ruta.findIndex(p => p.id === procesoId);
   const proceso = indice >= 0 ? ruta[indice] : null;
   if (!proceso) throw new Error('Este proceso ya no pertenece a la ruta activa de su ficha técnica');
@@ -233,7 +234,7 @@ async function registrarProduccionProceso({ procesoId, productoId, delta, usuari
   let consumoWipAnterior = 0;
   if (procesoAnterior) {
     consumoWipAnterior = Math.round(wipAnteriorConsumidoPorDelta(delta, proceso, procesoAnterior) * 10000) / 10000;
-    const wipAnteriorMapa = await obtenerWIPPorProducto(productoId, usuarioId);
+    const wipAnteriorMapa = await obtenerWIPPorProducto(productoId, empresaId);
     const disponible = wipAnteriorMapa.get(procesoAnterior.id) || 0;
     if (disponible < consumoWipAnterior) {
       faltantes.push({
@@ -267,7 +268,7 @@ async function registrarProduccionProceso({ procesoId, productoId, delta, usuari
 
   // Todo listo (o forzado) — se aplican los movimientos.
   if (procesoAnterior) {
-    await ajustarWIP(productoId, procesoAnterior.id, usuarioId, -consumoWipAnterior);
+    await ajustarWIP(productoId, procesoAnterior.id, empresaId, -consumoWipAnterior);
   }
 
   for (const [materialId, { material, requerido }] of requeridoPorMaterial) {
@@ -276,11 +277,11 @@ async function registrarProduccionProceso({ procesoId, productoId, delta, usuari
     const { error: eStock } = await supabase
       .from('materiales')
       .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-      .eq('id', materialId).eq('usuario_id', usuarioId);
+      .eq('id', materialId).eq('empresa_id', empresaId);
     if (eStock) throw new Error(eStock.message);
 
     const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-      usuario_id: usuarioId,
+      empresa_id: empresaId, usuario_id: usuarioActual(),
       material_id: materialId,
       tipo: 'produccion',
       cantidad: -requerido,
@@ -291,7 +292,7 @@ async function registrarProduccionProceso({ procesoId, productoId, delta, usuari
     if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de producción:', eMov.message);
   }
 
-  await ajustarWIP(productoId, procesoId, usuarioId, delta);
+  await ajustarWIP(productoId, procesoId, empresaId, delta);
 
   return { faltantes: forzar ? faltantes : [] };
 }
@@ -303,10 +304,10 @@ async function registrarProduccionProceso({ procesoId, productoId, delta, usuari
 // Límite conocido: usa la receta ACTUAL del proceso, no la que tenía en
 // el momento de esa entrega — misma convención que ya se usa en la
 // reversión de stock de Ventas y Compras.
-async function revertirProduccionProceso({ procesoId, productoId, delta, usuarioId, encargoId }) {
+async function revertirProduccionProceso({ procesoId, productoId, delta, empresaId, encargoId }) {
   if (delta <= 0) return;
 
-  const ruta = await obtenerRutaProcesos(productoId, usuarioId);
+  const ruta = await obtenerRutaProcesos(productoId, empresaId);
   const indice = ruta.findIndex(p => p.id === procesoId);
   const proceso = indice >= 0 ? ruta[indice] : null;
   if (!proceso) return; // el proceso ya no existe en la ruta activa — no hay con qué revertir con precisión
@@ -318,11 +319,11 @@ async function revertirProduccionProceso({ procesoId, productoId, delta, usuario
     const { error: eStock } = await supabase
       .from('materiales')
       .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-      .eq('id', fila.material_id).eq('usuario_id', usuarioId);
+      .eq('id', fila.material_id).eq('empresa_id', empresaId);
     if (eStock) throw new Error(eStock.message);
 
     const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-      usuario_id: usuarioId,
+      empresa_id: empresaId, usuario_id: usuarioActual(),
       material_id: fila.material_id,
       tipo: 'ajuste',
       cantidad,
@@ -336,17 +337,17 @@ async function revertirProduccionProceso({ procesoId, productoId, delta, usuario
   const procesoAnterior = procesoAnteriorDe(ruta, indice);
   if (procesoAnterior) {
     const consumoWipAnterior = Math.round(wipAnteriorConsumidoPorDelta(delta, proceso, procesoAnterior) * 10000) / 10000;
-    await ajustarWIP(productoId, procesoAnterior.id, usuarioId, consumoWipAnterior);
+    await ajustarWIP(productoId, procesoAnterior.id, empresaId, consumoWipAnterior);
   }
-  await ajustarWIP(productoId, procesoId, usuarioId, -delta);
+  await ajustarWIP(productoId, procesoId, empresaId, -delta);
 }
 
 // ---- Listado para la pantalla de WIP en Inventario ----
-async function obtenerWIPParaInventario(usuarioId) {
+async function obtenerWIPParaInventario(empresaId) {
   const { data, error } = await supabase
     .from('produccion_wip')
     .select('cantidad, productos(id, nombre), procesos(id, nombre, orden)')
-    .eq('usuario_id', usuarioId)
+    .eq('empresa_id', empresaId)
     .gt('cantidad', 0)
     .order('producto_id');
   if (error) throw new Error(error.message);

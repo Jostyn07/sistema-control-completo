@@ -1,11 +1,12 @@
 // ============================================================
 // MIDDLEWARE DE AUTENTICACIÓN — server/middleware/auth.js
-// Se aplica a toda ruta de /api/* excepto /api/auth/*.
-// Lee el token "Bearer" del encabezado Authorization, lo valida
-// contra Supabase, y adjunta req.usuarioId para que cada ruta
-// filtre automáticamente solo los datos de ese usuario.
+// Se aplica a toda ruta de /api/* excepto /api/auth/* y webhooks.
+// Lee el token "Bearer", lo valida contra Supabase y adjunta:
+//   req.usuarioId   → quién hace la acción (autoría)
+//   req.tokenAcceso → para consultar como el usuario (RLS, fase 4)
+// La empresa (dueña de los datos) la resuelve middleware/tenant.js.
 // ============================================================
-const supabase = require('../supabase/cliente');
+const { supabaseAdmin } = require('../supabase/cliente');
 
 async function requiereAutenticacion(req, res, next) {
   const encabezado = req.headers.authorization || '';
@@ -16,12 +17,13 @@ async function requiereAutenticacion(req, res, next) {
   }
 
   try {
-    const { data, error } = await supabase.auth.getUser(token);
+    const { data, error } = await supabaseAdmin.auth.getUser(token);
     if (error || !data.user) {
       return res.status(401).json({ error: 'Sesión inválida o expirada, inicia sesión de nuevo' });
     }
     req.usuarioId = data.user.id;
     req.usuarioEmail = data.user.email;
+    req.tokenAcceso = token;
     next();
   } catch (err) {
     res.status(401).json({ error: 'No se pudo verificar la sesión' });
