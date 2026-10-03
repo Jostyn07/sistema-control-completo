@@ -1,5 +1,8 @@
 // ============================================================
-// server/tests/tenant.test.js — pruebas de Fase 3 y 5 sin base real.
+// server/tests/tenant-rls.test.js — modo RLS (cliente con JWT del usuario).
+// Va en archivo aparte: node --test corre cada archivo en un proceso
+// nuevo, así arranca limpio con SUPABASE_RLS_ACTIVO=true en Windows y Linux.
+// Usa el mismo Supabase simulado que tenant.test.js.
 // Simula @supabase/supabase-js: registra cada consulta (tabla, filtros,
 // payload, y con qué llave se creó el cliente) y responde datos fijos.
 // Correr:  npm test   (o: node --test server/tests/tenant.test.js)
@@ -79,82 +82,12 @@ function pedir(servidor, metodo, ruta, { token = 'tok', empresa, cuerpo } = {}) 
 
 const consultasDe = (tabla) => registro.filter(q => q.tabla === tabla);
 
-test('Fase 3 y 5', async (t) => {
-  const srv = await arrancar({});
+test('con SUPABASE_RLS_ACTIVO=true las rutas consultan con el JWT del usuario', async (t) => {
+  const srv = await arrancar({ SUPABASE_RLS_ACTIVO: 'true' });
   t.after(() => srv.close());
-
-  await t.test('sin token → 401', async () => {
-    const r = await pedir(srv, 'GET', '/api/materiales', { token: null });
-    assert.equal(r.status, 401);
-  });
-
-  await t.test('empresa ajena en X-Empresa-Id → 403', async () => {
-    const r = await pedir(srv, 'GET', '/api/materiales', { empresa: EMP_B });
-    assert.equal(r.status, 403);
-    assert.equal(r.json.empresa_invalida, true);
-  });
-
-  await t.test('X-Empresa-Id con formato inválido → 400', async () => {
-    const r = await pedir(srv, 'GET', '/api/materiales', { empresa: "x' or 1=1" });
-    assert.equal(r.status, 400);
-  });
-
-  await t.test('GET categorías filtra por empresa, nunca por usuario', async () => {
-    registro.length = 0;
-    const r = await pedir(srv, 'GET', '/api/categorias');
-    assert.equal(r.status, 200);
-    const q = consultasDe('categorias_productos')[0];
-    assert.deepEqual(q.filtros[0], ['eq', 'empresa_id', EMP_A]);
-    assert.ok(!q.filtros.some(f => f[1] === 'usuario_id'));
-  });
-
-  await t.test('empresa_id del body se ignora; se usa la empresa validada', async () => {
-    registro.length = 0;
-    const r = await pedir(srv, 'POST', '/api/categorias', { cuerpo: { nombre: 'Flores', empresa_id: EMP_B, usuario_id: 'otro' } });
-    assert.equal(r.status, 201);
-    const ins = consultasDe('categorias_productos').find(q => q.op === 'insert');
-    assert.equal(ins.payload.empresa_id, EMP_A);
-    assert.equal(ins.payload.usuario_id, USR);
-  });
-
-  await t.test('con RLS apagado las consultas usan service_role', async () => {
-    registro.length = 0;
-    await pedir(srv, 'GET', '/api/categorias');
-    assert.equal(consultasDe('categorias_productos')[0].llave, 'SERVICE');
-  });
-
-  await t.test('operador: puede vender, no ve finanzas, no borra materiales, no gestiona equipo', async () => {
-    ROL = 'operador';
-    assert.notEqual((await pedir(srv, 'GET', '/api/ventas')).status, 403);
-    assert.equal((await pedir(srv, 'GET', '/api/finanzas/panel')).status, 403);
-    assert.equal((await pedir(srv, 'DELETE', `/api/materiales/${EMP_B}`)).status, 403);
-    assert.equal((await pedir(srv, 'GET', '/api/empresas/miembros')).status, 403);
-    assert.notEqual((await pedir(srv, 'GET', '/api/configuracion/onboarding')).status, 403);
-    assert.equal((await pedir(srv, 'PUT', '/api/configuracion/costo-hora', { cuerpo: { costo_hora_mano_obra: 1 } })).status, 403);
-    ROL = 'propietario';
-  });
-
-  await t.test('administrador no puede pagar suscripción; propietario sí pasa el permiso', async () => {
-    ROL = 'administrador';
-    assert.equal((await pedir(srv, 'POST', '/api/suscripcion/cancelar')).status, 403);
-    ROL = 'propietario';
-    assert.notEqual((await pedir(srv, 'POST', '/api/suscripcion/cancelar')).status, 403);
-  });
-
-  await t.test('GET /api/empresas devuelve empresa activa y permisos', async () => {
-    const r = await pedir(srv, 'GET', '/api/empresas');
-    assert.equal(r.status, 200);
-    assert.equal(r.json.activa.id, EMP_A);
-    assert.ok(r.json.activa.permisos.includes('suscripcion.crear'));
-  });
-});
-
-test('el contexto llega a los servicios sin pasar req', async () => {
-  const { ejecutarConContexto, usuarioActual, empresaActual } = require('../contexto');
-  await ejecutarConContexto({ usuarioId: USR, empresaId: EMP_A }, async () => {
-    await new Promise(r => setTimeout(r, 5));
-    assert.equal(usuarioActual(), USR);
-    assert.equal(empresaActual(), EMP_A);
-  });
-  assert.equal(usuarioActual(), null);
+  registro.length = 0;
+  const r = await pedir(srv, 'GET', '/api/categorias');
+  assert.equal(r.status, 200);
+  assert.equal(consultasDe('empresa_usuarios')[0].llave, 'SERVICE', 'la membresía se valida con service_role');
+  assert.equal(consultasDe('categorias_productos')[0].llave, 'ANON', 'los datos de negocio van con el cliente del usuario');
 });
