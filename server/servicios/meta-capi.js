@@ -20,6 +20,7 @@
 // ============================================================
 const crypto = require('crypto');
 
+const log = require('../seguridad/log');
 const VERSION_API = 'v21.0';
 const TIEMPO_MAXIMO_MS = 4000;
 
@@ -111,10 +112,10 @@ async function enviarEventoMeta({ evento, eventId, email, nombre, usuarioId, req
 
     if (!respuesta.ok) {
       const detalle = await respuesta.text().catch(() => '');
-      console.error(`[Meta CAPI] ${evento} rechazado (${respuesta.status}):`, detalle.slice(0, 500));
+      log.error(`[Meta CAPI] ${evento} rechazado (${respuesta.status})`, detalle.slice(0, 500));
     }
   } catch (err) {
-    console.error(`[Meta CAPI] No se pudo enviar ${evento}:`, err.message);
+    log.error(`[Meta CAPI] No se pudo enviar ${evento}:`, err);
   }
 }
 

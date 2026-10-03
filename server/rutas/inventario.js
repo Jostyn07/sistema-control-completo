@@ -10,6 +10,7 @@
 // - POST /ajuste       ajuste manual tras un conteo físico (motivo obligatorio)
 // ============================================================
 const express = require('express');
+const log = require('../seguridad/log');
 const supabase = require('../supabase/cliente');
 const servicioInventario = require('../servicios/inventario');
 const { obtenerWIPParaInventario } = require('../servicios/produccion');
@@ -127,7 +128,7 @@ router.post('/ajuste', async (req, res, next) => {
       stock_nuevo: Number(cantidad_nueva),
       referencia_id: ajusteCreado.id
     });
-    if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de ajuste:', eMov.message);
+    if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de ajuste:', eMov);
 
     res.json({ ajustado: true, stock_anterior: Number(material.stock_actual), stock_nuevo: Number(actualizado.stock_actual) });
   } catch (err) { next(err); }

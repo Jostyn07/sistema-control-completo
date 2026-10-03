@@ -16,6 +16,7 @@
 //                         en el estado que reporta el navegador
 // ============================================================
 const express = require('express');
+const log = require('../seguridad/log');
 // Suscripciones y pagos se escriben SOLO con service_role (con RLS los
 // usuarios no pueden tocarlas); siempre filtradas por la empresa ya
 // validada en middleware/tenant.js. La suscripción es de la EMPRESA.
@@ -58,7 +59,7 @@ router.get('/mi-suscripcion', async (req, res, next) => {
         await crearPruebaGratis(req.usuarioId, req.empresa.id);
         sub = await sincronizarEstadoSuscripcion(req.empresa.id);
       } catch (errRed) {
-        console.error('[mi-suscripcion] La red de seguridad tampoco pudo crear la prueba:', errRed.message);
+        log.error('[mi-suscripcion] La red de seguridad tampoco pudo crear la prueba:', errRed);
       }
     }
 

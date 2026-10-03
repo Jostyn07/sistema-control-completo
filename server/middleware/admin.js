@@ -11,6 +11,7 @@
 // ============================================================
 const { supabaseAdmin } = require('../supabase/cliente');
 
+const log = require('../seguridad/log');
 async function exigirAdmin(req, res, next) {
   try {
     const { data, error } = await supabaseAdmin
@@ -20,7 +21,7 @@ async function exigirAdmin(req, res, next) {
     if (data) return next();
 
     if (process.env.ADMIN_USUARIO_ID && req.usuarioId === process.env.ADMIN_USUARIO_ID) {
-      console.warn('[admin] Acceso por ADMIN_USUARIO_ID (modo transición): registra este usuario en plataforma_admins');
+      log.warn('[admin] Acceso por ADMIN_USUARIO_ID (modo transición): registra este usuario en plataforma_admins');
       return next();
     }
 

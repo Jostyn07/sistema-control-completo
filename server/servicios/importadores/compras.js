@@ -15,6 +15,7 @@
 //     se cargó aparte por Materiales o por Inventario).
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const log = require('../../seguridad/log');
 const { usuarioActual } = require('../../contexto');
 const { leerFilas } = require('../excel/lector');
 const { COLUMNAS, ESTADOS_VALIDOS } = require('../excel/definiciones/compras');
@@ -148,7 +149,7 @@ async function importarCompras(empresaId, filas, { afectarInventario = true } = 
           stock_nuevo: stockNuevo,
           referencia_id: compra.id
         });
-        if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de importación:', eMov.message);
+        if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de importación:', eMov);
       }
     } else {
       resultado.registradas_pendientes++;

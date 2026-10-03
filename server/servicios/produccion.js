@@ -25,6 +25,7 @@
 // ============================================================
 const supabase = require('../supabase/cliente');
 
+const log = require('../seguridad/log');
 const { usuarioActual } = require('../contexto');
 // Procesos activos de un producto, en el orden de su ruta de
 // producción. Los procesos sin `orden` asignado quedan al final (por
@@ -289,7 +290,7 @@ async function registrarProduccionProceso({ procesoId, productoId, delta, empres
       stock_nuevo: stockNuevo,
       referencia_id: encargoId
     });
-    if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de producción:', eMov.message);
+    if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de producción:', eMov);
   }
 
   await ajustarWIP(productoId, procesoId, empresaId, delta);
@@ -331,7 +332,7 @@ async function revertirProduccionProceso({ procesoId, productoId, delta, empresa
       stock_nuevo: stockNuevo,
       referencia_id: encargoId
     });
-    if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de reversión:', eMov.message);
+    if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de reversión:', eMov);
   }
 
   const procesoAnterior = procesoAnteriorDe(ruta, indice);

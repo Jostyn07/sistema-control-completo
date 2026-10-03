@@ -15,6 +15,7 @@
 //                                 asociada (incluso anulada)
 // ============================================================
 const express = require('express');
+const log = require('../seguridad/log');
 const supabase = require('../supabase/cliente');
 const { cifrar, descifrar } = require('../servicios/cifrado');
 const { obtenerCostoMinutoManoObra, obtenerFichasEfectivasParaProductos } = require('../servicios/costos');
@@ -234,7 +235,7 @@ router.post('/', async (req, res, next) => {
         stock_nuevo: nuevoStock,
         referencia_id: venta.id
       });
-      if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de venta:', eMov.message);
+      if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de venta:', eMov);
     }
 
     // Productos CON procesos: se toma de WIP terminado lo que haya, y

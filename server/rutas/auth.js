@@ -5,6 +5,7 @@
 // - GET  /yo          confirma quién es el dueño del token actual
 // ============================================================
 const express = require('express');
+const log = require('../seguridad/log');
 const supabase = require('../supabase/cliente');
 const { crearPruebaGratis } = require('../servicios/suscripcion');
 const { enviarEventoMeta } = require('../servicios/meta-capi');
@@ -38,7 +39,7 @@ router.post('/registro', async (req, res, next) => {
     try {
       await crearPruebaGratis(data.user.id);
     } catch (errPrueba) {
-      console.error('[registro] No se pudo crear la prueba gratis:', errPrueba.message);
+      log.error('[registro] No se pudo crear la prueba gratis:', errPrueba);
     }
 
     // Conversión para Meta: mismo event_id (reg_<usuario>) que manda el

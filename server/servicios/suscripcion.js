@@ -10,6 +10,7 @@
 // service_role: suscripciones y pagos no son editables por los usuarios.
 // Todo se filtra por empresa (la suscripción es de la EMPRESA).
 const { supabaseAdmin: supabase } = require('../supabase/cliente');
+const log = require('../seguridad/log');
 
 const DIAS_PRUEBA_GRATIS = 7;
 const DIAS_GRACIA = 3; // días de solo-lectura extra después de vencer, antes de bloquear la edición
@@ -30,7 +31,7 @@ async function crearPruebaGratis(usuarioId, empresaId = null) {
     .maybeSingle();
   if (ePlan) throw new Error(ePlan.message);
   if (!planPrueba) {
-    console.warn('[crearPruebaGratis] No hay ningún plan activo configurado; no se creó la prueba para', usuarioId);
+    log.warn('[crearPruebaGratis] No hay ningún plan activo configurado; no se creó la prueba');
     return;
   }
 
@@ -47,7 +48,7 @@ async function crearPruebaGratis(usuarioId, empresaId = null) {
     fecha_vencimiento: vencimiento.toISOString()
   });
   if (error) throw new Error(error.message);
-  console.log('[crearPruebaGratis] Prueba de 7 días creada para', usuarioId, 'con el plan', planPrueba.id);
+  log.info('[crearPruebaGratis] Prueba de 7 días creada');
 }
 
 // Si la prueba, el plan pagado, o una cancelación ya vencieron, lo marca

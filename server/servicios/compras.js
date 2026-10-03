@@ -10,6 +10,7 @@
 // ============================================================
 const supabase = require('../supabase/cliente');
 
+const log = require('../seguridad/log');
 const { usuarioActual } = require('../contexto');
 // Fecha estimada de llegada = hoy + días de entrega del material
 function calcularFechaEstimada(tiempoEntregaDias) {
@@ -81,7 +82,7 @@ async function recibirCompra(compraId, empresaId) {
     stock_nuevo: nuevoStock,
     referencia_id: reclamada.id
   });
-  if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de compra:', eMov.message);
+  if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de compra:', eMov);
 
   return reclamada;
 }

@@ -12,6 +12,7 @@
 //   - consumirWIPYGenerarNecesidad      → productos con Procesos activos
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const log = require('../../seguridad/log');
 const { usuarioActual } = require('../../contexto');
 const { leerHoja } = require('../excel/lector');
 const {
@@ -272,7 +273,7 @@ async function importarVentas(empresaId, filas) {
           empresa_id: empresaId, usuario_id: usuarioActual(), material_id: materialId, tipo: 'venta',
           cantidad: -requerido, stock_anterior: stockAnterior, stock_nuevo: stockNuevo, referencia_id: venta.id
         });
-        if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de importación:', eMov.message);
+        if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de importación:', eMov);
       }
       if (materialesInsuficientes.length > 0) {
         resultado.ventas_con_stock_insuficiente.push({ codigo_venta: fila.codigo, materiales: materialesInsuficientes });

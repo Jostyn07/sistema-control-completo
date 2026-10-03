@@ -11,6 +11,10 @@ const requiereSuscripcionActiva = require('./middleware/suscripcion');
 const exigirAdmin = require('./middleware/admin');
 const resolverEmpresa = require('./middleware/tenant');
 const requierePermiso = require('./middleware/permissions');
+const ocultarCostos = require('./middleware/ocultarCostos');
+const log = require('./seguridad/log');
+const { esErrorInterno, sanitizarTexto } = require('./seguridad/sanitize');
+const { randomUUID } = require('node:crypto');
 const rutasAuth = require('./rutas/auth');
 const rutasMateriales = require('./rutas/materiales');
 const rutasProductos = require('./rutas/productos');
@@ -47,6 +51,9 @@ app.use('/api/admin', exigirAdmin, require('./rutas/admin'));
 // tenant.js valida la membresía y deja req.empresa = { id, rol, permisos }.
 app.use('/api', resolverEmpresa);
 
+// ---- Si el rol no puede ver costos (operador), se quitan de toda respuesta.
+app.use('/api', ocultarCostos);
+
 // ---- Empresas y equipo (permisos se validan ruta por ruta adentro).
 app.use('/api/empresas', require('./rutas/empresas'));
 
@@ -80,11 +87,29 @@ app.use('/api/configuracion',
 app.use('/api/almacenamiento', requierePermiso('almacenamiento'), require('./rutas/almacenamiento'));
 app.use('/api/excel', requierePermiso('excel'), require('./rutas/excel'));
 
-// Manejador de errores único: cualquier ruta que haga next(error) cae aquí
-// (La sanitización de mensajes para logs/Sentry llega en la Fase 6.)
+// Manejador de errores único: cualquier ruta que haga next(error) cae aquí.
+// FASE 6:
+// - El log nunca lleva body, query ni headers; el mensaje va sanitizado.
+// - Errores 4xx: el mensaje se devuelve (son validaciones para el usuario).
+// - Errores 5xx con detalle interno de la base (constraints, columnas,
+//   valores): el cliente recibe un mensaje genérico + una referencia
+//   que permite encontrar el detalle en los logs de Vercel.
 app.use((err, req, res, next) => {
-  console.error('[ERROR]', req.method, req.baseUrl || req.path, err.message);
-  res.status(err.status || 500).json({ error: err.message || 'Error interno' });
+  const estado = err.status || 500;
+  const referencia = randomUUID().slice(0, 8);
+  log.error('[API]', err, {
+    ref: referencia,
+    metodo: req.method,
+    ruta: (req.baseUrl || '') + (req.route ? req.route.path : ''),
+    estado,
+    rol: req.empresa ? req.empresa.rol : undefined
+  });
+
+  if (estado < 500) return res.status(estado).json({ error: sanitizarTexto(err.message) || 'Solicitud inválida' });
+  if (esErrorInterno(err.message)) {
+    return res.status(estado).json({ error: `Ocurrió un error inesperado. Si se repite, comparte esta referencia: ${referencia}`, referencia });
+  }
+  res.status(estado).json({ error: sanitizarTexto(err.message) || 'Error interno', referencia });
 });
 
 const PUERTO = process.env.PUERTO || 3000;

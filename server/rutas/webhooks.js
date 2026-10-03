@@ -7,6 +7,7 @@
 // nunca activar nada sin pasar por ahí.
 // ============================================================
 const express = require('express');
+const log = require('../seguridad/log');
 const supabase = require('../supabase/cliente');
 const wompi = require('../servicios/wompi');
 const { enviarSuscripcionMeta } = require('../servicios/meta-capi');
@@ -45,7 +46,7 @@ router.post('/wompi', async (req, res, next) => {
     }
 
     if (!wompi.validarChecksumWebhook(cuerpo)) {
-      console.error('[Wompi] Checksum inválido, se ignora la notificación');
+      log.error('[Wompi] Checksum inválido, se ignora la notificación');
       return res.status(400).json({ error: 'Checksum inválido' });
     }
 
@@ -119,7 +120,7 @@ router.post('/wompi', async (req, res, next) => {
 
     res.status(200).json({ ok: true });
   } catch (err) {
-    console.error('[Wompi] Error procesando webhook:', err.message);
+    log.error('[Wompi] Error procesando webhook:', err);
     // Igual respondemos 200 para que Wompi no reintente infinitamente
     // un error que ya quedó registrado en los logs
     res.status(200).json({ ok: false });

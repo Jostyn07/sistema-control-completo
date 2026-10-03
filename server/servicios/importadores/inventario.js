@@ -13,6 +13,7 @@
 // Ninguna fila puede dejar el stock en negativo.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const log = require('../../seguridad/log');
 const { usuarioActual } = require('../../contexto');
 const { leerFilas } = require('../excel/lector');
 const { COLUMNAS, TIPOS_VALIDOS } = require('../excel/definiciones/inventario');
@@ -159,7 +160,7 @@ async function importarInventario(empresaId, filas) {
       stock_nuevo: stockNuevo,
       referencia_id: ajuste.id
     });
-    if (eMov) console.error('[inventario_movimientos] No se pudo registrar el movimiento de importación:', eMov.message);
+    if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de importación:', eMov);
 
     resultado.aplicados++;
   }
