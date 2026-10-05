@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historial — Sistema de Control</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/landing/img/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/landing/img/favicon-192.png">
+  <link rel="apple-touch-icon" href="/landing/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/estilos.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tema.css">
+</head>
+<body>
+
+  <nav class="navegacion">
+    <a href="./index.html" class="navegacion__enlace">Inicio</a>
+    <a href="./materiales.html" class="navegacion__enlace">Materiales</a>
+    <a href="./productos.html" class="navegacion__enlace">Productos</a>
+    <a href="./procesos.html" class="navegacion__enlace">Procesos</a>
+    <a href="./inventario.html" class="navegacion__enlace">Inventario</a>
+    <a href="./compras.html" class="navegacion__enlace">Compras</a>
+    <a href="./ventas.html" class="navegacion__enlace">Ventas</a>
+    <a href="./finanzas.html" class="navegacion__enlace">Finanzas</a>
+    <a href="./facturacion.html" class="navegacion__enlace">Facturación</a>
+    <a href="./nomina.html" class="navegacion__enlace">Nóminas</a>
+    <a href="./importar-exportar.html" class="navegacion__enlace">Importar/Exportar</a>
+    <a href="./index.html?recorrido=1" class="navegacion__enlace">❓ Ayuda</a>
+    <a href="./suscripcion.html" class="navegacion__enlace">Suscripción</a>
+    <a href="./historial.html" class="navegacion__enlace navegacion__enlace--activo">Historial</a>
+  </nav>
+
+  <main class="pagina">
+    <div class="encabezado-modulo">
+      <span class="encabezado-modulo__icono">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+      </span>
+      <div class="encabezado-modulo__texto">
+        <h1>Historial de cambios</h1>
+        <p>Quién cambió qué y cuándo: precios, costos, inventario, equipo, configuración y facturas. Este registro no se puede editar ni borrar.</p>
+      </div>
+    </div>
+
+    <section class="tarjeta seccion" id="seccionHistorial">
+      <div class="barra-herramientas-tabla" style="gap:12px; flex-wrap:wrap; align-items:flex-end;">
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Módulo</span>
+          <select id="filtroModulo" onchange="cargarHistorial()">
+            <option value="">Todos</option>
+            <option value="productos">Productos</option>
+            <option value="materiales">Materiales</option>
+            <option value="inventario">Inventario</option>
+            <option value="compras">Compras</option>
+            <option value="ventas">Ventas</option>
+            <option value="facturacion">Facturación</option>
+            <option value="finanzas">Finanzas</option>
+            <option value="colaboradores">Nóminas</option>
+            <option value="configuracion">Configuración</option>
+            <option value="equipo">Equipo</option>
+            <option value="tienda">Tienda</option>
+            <option value="suscripcion">Suscripción</option>
+          </select>
+        </label>
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Desde</span>
+          <input type="date" id="filtroDesde" onchange="cargarHistorial()">
+        </label>
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Hasta</span>
+          <input type="date" id="filtroHasta" onchange="cargarHistorial()">
+        </label>
+        <label class="campo" style="margin:0">
+          <span class="campo__etiqueta">Mostrar</span>
+          <select id="filtroLimite" onchange="cargarHistorial()">
+            <option value="50">Últimos 50</option>
+            <option value="100" selected>Últimos 100</option>
+            <option value="500">Últimos 500</option>
+          </select>
+        </label>
+      </div>
+      <table class="tabla">
+        <thead><tr><th>Fecha</th><th>Quién</th><th>Acción</th><th>Módulo</th><th>Qué cambió</th></tr></thead>
+        <tbody id="cuerpoHistorial">
+          <tr><td colspan="5" class="tabla__vacio">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/tema.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/historial.js"></script>
+  <script>
+    if (exigirSesion()) { mostrarUsuarioActual(); cargarHistorial(); }
+  </script>
+</body>
+</html>

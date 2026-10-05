@@ -37,7 +37,8 @@ const ICONOS_NAV = {
   'facturacion.html': '<path d="M6 2h9l4 4v16H6Z"/><path d="M15 2v4h4"/><path d="M9 12h6M9 16h6"/>',
   'nomina.html': '<circle cx="9" cy="7" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.2a3.2 3.2 0 0 1 0 6M22 20c0-2.8-2-5.1-4.7-5.8"/>',
   'importar-exportar.html': '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
-  'suscripcion.html': '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>'
+  'suscripcion.html': '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+  'historial.html': '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>'
 };
 
 // Agrupación de la sidebar — módulos reales del sistema.
@@ -47,7 +48,7 @@ const SECCIONES_NAV = [
   { titulo: 'Finanzas', paginas: ['finanzas.html', 'facturacion.html'] },
   { titulo: 'Equipo', paginas: ['nomina.html'] },
   { titulo: 'Herramientas', paginas: ['importar-exportar.html'] },
-  { titulo: 'Cuenta', paginas: ['suscripcion.html'] }
+  { titulo: 'Cuenta', paginas: ['suscripcion.html', 'historial.html'] }
 ];
 
 function construirBarraLateral() {
