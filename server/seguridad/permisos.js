@@ -14,7 +14,8 @@ const MODULOS = [
   'dashboard', 'materiales', 'productos', 'categorias', 'procesos',
   'colaboradores', 'inventario', 'ventas', 'compras', 'finanzas',
   'facturacion', 'configuracion', 'almacenamiento', 'excel',
-  'suscripcion', 'equipo'
+  'suscripcion', 'equipo',
+  'costos'   // no es una pantalla: decide si la respuesta incluye costos y márgenes (middleware/ocultarCostos.js)
 ];
 
 const TODO = ['ver', 'crear', 'editar', 'eliminar', 'administrar'];
@@ -54,7 +55,8 @@ const MATRIZ = {
     ventas: OPERAR,
     compras: OPERAR,
     suscripcion: ['ver'],   // para ver el aviso de estado en todas las pantallas
-    equipo: []
+    equipo: [],
+    costos: []              // nunca ve costos, márgenes ni utilidades
   }
 };
 
