@@ -12,7 +12,7 @@
 // - Abre el contexto de la petición (contexto.js) para que todos los
 //   servicios sepan la empresa y el autor sin recibir `req`.
 // ============================================================
-const { supabaseAdmin, crearClienteUsuario, RLS_ACTIVO } = require('../supabase/cliente');
+const { supabaseAdminBase: supabaseAdmin, crearClienteUsuario, crearClienteServicioConActor, RLS_ACTIVO } = require('../supabase/cliente');
 const { ejecutarConContexto } = require('../contexto');
 const { permisosDeRol } = require('../seguridad/permisos');
 
@@ -75,11 +75,15 @@ async function resolverEmpresa(req, res, next) {
       delete req.query.usuario_id;
     }
 
+    // Con RLS: datos de negocio con el JWT del usuario. Sin RLS: service_role
+    // con el encabezado de actor, para que la auditoría sepa quién fue.
+    const adminConActor = crearClienteServicioConActor(req.usuarioId);
     const contexto = {
       usuarioId: req.usuarioId,
       empresaId: req.empresa.id,
       rol: req.empresa.rol,
-      supabase: RLS_ACTIVO ? crearClienteUsuario(req.tokenAcceso) : null
+      supabase: RLS_ACTIVO ? crearClienteUsuario(req.tokenAcceso) : adminConActor,
+      supabaseAdmin: adminConActor
     };
 
     ejecutarConContexto(contexto, () => next());

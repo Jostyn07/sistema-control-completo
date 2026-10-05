@@ -86,6 +86,7 @@ app.use('/api/configuracion',
   require('./rutas/configuracion'));
 app.use('/api/almacenamiento', requierePermiso('almacenamiento'), require('./rutas/almacenamiento'));
 app.use('/api/excel', requierePermiso('excel'), require('./rutas/excel'));
+app.use('/api/auditoria', requierePermiso('auditoria'), require('./rutas/auditoria'));
 
 // Manejador de errores único: cualquier ruta que haga next(error) cae aquí.
 // FASE 6:

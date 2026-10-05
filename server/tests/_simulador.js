@@ -14,9 +14,10 @@ const USR = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const estado = { rol: 'propietario', error: null, datos: null };
 const registro = [];
 
-function crearClienteFalso(llave) {
+function crearClienteFalso(llave, opciones) {
+  const actor = opciones && opciones.global && opciones.global.headers ? opciones.global.headers['x-fincil-usuario'] : undefined;
   function consulta(tabla) {
-    const q = { tabla, llave, filtros: [], payload: null, op: 'select' };
+    const q = { tabla, llave, actor, filtros: [], payload: null, op: 'select' };
     registro.push(q);
     const resolver = () => {
       if (tabla === 'empresa_usuarios' && q.op === 'select') {
@@ -46,6 +47,7 @@ function crearClienteFalso(llave) {
   }
   return {
     from: consulta,
+    rpc: async (nombre, args) => { registro.push({ tabla: `rpc:${nombre}`, llave, op: 'rpc', payload: args, filtros: [] }); return { data: null, error: null }; },
     auth: { getUser: async (t) => (t === 'tok' ? { data: { user: { id: USR, email: 'x@y.co' } }, error: null } : { data: {}, error: { message: 'no' } }) },
     storage: { from: () => ({}) }
   };
@@ -53,7 +55,7 @@ function crearClienteFalso(llave) {
 
 const original = Module.prototype.require;
 Module.prototype.require = function (id) {
-  if (id === '@supabase/supabase-js') return { createClient: (_url, llave) => crearClienteFalso(llave) };
+  if (id === '@supabase/supabase-js') return { createClient: (_url, llave, opciones) => crearClienteFalso(llave, opciones) };
   return original.apply(this, arguments);
 };
 

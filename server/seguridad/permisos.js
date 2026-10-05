@@ -15,6 +15,7 @@ const MODULOS = [
   'colaboradores', 'inventario', 'ventas', 'compras', 'finanzas',
   'facturacion', 'configuracion', 'almacenamiento', 'excel',
   'suscripcion', 'equipo',
+  'auditoria',
   'costos'   // no es una pantalla: decide si la respuesta incluye costos y márgenes (middleware/ocultarCostos.js)
 ];
 
@@ -29,15 +30,17 @@ function todos(acciones, excepto = {}) {
 
 const MATRIZ = {
   // Dueño de la empresa: todo, incluido pagar la suscripción.
-  propietario: todos(TODO),
+  propietario: todos(TODO, { auditoria: ['ver'] }),  // la auditoría solo se lee
 
   // Igual que el propietario, pero no paga ni cambia el plan.
   administrador: todos(TODO, {
-    suscripcion: ['ver']
+    suscripcion: ['ver'],
+    auditoria: ['ver']
   }),
 
   // Opera el negocio y ve los números; no borra ni configura.
   supervisor: todos(['ver'], {
+    auditoria: [],
     materiales: OPERAR, productos: OPERAR, categorias: OPERAR, procesos: OPERAR,
     colaboradores: OPERAR, inventario: OPERAR, ventas: OPERAR, compras: OPERAR,
     facturacion: OPERAR, almacenamiento: OPERAR, excel: OPERAR

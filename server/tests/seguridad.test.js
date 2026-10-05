@@ -55,3 +55,35 @@ test('Fase 6 — sanitize.js', () => {
   const o = sanitizarObjeto({ nombre: 'Ramo', nit: '900', correo: 'a@b.co', costo_unitario: 5, cantidad: 3, token: 'x', items: [{ telefono: '300' }] });
   assert.deepEqual(o, { nombre: 'Ramo', nit: '[oculto]', correo: '[oculto]', costo_unitario: '[oculto]', cantidad: 3, token: '[oculto]', items: [{ telefono: '[oculto]' }] });
 });
+
+test('Fase 7 — auditoría desde el backend', async (t) => {
+  const { arrancar, pedir, registro, consultasDe, estado, EMP_A, USR } = require('./_simulador');
+  const srv = await arrancar({});
+  t.after(() => srv.close());
+
+  await t.test('un intento denegado queda registrado (sin bloquear la respuesta)', async () => {
+    registro.length = 0; estado.rol = 'operador';
+    const r = await pedir(srv, 'GET', '/api/finanzas/resumen');
+    estado.rol = 'propietario';
+    assert.equal(r.status, 403);
+    await new Promise(res => setTimeout(res, 10));
+    const llamada = consultasDe('rpc:registrar_denegado')[0];
+    assert.ok(llamada, 'se llamó registrar_denegado');
+    assert.deepEqual(llamada.payload, { p_empresa_id: EMP_A, p_usuario_id: USR, p_modulo: 'finanzas', p_permiso: 'finanzas.ver' });
+  });
+
+  await t.test('las consultas con service_role llevan el actor para la auditoría', async () => {
+    registro.length = 0;
+    await pedir(srv, 'GET', '/api/categorias');
+    assert.equal(consultasDe('categorias_productos')[0].actor, USR);
+  });
+
+  await t.test('solo propietario y administrador leen la auditoría', async () => {
+    for (const [rol, esperado] of [['propietario', 200], ['administrador', 200], ['supervisor', 403], ['operador', 403]]) {
+      estado.rol = rol;
+      const r = await pedir(srv, 'GET', '/api/auditoria');
+      assert.equal(r.status, esperado, rol);
+    }
+    estado.rol = 'propietario';
+  });
+});

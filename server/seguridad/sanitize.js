@@ -15,7 +15,7 @@ const PATRON_ERROR_INTERNO = new RegExp([
   'permission denied', 'row-level security', 'JWT', 'PGRST', 'invalid input syntax',
   'null value in column', 'foreign key', 'could not', 'does not exist', 'timeout',
   'ECONN', 'fetch failed', 'Failed to fetch', 'Key \\(', 'operator does not exist',
-  'Supabase no está configurado', 'ENCRYPTION_KEY', 'SUPABASE_'
+  'Supabase no está configurado', 'ENCRYPTION_KEY', 'SUPABASE_', 'API key', 'apikey', 'No API key'
 ].join('|'), 'i');
 
 function esErrorInterno(mensaje) {

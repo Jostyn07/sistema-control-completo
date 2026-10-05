@@ -56,12 +56,38 @@ function crearClienteUsuario(tokenAcceso) {
   });
 }
 
+// Cliente de servicio que además le dice a la base QUIÉN actúa
+// (encabezado x-fincil-usuario → privado.actor_actual() en la auditoría).
+function crearClienteServicioConActor(usuarioId) {
+  return createClient(url, llaveServicio, {
+    ...OPCIONES_SERVIDOR,
+    global: { headers: { 'x-fincil-usuario': usuarioId } }
+  });
+}
+
 function clienteDeLaPeticion() {
   const ctx = contextoActual();
   return (ctx && ctx.supabase) || supabaseAdmin;
 }
 
-const EXTRAS = { supabaseAdmin, crearClienteUsuario, RLS_ACTIVO };
+// supabaseAdmin exportado: dentro de una petición usa la versión con
+// actor (auditoría con nombre); fuera de una (webhooks) usa la base.
+const supabaseAdminDeLaPeticion = new Proxy({}, {
+  get(_, propiedad) {
+    const ctx = contextoActual();
+    const cliente = (ctx && ctx.supabaseAdmin) || supabaseAdmin;
+    const valor = cliente[propiedad];
+    return typeof valor === 'function' ? valor.bind(cliente) : valor;
+  }
+});
+
+const EXTRAS = {
+  supabaseAdmin: supabaseAdminDeLaPeticion,
+  supabaseAdminBase: supabaseAdmin,
+  crearClienteUsuario,
+  crearClienteServicioConActor,
+  RLS_ACTIVO
+};
 
 const supabase = new Proxy({}, {
   get(_, propiedad) {
