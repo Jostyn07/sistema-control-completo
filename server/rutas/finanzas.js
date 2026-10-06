@@ -10,6 +10,20 @@ const router = express.Router();
 function inicioDeMes(fecha) {
   return new Date(fecha.getFullYear(), fecha.getMonth(), 1);
 }
+// ?mes=AAAA-MM → { inicio, fin (exclusivo), esActual }. Sin parámetro o
+// inválido: el mes en curso. No se permiten meses futuros.
+function rangoDeMes(parametro) {
+  const hoy = new Date();
+  let inicio = inicioDeMes(hoy);
+  const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(String(parametro || ''));
+  if (m) {
+    const pedido = new Date(Number(m[1]), Number(m[2]) - 1, 1);
+    if (pedido <= inicio) inicio = pedido;
+  }
+  const fin = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 1);
+  return { inicio, fin, esActual: inicio.getTime() === inicioDeMes(hoy).getTime() };
+}
+
 function claveMes(fecha) {
   const f = new Date(fecha);
   return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}`;
@@ -27,10 +41,13 @@ async function obtenerCostosFijosMensuales(empresaId) {
 router.get('/resumen', async (req, res, next) => {
   try {
     const ahora = new Date();
-    const desdeMes = inicioDeMes(ahora).toISOString();
+    // Mes analizado (?mes=AAAA-MM). Lo acumulado (ROI, inventario) siempre es a hoy.
+    const rango = rangoDeMes(req.query.mes);
+    const desdeMes = rango.inicio.toISOString();
+    const hastaMes = rango.fin.toISOString();
 
     const { data: ventasMes, error: eMes } = await supabase
-      .from('ventas').select('total, costo_total').eq('empresa_id', req.empresa.id).gte('fecha', desdeMes);
+      .from('ventas').select('total, costo_total').eq('empresa_id', req.empresa.id).gte('fecha', desdeMes).lt('fecha', hastaMes);
     if (eMes) throw new Error(eMes.message);
 
     const ingresosMes = (ventasMes || []).reduce((s, v) => s + Number(v.total), 0);
@@ -44,7 +61,8 @@ router.get('/resumen', async (req, res, next) => {
       .select('costo_total_proceso')
       .eq('empresa_id', req.empresa.id)
       .eq('pagado', true)
-      .gte('fecha_pago', desdeMes);
+      .gte('fecha_pago', desdeMes)
+      .lt('fecha_pago', hastaMes);
     if (eNominaMes) throw new Error(eNominaMes.message);
     const costosNominaMes = (nominaPagadaMes || []).reduce((s, e) => s + Number(e.costo_total_proceso), 0);
 
@@ -55,8 +73,8 @@ router.get('/resumen', async (req, res, next) => {
     const metaVentas = configProd && configProd.meta_ventas_mensual != null ? Number(configProd.meta_ventas_mensual) : null;
     const fechaInicioOperacion = configProd && configProd.fecha_inicio_operacion ? configProd.fecha_inicio_operacion : null;
 
-    const diaActual = ahora.getDate();
-    const diasEnMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).getDate();
+    const diasEnMes = new Date(rango.inicio.getFullYear(), rango.inicio.getMonth() + 1, 0).getDate();
+    const diaActual = rango.esActual ? ahora.getDate() : diasEnMes;   // un mes pasado ya está completo
     const diasRestantesMes = diasEnMes - diaActual;
     const promedioDiario = diaActual > 0 ? ingresosMes / diaActual : 0;
     const proyeccionCierreMes = Math.round(promedioDiario * diasEnMes * 100) / 100;
@@ -101,7 +119,7 @@ router.get('/resumen', async (req, res, next) => {
     // se VENDIÓ; esto es lo que salió del bolsillo comprando materiales,
     // se hayan usado ya o no. Ambos importan para entender el negocio.
     const { data: comprasMes, error: eComprasMes } = await supabase
-      .from('compras').select('total').eq('empresa_id', req.empresa.id).gte('fecha', desdeMes);
+      .from('compras').select('total').eq('empresa_id', req.empresa.id).gte('fecha', desdeMes).lt('fecha', hastaMes);
     if (eComprasMes) throw new Error(eComprasMes.message);
     const comprasMesTotal = (comprasMes || []).reduce((s, c) => s + Number(c.total), 0);
     const flujoCajaMes = ingresosMes - comprasMesTotal - costosFijos.total - costosNominaMes;
@@ -176,7 +194,8 @@ router.get('/resumen', async (req, res, next) => {
     }
 
     res.json({
-      mes: claveMes(ahora),
+      mes: claveMes(rango.inicio),
+      es_mes_actual: rango.esActual,
       ingresos_mes: Math.round(ingresosMes * 100) / 100,
       costos_variables_mes: Math.round(costosVariablesMes * 100) / 100,
       costos_fijos_mes: costosFijos.total,
@@ -360,7 +379,11 @@ router.get('/historico-mensual', async (req, res, next) => {
 router.get('/rentabilidad-productos', async (req, res, next) => {
   try {
     let desde, hasta;
-    if (req.query.periodo || req.query.desde) {
+    if (req.query.mes) {
+      const rango = rangoDeMes(req.query.mes);
+      desde = rango.inicio.toISOString();
+      hasta = new Date(rango.fin.getTime() - 1).toISOString();
+    } else if (req.query.periodo || req.query.desde) {
       const rango = calcularRango(req.query);
       desde = rango.desde.toISOString();
       hasta = rango.hasta.toISOString();

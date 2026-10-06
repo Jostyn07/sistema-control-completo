@@ -12,11 +12,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/tema.css">
+  <link rel="stylesheet" href="css/finanzas.css">
 </head>
 <body>
 
   <nav class="navegacion">
-    <a href="./index.html" class="navegacion__enlace navegacion__enlace--activo">Inicio</a>
+    <a href="./index.html" class="navegacion__enlace">Inicio</a>
     <a href="./materiales.html" class="navegacion__enlace">Materiales</a>
     <a href="./productos.html" class="navegacion__enlace">Productos</a>
     <a href="./procesos.html" class="navegacion__enlace">Procesos</a>
@@ -33,152 +34,230 @@
   </nav>
 
   <main class="pagina">
-    <div class="encabezado-modulo">
-      <span class="encabezado-modulo__icono">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
-      </span>
-      <div class="encabezado-modulo__texto">
-        <h1>Finanzas y punto de equilibrio</h1>
-        <p>Analiza el rendimiento de tu negocio y toma mejores decisiones.</p>
-      </div>
-      <div class="encabezado-modulo__acciones">
-        <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('finanzas')" title="¿Cómo funciona esta sección?">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          ¿Cómo funciona?
-        </button>
-        <a href="./importar-exportar.html" class="boton boton--pequeno">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-          Trabajar con Excel
-        </a>
-      </div>
-    </div>
+    <div class="fz">
 
-    <!-- Meta de ventas del mes: avance en tiempo real -->
-    <section class="tarjeta seccion">
-      <div class="tarjeta__encabezado-fila">
-        <h2>
-          <span class="kpi-tarjeta__icono indicador__icono--azul" style="display:inline-flex;vertical-align:middle;margin-right:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
-          Meta de ventas del mes
-        </h2>
-        <button type="button" class="boton" onclick="abrirMetaVentas()">Cambiar meta</button>
-      </div>
-      <div id="panelMeta"><p class="tabla__vacio">Cargando…</p></div>
-    </section>
-
-    <!-- 1. Panel resumen -->
-    <section class="panel-finanzas" id="panelResumen">
-      <p class="tabla__vacio">Cargando resumen…</p>
-    </section>
-
-    <!-- Flujo de caja real: ingresos, compras y costos fijos del mes -->
-    <section class="tarjeta seccion">
-      <h2>
-        <span class="kpi-tarjeta__icono indicador__icono--verde" style="display:inline-flex;vertical-align:middle;margin-right:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
-        Flujo de caja del mes
-      </h2>
-      <div id="panelFlujoCaja"><p class="tabla__vacio">Cargando…</p></div>
-    </section>
-
-    <!-- Rentabilidad por producto: con lo REALMENTE vendido este mes -->
-    <section class="tarjeta seccion">
-      <div class="tarjeta__encabezado-fila">
-        <h2>
-          <span class="kpi-tarjeta__icono indicador__icono--azul" style="display:inline-flex;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
-          Rentabilidad por producto
-        </h2>
-      </div>
-      <p class="texto-secundario">Este mes, con lo que realmente se vendió — no el margen teórico de la ficha técnica.</p>
-      <table class="tabla">
-        <thead>
-          <tr><th>Producto</th><th>Unidades</th><th>Ingresos</th><th>Costo</th><th>Margen</th><th>% del margen total</th></tr>
-        </thead>
-        <tbody id="cuerpoRentabilidad">
-          <tr><td colspan="6" class="tabla__vacio">Cargando…</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- Análisis de clientes: quién compra más y con qué frecuencia -->
-    <section class="tarjeta seccion">
-      <h2>
-        <span class="kpi-tarjeta__icono indicador__icono--morado" style="display:inline-flex;vertical-align:middle;margin-right:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
-        Análisis de clientes
-      </h2>
-      <p class="texto-secundario">Histórico completo, no solo este mes — para ver quién compra seguido de verdad.</p>
-      <div class="panel-finanzas" id="resumenClientes" style="margin-bottom:16px">
-        <p class="tabla__vacio">Cargando…</p>
-      </div>
-      <table class="tabla">
-        <thead>
-          <tr><th>Cliente</th><th>Compras</th><th>Total gastado</th><th>Ticket promedio</th><th>Primera compra</th><th>Última compra</th><th></th></tr>
-        </thead>
-        <tbody id="cuerpoClientes">
-          <tr><td colspan="7" class="tabla__vacio">Cargando…</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- 3. Gráfico de ingresos vs costos por mes -->
-    <section class="tarjeta seccion">
-      <div class="tarjeta__encabezado-fila">
-        <h2>
-          <span class="kpi-tarjeta__icono indicador__icono--azul" style="display:inline-flex;vertical-align:middle;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
-          Ingresos vs. costos por mes
-        </h2>
-        <label class="campo" style="margin:0">
-          <select id="selectorMesesGrafico" onchange="cargarGraficoMensual()">
-            <option value="3">Últimos 3 meses</option>
-            <option value="6" selected>Últimos 6 meses</option>
-            <option value="12">Últimos 12 meses</option>
-          </select>
-        </label>
-      </div>
-      <div class="grafico" id="graficoMensual">
-        <p class="tabla__vacio">Cargando gráfico…</p>
-      </div>
-      <div class="grafico__leyenda">
-        <span><span class="grafico__muestra grafico__muestra--ingresos"></span> Ingresos</span>
-        <span><span class="grafico__muestra grafico__muestra--costos"></span> Costos totales (variables + fijos)</span>
-      </div>
-    </section>
-
-    <!-- 2. Costos fijos mensuales -->
-    <section class="tarjeta seccion">
-      <div class="pagina__encabezado" style="margin-bottom:8px">
-        <h2 style="margin:0">
-          <span class="kpi-tarjeta__icono indicador__icono--morado" style="display:inline-flex;vertical-align:middle;margin-right:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
-          Costos fijos mensuales
-        </h2>
-        <button type="button" class="boton boton--primario" onclick="abrirCostoFijo()">Agregar costo fijo</button>
-      </div>
-      <table class="tabla">
-        <thead><tr><th>Costo</th><th>Valor mensual</th><th></th></tr></thead>
-        <tbody id="cuerpoCostosFijos">
-          <tr><td colspan="3" class="tabla__vacio">Cargando…</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- Capital invertido (necesario para el ROI) -->
-    <section class="tarjeta seccion">
-      <div class="pagina__encabezado" style="margin-bottom:8px">
-        <h2 style="margin:0">
-          <span class="kpi-tarjeta__icono indicador__icono--verde" style="display:inline-flex;vertical-align:middle;margin-right:8px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
-          Capital invertido
-        </h2>
-        <div style="display:flex;gap:8px">
-          <button type="button" class="boton" onclick="abrirFechaInicioRoi()">Fecha de inicio</button>
-          <button type="button" class="boton boton--primario" onclick="abrirCapital()">Registrar aporte</button>
+      <!-- ===================== 1. RESUMEN DEL MES ===================== -->
+      <section class="fz-resumen" aria-labelledby="tituloFinanzas">
+        <div class="fz-cabecera">
+          <div>
+            <h1 id="tituloFinanzas">Finanzas</h1>
+            <p>El rendimiento de tu negocio, con cada cifra en su contexto.</p>
+          </div>
+          <div class="fz-cabecera__acciones">
+            <button type="button" class="fz-boton" onclick="abrirAyudaContextual('finanzas')" title="¿Cómo funciona esta sección?">
+              <svg class="fz-icono" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> ¿Cómo funciona?
+            </button>
+            <a href="./importar-exportar.html" class="fz-boton"><svg class="fz-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg> Trabajar con Excel</a>
+          </div>
         </div>
-      </div>
-      <p class="texto-secundario">Es la base con la que se calcula el ROI del panel.</p>
-      <table class="tabla">
-        <thead><tr><th>Fecha</th><th>Concepto</th><th>Valor</th></tr></thead>
-        <tbody id="cuerpoCapital">
-          <tr><td colspan="3" class="tabla__vacio">Cargando…</td></tr>
-        </tbody>
-      </table>
-    </section>
+
+        <div class="fz-ambito-mes">
+          <span class="fz-ambito-mes__etiqueta"><span class="fz-ambito-mes__punto"></span>RESUMEN DEL MES</span>
+          <label class="fz-selector" title="Mes del resumen">
+            <svg class="fz-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>
+            <select id="selectorMes" aria-label="Mes del resumen" onchange="cambiarMes()"></select>
+            <svg class="fz-icono fz-icono--14" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </label>
+        </div>
+
+        <div class="fz-indicadores" id="indicadoresMes">
+          <article class="fz-indicador">
+            <div class="fz-indicador__nombre"><span>Ingresos del mes</span><svg class="fz-icono fz-icono--18" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 7 7 17"/><path d="M17 17H7V7"/></svg></div>
+            <div class="fz-indicador__valor" id="kpiIngresos">—</div>
+            <div class="fz-indicador__nota" id="kpiIngresosNota">&nbsp;</div>
+          </article>
+          <article class="fz-indicador">
+            <div class="fz-indicador__nombre"><span>Utilidad operativa</span><svg class="fz-icono fz-icono--18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16v5"/><path d="M16 14v7"/><path d="M20 10v11"/><path d="m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15"/><path d="M4 18v3"/><path d="M8 14v7"/></svg></div>
+            <div class="fz-indicador__valor" id="kpiUtilidad">—</div>
+            <div class="fz-indicador__nota">Utilidad bruta − costos fijos</div>
+          </article>
+          <article class="fz-indicador">
+            <div class="fz-indicador__nombre"><span>Flujo de caja neto</span><svg class="fz-icono fz-icono--18" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg></div>
+            <div class="fz-indicador__valor" id="kpiFlujo">—</div>
+            <div class="fz-indicador__nota">Entradas − salidas de dinero</div>
+          </article>
+          <article class="fz-indicador">
+            <div class="fz-indicador__nombre"><span>Punto de equilibrio</span><svg class="fz-icono fz-icono--18" viewBox="0 0 24 24" aria-hidden="true"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg></div>
+            <div class="fz-indicador__valor" id="kpiEquilibrio">—</div>
+            <div class="fz-indicador__nota" id="kpiEquilibrioNota">Se calcula con el mix real de lo vendido</div>
+          </article>
+        </div>
+
+        <div class="fz-desglose" id="desgloseResultado">
+          <div class="fz-desglose__item">
+            <div class="fz-desglose__concepto">
+              <span class="fz-desglose__nombre">Costo de ventas</span>
+              <span class="fz-desglose__detalle">Materiales + mano de obra de lo vendido</span>
+            </div>
+            <span class="fz-desglose__valor" id="valorCostoVentas">—</span>
+          </div>
+          <div class="fz-desglose__item">
+            <div class="fz-desglose__concepto">
+              <span class="fz-desglose__nombre">Nómina pagada</span>
+              <span class="fz-desglose__detalle">Gasto variable registrado en Nómina</span>
+            </div>
+            <span class="fz-desglose__valor" id="valorNomina">—</span>
+          </div>
+          <div class="fz-desglose__item fz-desglose__item--neutro">
+            <div class="fz-desglose__concepto">
+              <span class="fz-desglose__nombre">Utilidad bruta</span>
+              <span class="fz-desglose__detalle" id="detalleUtilidadBruta">Ingresos − costo de ventas − nómina</span>
+            </div>
+            <span class="fz-desglose__valor" id="valorUtilidadBruta">—</span>
+          </div>
+        </div>
+
+        <article class="fz-tarjeta fz-meta">
+          <div class="fz-meta__cabecera">
+            <span>Meta de ventas del mes</span>
+            <button type="button" class="fz-boton fz-boton--enlace" onclick="abrirMetaVentas()" id="botonMeta">Cambiar meta</button>
+          </div>
+          <div id="panelMeta"><p class="fz-cargando">Cargando…</p></div>
+        </article>
+      </section>
+
+      <!-- ===================== 2. INGRESOS VS. COSTOS ===================== -->
+      <section class="fz-tarjeta" aria-labelledby="tituloGrafico">
+        <div class="fz-fila-cabecera">
+          <div class="fz-encabezado">
+            <div class="fz-encabezado__titulo"><h2 id="tituloGrafico">Ingresos vs. costos</h2></div>
+            <p id="subtituloGrafico">Evolución histórica · independiente del resumen del mes</p>
+          </div>
+          <label class="fz-selector fz-selector--acento">
+            <svg class="fz-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            <select id="selectorMesesGrafico" aria-label="Meses del gráfico" onchange="cargarGraficoMensual()">
+              <option value="3">Últimos 3 meses</option>
+              <option value="6" selected>Últimos 6 meses</option>
+              <option value="12">Últimos 12 meses</option>
+            </select>
+          </label>
+        </div>
+        <div class="fz-grafico">
+          <div class="fz-grafico__escala" aria-hidden="true"><span>Mayor</span><span>Nivel relativo</span><span>Menor</span></div>
+          <div class="fz-grafico__area">
+            <div class="fz-grafico__series" id="graficoMensual"><p class="fz-cargando">Cargando gráfico…</p></div>
+            <div class="fz-grafico__meses" id="graficoMeses"></div>
+          </div>
+        </div>
+        <div class="fz-linea"></div>
+        <div class="fz-leyenda">
+          <div class="fz-leyenda__series">
+            <span class="fz-leyenda__serie"><span class="fz-leyenda__muestra" style="background:var(--fz-acento)"></span>Ingresos</span>
+            <span class="fz-leyenda__serie"><span class="fz-leyenda__muestra" style="background:var(--fz-morado)"></span>Costos totales (variables + fijos)</span>
+          </div>
+          <span>Referencia visual · pasa el cursor sobre un mes para ver los importes</span>
+        </div>
+      </section>
+
+      <!-- ===================== 3. CAJA Y RENTABILIDAD ===================== -->
+      <section class="fz-tarjeta" aria-labelledby="tituloCaja">
+        <div class="fz-encabezado">
+          <div class="fz-encabezado__titulo"><h2 id="tituloCaja">Flujo de caja del mes</h2><span class="fz-ambito" data-mes-etiqueta>—</span></div>
+          <p>El dinero que realmente entró y salió, incluidas las compras de materiales vendidos o no.</p>
+        </div>
+        <div class="fz-ecuacion" id="panelFlujoCaja">
+          <div class="fz-ecuacion__termino"><div class="fz-ecuacion__caja fz-ecuacion__caja--ingreso"><span class="fz-ecuacion__concepto">Ingresos</span><span class="fz-ecuacion__importe" id="cajaIngresos">—</span></div></div>
+          <div class="fz-ecuacion__termino"><span class="fz-ecuacion__signo">−</span><div class="fz-ecuacion__caja"><span class="fz-ecuacion__concepto">Compras de materiales</span><span class="fz-ecuacion__importe" id="cajaCompras">—</span></div></div>
+          <div class="fz-ecuacion__termino"><span class="fz-ecuacion__signo">−</span><div class="fz-ecuacion__caja"><span class="fz-ecuacion__concepto">Costos fijos</span><span class="fz-ecuacion__importe" id="cajaFijos">—</span></div></div>
+          <div class="fz-ecuacion__termino"><span class="fz-ecuacion__signo">−</span><div class="fz-ecuacion__caja"><span class="fz-ecuacion__concepto">Nómina pagada</span><span class="fz-ecuacion__importe" id="cajaNomina">—</span></div></div>
+          <div class="fz-ecuacion__termino"><span class="fz-ecuacion__signo">=</span><div class="fz-ecuacion__caja fz-ecuacion__caja--total"><span class="fz-ecuacion__concepto">Caja neta</span><span class="fz-ecuacion__importe" id="cajaNeta">—</span></div></div>
+        </div>
+        <div class="fz-nota"><svg class="fz-icono" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span>Caja no es utilidad: la utilidad considera el costo de lo vendido; la caja incluye los materiales comprados, hayan llegado o no.</span></div>
+      </section>
+
+      <section class="fz-tarjeta fz-rentabilidad" aria-labelledby="tituloRentabilidad">
+        <div class="fz-encabezado">
+          <div class="fz-encabezado__titulo"><h2 id="tituloRentabilidad">Rentabilidad por producto</h2><span class="fz-ambito" data-mes-etiqueta>—</span></div>
+          <p>Con lo que realmente se vendió este mes, no con el margen teórico de la ficha técnica.</p>
+        </div>
+        <div class="fz-scroll-x">
+          <div class="fz-tabla">
+            <div class="fz-tabla__fila fz-tabla__cabeza">
+              <span>PRODUCTO</span><span class="fz-derecha">UNIDADES</span><span class="fz-derecha">INGRESOS</span><span class="fz-derecha">COSTO</span><span class="fz-derecha">MARGEN</span><span class="fz-derecha">% DEL MARGEN TOTAL</span>
+            </div>
+            <div class="fz-tabla__cuerpo" id="cuerpoRentabilidad"><p class="fz-cargando">Cargando…</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== 4. CLIENTES · HISTÓRICO ===================== -->
+      <section class="fz-seccion fz-clientes" aria-labelledby="tituloClientes">
+        <div class="fz-encabezado">
+          <div class="fz-encabezado__titulo"><h2 id="tituloClientes">Clientes · histórico</h2><span class="fz-ambito">Todo el historial</span></div>
+          <p>Quién compra seguido de verdad. Estos datos no se filtran por el mes seleccionado.</p>
+        </div>
+        <div class="fz-tarjeta">
+          <div class="fz-historicos" id="resumenClientes">
+            <div class="fz-historico"><span>Clientes distintos</span><strong>—</strong><small>En todo el historial</small></div>
+            <div class="fz-historico"><span>Clientes recurrentes</span><strong>—</strong><small>&nbsp;</small></div>
+            <div class="fz-historico"><span>Ticket promedio general</span><strong>—</strong><small>Por compra registrada</small></div>
+          </div>
+          <div class="fz-scroll-x">
+            <div class="fz-tabla">
+              <div class="fz-tabla__fila fz-tabla__cabeza">
+                <span>CLIENTE</span><span class="fz-derecha">COMPRAS</span><span class="fz-derecha">TOTAL GASTADO</span><span class="fz-derecha">TICKET PROMEDIO</span><span>PRIMERA COMPRA</span><span>ÚLTIMA COMPRA</span><span></span>
+              </div>
+              <div class="fz-tabla__cuerpo" id="cuerpoClientes"><p class="fz-cargando">Cargando…</p></div>
+            </div>
+          </div>
+          <div class="fz-pie-tabla" id="pieClientes"></div>
+        </div>
+      </section>
+
+      <!-- ===================== 5. CONFIGURACIÓN FINANCIERA Y PATRIMONIO ===================== -->
+      <section class="fz-seccion" aria-labelledby="tituloConfiguracion" style="padding-bottom:16px">
+        <div class="fz-encabezado">
+          <div class="fz-encabezado__titulo"><h2 id="tituloConfiguracion">Configuración financiera</h2></div>
+          <p>La base para calcular tu utilidad, punto de equilibrio y retorno de inversión.</p>
+        </div>
+
+        <article class="fz-tarjeta fz-costos">
+          <div class="fz-fila-cabecera">
+            <div class="fz-encabezado"><h2>Costos fijos mensuales</h2></div>
+            <button type="button" class="fz-boton fz-boton--primario" onclick="abrirCostoFijo()"><svg class="fz-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Agregar costo fijo</button>
+          </div>
+          <div class="fz-tabla">
+            <div class="fz-tabla__fila fz-tabla__cabeza"><span>COSTO</span><span class="fz-derecha">VALOR MENSUAL</span><span></span></div>
+            <div class="fz-tabla__cuerpo" id="cuerpoCostosFijos"><p class="fz-cargando">Cargando…</p></div>
+          </div>
+        </article>
+
+        <article class="fz-tarjeta">
+          <div class="fz-fila-cabecera">
+            <div class="fz-encabezado">
+              <h2>Capital invertido</h2>
+              <p>Es la base con la que se calcula el ROI del panel.</p>
+            </div>
+            <button type="button" class="fz-boton" onclick="abrirFechaInicioRoi()"><svg class="fz-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg> Fecha de inicio</button>
+            <button type="button" class="fz-boton fz-boton--primario" onclick="abrirCapital()"><svg class="fz-icono" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Registrar aporte</button>
+          </div>
+          <div class="fz-capital-roi">
+            <div class="fz-tabla fz-capital">
+              <div class="fz-tabla__fila fz-tabla__cabeza"><span>FECHA</span><span>CONCEPTO</span><span class="fz-derecha">VALOR</span></div>
+              <div class="fz-tabla__cuerpo" id="cuerpoCapital"><p class="fz-cargando">Cargando…</p></div>
+              <div class="fz-total" id="totalCapital"></div>
+            </div>
+            <aside class="fz-roi">
+              <div class="fz-roi__ambito"><span>ROI acumulado</span><svg class="fz-icono fz-icono--18" viewBox="0 0 24 24" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div>
+              <div class="fz-roi__valor" id="roiValor">—</div>
+              <div class="fz-roi__base" id="roiBase">&nbsp;</div>
+              <div class="fz-linea"></div>
+              <div class="fz-roi__utilidad"><span>Utilidad acumulada</span><strong id="roiUtilidad">—</strong></div>
+            </aside>
+          </div>
+          <div class="fz-nota" id="notaRoi" hidden><svg class="fz-icono" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span id="notaRoiTexto"></span></div>
+        </article>
+
+        <article class="fz-tarjeta fz-patrimonio">
+          <span class="fz-patrimonio__simbolo"><svg class="fz-icono fz-icono--22" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z"/><path d="m7 16.5-4.74-2.85"/><path d="m7 16.5 5-3"/><path d="M7 16.5v5.17"/><path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z"/><path d="m17 16.5-5-3"/><path d="m17 16.5 4.74-2.85"/><path d="M17 16.5v5.17"/><path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z"/><path d="M12 8 7.26 5.15"/><path d="m12 8 4.74-2.85"/><path d="M12 13.5V8"/></svg></span>
+          <div class="fz-patrimonio__concepto">
+            <div class="fz-patrimonio__nombre"><strong>Valor del inventario</strong><small>PATRIMONIO · ACTUAL</small></div>
+            <span>Materiales sin vender, a su costo actual. No son ingresos ni utilidad del mes.</span>
+          </div>
+          <span class="fz-patrimonio__valor" id="valorInventario">—</span>
+        </article>
+      </section>
+    </div>
 
     <!-- Modal costo fijo -->
     <div class="modal" id="modalCostoFijo" hidden>

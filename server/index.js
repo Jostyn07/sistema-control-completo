@@ -12,6 +12,7 @@ const exigirAdmin = require('./middleware/admin');
 const resolverEmpresa = require('./middleware/tenant');
 const requierePermiso = require('./middleware/permissions');
 const ocultarCostos = require('./middleware/ocultarCostos');
+const telemetria = require('./middleware/telemetria');
 const log = require('./seguridad/log');
 const { esErrorInterno, sanitizarTexto } = require('./seguridad/sanitize');
 const { randomUUID } = require('node:crypto');
@@ -50,6 +51,10 @@ app.use('/api/admin', exigirAdmin, require('./rutas/admin'));
 // ---- Desde aquí toda petición trabaja dentro de UNA empresa:
 // tenant.js valida la membresía y deja req.empresa = { id, rol, permisos }.
 app.use('/api', resolverEmpresa);
+
+// ---- Telemetría de uso (sin contenido del negocio), al terminar cada petición.
+app.use('/api', telemetria);
+app.use('/api/telemetria', require('./rutas/telemetria'));
 
 // ---- Si el rol no puede ver costos (operador), se quitan de toda respuesta.
 app.use('/api', ocultarCostos);

@@ -211,3 +211,31 @@ function alternarTema() {
 }
 
 document.addEventListener('DOMContentLoaded', iniciarLayout);
+
+// ============================================================
+// Telemetría del navegador (Fase 8): solo "qué pantalla se abrió".
+// Sin contenido de la página, sin búsquedas escritas, sin datos del
+// negocio. El servidor descarta cualquier cosa fuera del catálogo.
+// ============================================================
+const Telemetria = {
+  enviar(nombre, propiedades) {
+    try {
+      const token = localStorage.getItem('token_sesion');
+      if (!token || typeof API === 'undefined') return;
+      fetch('/api/telemetria/eventos', {
+        method: 'POST',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...API.encabezadoEmpresa() },
+        body: JSON.stringify({ eventos: [{ nombre, propiedades: propiedades || {} }] })
+      }).catch(() => {});
+    } catch (_) { /* nunca afecta la página */ }
+  },
+  pantallaActual() {
+    const archivo = (location.pathname.split('/').pop() || 'index.html').replace('.html', '');
+    return archivo || 'index';
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.querySelector('.navegacion')) Telemetria.enviar('pantalla.abierta', { pantalla: Telemetria.pantallaActual() });
+});

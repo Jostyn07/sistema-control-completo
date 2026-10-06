@@ -93,4 +93,18 @@ router.get('/clientes', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/admin/telemetria?dias=30&min_empresas=1
+// FASE 8. Uso agregado de la plataforma: eventos por día, empresas y
+// usuarios distintos, errores y tiempos (p50/p95). Nunca filas
+// individuales ni a qué empresa corresponde cada número.
+router.get('/telemetria', async (req, res, next) => {
+  try {
+    const dias = Math.min(Math.max(parseInt(req.query.dias, 10) || 30, 1), 400);
+    const minEmpresas = Math.min(Math.max(parseInt(req.query.min_empresas, 10) || 1, 1), 100);
+    const { data, error } = await supabase.rpc('telemetria_resumen', { p_dias: dias, p_min_empresas: minEmpresas });
+    if (error) throw new Error(error.message);
+    res.json({ dias, min_empresas: minEmpresas, filas: data });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;
