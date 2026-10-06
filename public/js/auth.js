@@ -136,6 +136,34 @@ async function enviarFormulario() {
   }
 }
 
+// Enlace "¿Olvidaste tu contraseña?": usa el correo escrito en el campo.
+async function olvideContrasena(evento) {
+  if (evento) evento.preventDefault();
+  const campo = document.getElementById('campoCorreo');
+  const correo = campo.value.trim();
+  if (!correo) {
+    mostrarAviso('Escribe tu correo arriba y vuelve a tocar "¿Olvidaste tu contraseña?"', 'error');
+    campo.focus();
+    return;
+  }
+  const enlace = evento && evento.currentTarget;
+  if (enlace) enlace.style.pointerEvents = 'none';
+  try {
+    const r = await fetch('/api/auth/olvide-contrasena', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ correo })
+    });
+    const datos = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(datos.error || 'No se pudo enviar el correo');
+    mostrarAviso('Si existe una cuenta con ' + correo + ', te llegará un correo con el enlace para crear una contraseña nueva. Revisa también spam.');
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  } finally {
+    if (enlace) setTimeout(() => { enlace.style.pointerEvents = ''; }, 30000);
+  }
+}
+
 // ---- Funciones compartidas por el resto de páginas ----
 
 // Muestra el nombre del usuario y un botón de cerrar sesión en la navegación.

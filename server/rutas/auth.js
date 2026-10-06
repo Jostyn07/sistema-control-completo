@@ -2,6 +2,8 @@
 // MÓDULO DE AUTENTICACIÓN (/api/auth) — PÚBLICO, sin middleware.
 // - POST /registro   crea una cuenta nueva (nombre, correo, contraseña)
 // - POST /login       inicia sesión y devuelve el token de acceso
+// - POST /olvide-contrasena      envía el correo de recuperación
+// - POST /restablecer-contrasena  guarda la contraseña nueva
 // - GET  /yo          confirma quién es el dueño del token actual
 // ============================================================
 const express = require('express');
@@ -132,6 +134,58 @@ router.get('/configuracion-publica', (req, res) => {
     return res.status(500).json({ error: 'Falta configurar SUPABASE_ANON_KEY en el servidor' });
   }
   res.json({ url: process.env.SUPABASE_URL, anonKey: process.env.SUPABASE_ANON_KEY });
+});
+
+// Dirección pública de la app, para armar el enlace del correo.
+// APP_URL (si existe) manda; si no, se usa el origen de la petición.
+function urlPublica(req) {
+  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/+$/, '');
+  const proto = (req.headers['x-forwarded-proto'] || req.protocol || 'https').split(',')[0];
+  return `${proto}://${req.headers['x-forwarded-host'] || req.headers.host}`;
+}
+
+// POST /api/auth/olvide-contrasena — cuerpo: { correo }
+// Envía el correo de recuperación de Supabase. Siempre responde lo
+// mismo, exista o no la cuenta, para no revelar qué correos están
+// registrados.
+router.post('/olvide-contrasena', async (req, res, next) => {
+  try {
+    const correo = String(req.body?.correo || '').trim().toLowerCase();
+    if (!correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo))
+      return res.status(400).json({ error: 'Escribe un correo válido' });
+
+    const { error } = await supabase.auth.resetPasswordForEmail(correo, {
+      redirectTo: urlPublica(req) + '/restablecer-contrasena.html'
+    });
+    if (error) {
+      // Límite de envíos de Supabase: sí vale la pena avisarlo.
+      if (error.status === 429 || /rate limit/i.test(error.message))
+        return res.status(429).json({ error: 'Se enviaron demasiados correos. Intenta de nuevo en unos minutos.' });
+      log.error('[olvide-contrasena] Supabase:', error);
+    }
+    res.json({ enviado: true });
+  } catch (err) { next(err); }
+});
+
+// POST /api/auth/restablecer-contrasena — cuerpo: { contrasena }
+// Encabezado: Authorization: Bearer <token de recuperación del correo>
+router.post('/restablecer-contrasena', async (req, res, next) => {
+  try {
+    const encabezado = req.headers.authorization || '';
+    const token = encabezado.startsWith('Bearer ') ? encabezado.slice(7) : null;
+    const { contrasena } = req.body || {};
+    if (!token) return res.status(401).json({ error: 'El enlace no es válido o ya venció' });
+    if (!contrasena || contrasena.length < 6)
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data.user) return res.status(401).json({ error: 'El enlace no es válido o ya venció. Pide uno nuevo.' });
+
+    const { error: errCambio } = await supabase.auth.admin.updateUserById(data.user.id, { password: contrasena });
+    if (errCambio) return res.status(400).json({ error: errCambio.message });
+
+    res.json({ actualizada: true });
+  } catch (err) { next(err); }
 });
 
 module.exports = router;

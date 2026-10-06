@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nueva contraseña — Fincil</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/landing/img/favicon-32.png">
+  <link rel="stylesheet" href="/css/estilos.css">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/tema.css">
+  <link rel="stylesheet" href="/css/login.css">
+</head>
+<body>
+  <main class="pagina-login">
+    <div class="login__envoltura">
+      <div class="tarjeta tarjeta-login">
+        <h1>Crea una contraseña nueva</h1>
+        <p class="login__subtitulo" id="textoEstado">Escríbela dos veces. Mínimo 6 caracteres.</p>
+
+        <div id="formulario">
+          <label class="login__campo">
+            <span class="login__campo-etiqueta">Contraseña nueva</span>
+            <span class="login__campo-caja"><input type="password" id="campoNueva" autocomplete="new-password" placeholder="Nueva contraseña"></span>
+          </label>
+          <label class="login__campo">
+            <span class="login__campo-etiqueta">Repite la contraseña</span>
+            <span class="login__campo-caja"><input type="password" id="campoRepetir" autocomplete="new-password" placeholder="Repite la contraseña"></span>
+          </label>
+          <button type="button" class="login__boton-entrar" id="botonGuardar">Guardar contraseña</button>
+        </div>
+
+        <p class="login__alternar"><a href="/login.html">Volver a iniciar sesión</a></p>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/tema.js"></script>
+  <script>
+    // Supabase deja el token de recuperación en el hash (#access_token=...&type=recovery)
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    const token = params.get('access_token');
+    const errorUrl = params.get('error_description');
+    // Quita el token de la barra de direcciones
+    history.replaceState(null, '', window.location.pathname);
+
+    const estado = document.getElementById('textoEstado');
+    if (!token) {
+      document.getElementById('formulario').hidden = true;
+      estado.textContent = errorUrl
+        ? 'El enlace no es válido o ya venció. Pide uno nuevo desde "¿Olvidaste tu contraseña?".'
+        : 'Abre esta página desde el enlace que te llegó al correo.';
+    }
+
+    document.getElementById('botonGuardar').addEventListener('click', async (e) => {
+      const nueva = document.getElementById('campoNueva').value;
+      const repetir = document.getElementById('campoRepetir').value;
+      if (nueva.length < 6) return mostrarAviso('Mínimo 6 caracteres', 'error');
+      if (nueva !== repetir) return mostrarAviso('Las contraseñas no coinciden', 'error');
+      e.target.disabled = true;
+      try {
+        const r = await fetch('/api/auth/restablecer-contrasena', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ contrasena: nueva })
+        });
+        const datos = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(datos.error || 'No se pudo guardar');
+        mostrarAviso('Contraseña actualizada. Ya puedes iniciar sesión.');
+        setTimeout(() => { window.location.href = '/login.html'; }, 1800);
+      } catch (err) {
+        mostrarAviso(err.message, 'error');
+        e.target.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
