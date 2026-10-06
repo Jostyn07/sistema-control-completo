@@ -227,7 +227,8 @@ function pintarListaProcesos(lista) {
       <td>${repeticiones > 1 ? `×${repeticiones}` : '—'}</td>
       <td>${p.tiempo_minutos} min</td>
       <td>${(p.procesos_materiales || []).map(m => `${m.cantidad} ${escaparHtml(m.materiales.unidad)} de ${escaparHtml(m.materiales.nombre)}`).join(', ') || '—'}</td>
-      <td>${formatearPesos(costoPorEjecucion)}${repeticiones > 1 ? ` × ${repeticiones} = ${formatearPesos(costoPorEjecucion * repeticiones)}` : ''}</td>
+      <td>${formatearPesos(costoPorEjecucion)}${repeticiones > 1 ? ` × ${repeticiones} = ${formatearPesos(costoPorEjecucion * repeticiones)}` : ''}
+        <div class="texto-secundario" style="font-size:.78em;margin-top:2px">mano de obra ${formatearPesos(p.costo_unitario || 0)} + materiales ${formatearPesos(p.costo_materiales || 0)}</div></td>
       <td><span class="acciones-fila">
         <button type="button" onclick="abrirFormularioProceso('${p.id}')" title="Editar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_LAPIZ_PROCESO}</svg></button>
         <button type="button" class="acciones-fila__peligro" onclick="eliminarProceso('${p.id}')" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_BASURA_PROCESO}</svg></button>
