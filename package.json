@@ -7,9 +7,10 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node --test server/tests/tenant.test.js server/tests/tenant-rls.test.js server/tests/seguridad.test.js server/tests/telemetria.test.js"
+    "test": "node --test server/tests/tenant.test.js server/tests/tenant-rls.test.js server/tests/seguridad.test.js server/tests/telemetria.test.js server/tests/sentry.test.js"
   },
   "dependencies": {
+    "@sentry/node": "^11.4.0",
     "@supabase/supabase-js": "^2.45.0",
     "archiver": "^7.0.1",
     "dotenv": "^16.4.5",

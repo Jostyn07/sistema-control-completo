@@ -8,6 +8,7 @@
 //   pii           datos personales de clientes y colaboradores
 //   fiscal        NIT, resolución DIAN, CUFE, facturas
 //   secreto       llaves, tokens, contraseñas (nunca salen del servidor)
+//   interno_libre nombres, proveedores, notas y textos libres del negocio
 //
 // Reglas de salida (lo usan sanitize.js, el ocultamiento por rol y,
 // más adelante, Sentry, telemetría e IA):
@@ -20,7 +21,9 @@
 const PATRONES = [
   { categoria: 'secreto',      patron: /(password|contrasena|clave|token|secret|api_?key|refresh|authorization|cookie|llave|firma|signature|checksum)/i },
   { categoria: 'fiscal',       patron: /(^nit$|cufe|resolucion|razon_social|regimen|^cedula$|documento|identificacion|rut$)/i },
-  { categoria: 'pii',          patron: /(correo|email|telefono|celular|whatsapp|direccion|cliente_nombre|nombre_cliente|nombre_persona|cedula|tarjeta|datos_crudos|metodos_pago|ip$|user_agent)/i },
+  { categoria: 'pii',          patron: /(correo|email|telefono|celular|whatsapp|direccion|cliente|nombre_persona|cedula|tarjeta|datos_crudos|metodos_pago|ip$|user_agent)/i },
+  // Texto libre y nombres del negocio: pueden traer cualquier cosa (nombres de clientes en una nota, etc.)
+  { categoria: 'interno_libre', patron: /^(nombre|proveedor|notas?|motivo|descripcion|observaciones?|detalle|concepto|codigo)$/i },
   { categoria: 'confidencial', patron: /^(costo|costos|margen|ganancia|utilidad|rentabilidad|valor_inventario|capital|salario|pago|monto|valor_mensual|valor$)(_|$)/i }
 ];
 
@@ -40,7 +43,7 @@ function esCampoDeCosto(nombre) {
 }
 
 // Categorías que nunca deben llegar a logs, Sentry ni telemetría
-const PROHIBIDO_EN_EXTERNOS = new Set(['secreto', 'fiscal', 'pii', 'confidencial']);
+const PROHIBIDO_EN_EXTERNOS = new Set(['secreto', 'fiscal', 'pii', 'confidencial', 'interno_libre']);
 
 function puedeSalirAExternos(nombre) {
   return !PROHIBIDO_EN_EXTERNOS.has(clasificarCampo(nombre));

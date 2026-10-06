@@ -2,7 +2,8 @@
 // SERVIDOR PRINCIPAL — arranca Express y monta las rutas
 // Correr en local:  npm run dev   (http://localhost:3000)
 // ============================================================
-require('dotenv').config();
+// Sentry debe iniciar antes que express (incluye dotenv)
+require('./instrument');
 const express = require('express');
 const path = require('path');
 
@@ -16,6 +17,7 @@ const telemetria = require('./middleware/telemetria');
 const log = require('./seguridad/log');
 const { esErrorInterno, sanitizarTexto } = require('./seguridad/sanitize');
 const { randomUUID } = require('node:crypto');
+const { capturarErrorApi } = require('./servicios/sentry');
 const rutasAuth = require('./rutas/auth');
 const rutasMateriales = require('./rutas/materiales');
 const rutasProductos = require('./rutas/productos');
@@ -55,6 +57,7 @@ app.use('/api', resolverEmpresa);
 // ---- Telemetría de uso (sin contenido del negocio), al terminar cada petición.
 app.use('/api', telemetria);
 app.use('/api/telemetria', require('./rutas/telemetria'));
+app.use('/api/errores-navegador', require('./rutas/errores'));
 
 // ---- Si el rol no puede ver costos (operador), se quitan de toda respuesta.
 app.use('/api', ocultarCostos);
@@ -100,7 +103,7 @@ app.use('/api/auditoria', requierePermiso('auditoria'), require('./rutas/auditor
 // - Errores 5xx con detalle interno de la base (constraints, columnas,
 //   valores): el cliente recibe un mensaje genérico + una referencia
 //   que permite encontrar el detalle en los logs de Vercel.
-app.use((err, req, res, next) => {
+app.use(async (err, req, res, next) => {
   const estado = err.status || 500;
   const referencia = randomUUID().slice(0, 8);
   log.error('[API]', err, {
@@ -112,6 +115,10 @@ app.use((err, req, res, next) => {
   });
 
   if (estado < 500) return res.status(estado).json({ error: sanitizarTexto(err.message) || 'Solicitud inválida' });
+
+  // Solo los 5xx van a Sentry (los 4xx son validaciones para el usuario)
+  await capturarErrorApi(err, req, referencia);
+
   if (esErrorInterno(err.message)) {
     return res.status(estado).json({ error: `Ocurrió un error inesperado. Si se repite, comparte esta referencia: ${referencia}`, referencia });
   }

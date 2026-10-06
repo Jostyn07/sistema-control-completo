@@ -53,7 +53,7 @@ test('Fase 6 — sanitize.js', () => {
   assert.equal(esErrorInterno('null value in column "nombre" violates not-null constraint'), true);
   assert.equal(esErrorInterno('La cantidad entregada debe ser un número mayor a 0'), false);
   const o = sanitizarObjeto({ nombre: 'Ramo', nit: '900', correo: 'a@b.co', costo_unitario: 5, cantidad: 3, token: 'x', items: [{ telefono: '300' }] });
-  assert.deepEqual(o, { nombre: 'Ramo', nit: '[oculto]', correo: '[oculto]', costo_unitario: '[oculto]', cantidad: 3, token: '[oculto]', items: [{ telefono: '[oculto]' }] });
+  assert.deepEqual(o, { nombre: '[oculto]', nit: '[oculto]', correo: '[oculto]', costo_unitario: '[oculto]', cantidad: 3, token: '[oculto]', items: [{ telefono: '[oculto]' }] });
 });
 
 test('Fase 7 — auditoría desde el backend', async (t) => {

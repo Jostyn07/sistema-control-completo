@@ -11,7 +11,7 @@ const EMP_A = '11111111-1111-4111-8111-111111111111';
 const EMP_B = '22222222-2222-4222-8222-222222222222';
 const USR = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
-const estado = { rol: 'propietario', error: null, datos: null };
+const estado = { rol: 'propietario', error: null, datos: null, mocks: {} };
 const registro = [];
 
 function crearClienteFalso(llave, opciones) {
@@ -55,6 +55,7 @@ function crearClienteFalso(llave, opciones) {
 
 const original = Module.prototype.require;
 Module.prototype.require = function (id) {
+  if (estado.mocks[id]) return estado.mocks[id];
   if (id === '@supabase/supabase-js') return { createClient: (_url, llave, opciones) => crearClienteFalso(llave, opciones) };
   return original.apply(this, arguments);
 };

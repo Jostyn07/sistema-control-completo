@@ -239,3 +239,37 @@ const Telemetria = {
 document.addEventListener('DOMContentLoaded', () => {
   if (document.querySelector('.navegacion')) Telemetria.enviar('pantalla.abierta', { pantalla: Telemetria.pantallaActual() });
 });
+
+
+// ============================================================
+// Errores del navegador (Fase 9): se reportan al servidor, que los
+// limpia y los manda a Sentry. Solo el mensaje del error y la
+// pantalla; nunca contenido de la página ni datos escritos.
+// Máximo 5 por página para no inundar.
+// ============================================================
+(function vigilarErrores() {
+  let enviados = 0;
+  const vistos = new Set();
+  function reportar(mensaje, tipo) {
+    try {
+      const texto = String(mensaje || '').slice(0, 300);
+      if (!texto || vistos.has(texto) || enviados >= 5) return;
+      const token = localStorage.getItem('token_sesion');
+      if (!token || typeof API === 'undefined') return;
+      vistos.add(texto); enviados++;
+      fetch('/api/errores-navegador', {
+        method: 'POST',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...API.encabezadoEmpresa() },
+        body: JSON.stringify({ mensaje: texto, pantalla: Telemetria.pantallaActual(), tipo })
+      }).catch(() => {});
+    } catch (_) { /* nunca afecta la página */ }
+  }
+  window.addEventListener('error', (e) => reportar(e && e.message, 'error'));
+  window.addEventListener('unhandledrejection', (e) => {
+    const r = e && e.reason;
+    // "Sesión expirada" y errores de validación del API no son fallas del código
+    if (r && /Sesión expirada/.test(r.message || '')) return;
+    reportar(r && (r.message || r), 'promesa');
+  });
+})();
