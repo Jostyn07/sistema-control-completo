@@ -342,8 +342,19 @@ body.con-barra-lateral .pagina {
 .modal { background: rgba(11, 18, 32, 0.5); }
 .modal__contenido { background: var(--t-tarjeta-bg); border-radius: var(--t-radio); border-top: none; box-shadow: 0 20px 48px rgba(11, 18, 32, 0.25); }
 
-.aviso { background: var(--t-ink); color: #fff; border-radius: var(--t-radio-chico); font-style: normal; }
-.aviso--error { background: var(--t-peligro); }
+/* Avisos (toasts): colores propios, independientes del tema y del acento,
+   para que el texto SIEMPRE contraste (antes usaban --t-ink, que en modo
+   oscuro es casi blanco → texto blanco sobre fondo claro, ilegible). */
+:root { --t-aviso-bg: #14213D; --t-aviso-texto: #FFFFFF; --t-aviso-borde: transparent; }
+[data-tema="oscuro"] { --t-aviso-bg: #24324D; --t-aviso-texto: #F4F7FB; --t-aviso-borde: rgba(255, 255, 255, 0.14); }
+.aviso {
+  background: var(--t-aviso-bg); color: var(--t-aviso-texto);
+  border: 1px solid var(--t-aviso-borde); border-radius: var(--t-radio-chico);
+  font-style: normal; font-weight: 600; line-height: 1.4;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  max-width: min(560px, calc(100vw - 32px)); width: max-content; text-align: center;
+}
+.aviso--error { background: #C93652; color: #FFFFFF; border-color: transparent; }
 
 /* ---- Productos ---- */
 .tarjeta-producto { background: var(--t-tarjeta-bg); border: 1px solid var(--t-borde); border-radius: var(--t-radio); box-shadow: var(--t-sombra); padding-bottom: 0; overflow: hidden; }
