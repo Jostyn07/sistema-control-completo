@@ -33,7 +33,14 @@ const OPCIONES_SERVIDOR = { auth: { persistSession: false, autoRefreshToken: fal
 let supabaseAdmin;
 
 if (url && llaveServicio) {
-  supabaseAdmin = createClient(url, llaveServicio, OPCIONES_SERVIDOR);
+  // Authorization fijo con la llave de servicio: así, aunque alguna vez
+  // se llame un signIn/refresh sobre este cliente, sus consultas NUNCA
+  // salen con el token de un usuario (supabase-js no reemplaza un
+  // Authorization que ya viene en los encabezados globales).
+  supabaseAdmin = createClient(url, llaveServicio, {
+    ...OPCIONES_SERVIDOR,
+    global: { headers: { Authorization: `Bearer ${llaveServicio}` } }
+  });
 } else {
   console.warn('[AVISO] Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en el .env — las rutas de API fallarán hasta configurarlas.');
   const mensaje = 'Supabase no está configurado: crea el archivo .env a partir de .env.ejemplo';
@@ -61,7 +68,7 @@ function crearClienteUsuario(tokenAcceso) {
 function crearClienteServicioConActor(usuarioId) {
   return createClient(url, llaveServicio, {
     ...OPCIONES_SERVIDOR,
-    global: { headers: { 'x-fincil-usuario': usuarioId } }
+    global: { headers: { 'x-fincil-usuario': usuarioId, Authorization: `Bearer ${llaveServicio}` } }
   });
 }
 
