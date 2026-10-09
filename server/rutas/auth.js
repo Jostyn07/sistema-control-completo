@@ -8,7 +8,21 @@
 // ============================================================
 const express = require('express');
 const log = require('../seguridad/log');
+const { createClient } = require('@supabase/supabase-js');
 const supabase = require('../supabase/cliente');
+
+// IMPORTANTE: signInWithPassword / refreshSession GUARDAN la sesión del
+// usuario dentro del cliente que se usa. Si se llaman sobre el cliente
+// compartido del servidor (service_role), todas las consultas siguientes
+// de esa instancia salen con el token de ESE usuario: con RLS ven datos
+// de otra persona y, cuando el token vence (1 h), fallan con
+// "JWT expired" ("No se pudo verificar la empresa"). Por eso cada
+// operación de sesión usa un cliente nuevo y desechable.
+function clienteDeSesion() {
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+  });
+}
 const { crearPruebaGratis } = require('../servicios/suscripcion');
 const { enviarEventoMeta } = require('../servicios/meta-capi');
 const router = express.Router();
@@ -66,7 +80,7 @@ router.post('/login', async (req, res, next) => {
     const { correo, contrasena } = req.body;
     if (!correo || !contrasena) return res.status(400).json({ error: 'Correo y contraseña son obligatorios' });
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await clienteDeSesion().auth.signInWithPassword({
       email: correo.trim().toLowerCase(),
       password: contrasena
     });
@@ -93,7 +107,7 @@ router.post('/refrescar', async (req, res, next) => {
     const { refresh_token } = req.body;
     if (!refresh_token) return res.status(400).json({ error: 'Falta el refresh_token' });
 
-    const { data, error } = await supabase.auth.refreshSession({ refresh_token });
+    const { data, error } = await clienteDeSesion().auth.refreshSession({ refresh_token });
     if (error || !data.session) return res.status(401).json({ error: 'No se pudo renovar la sesión' });
 
     res.json({
@@ -154,7 +168,7 @@ router.post('/olvide-contrasena', async (req, res, next) => {
     if (!correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo))
       return res.status(400).json({ error: 'Escribe un correo válido' });
 
-    const { error } = await supabase.auth.resetPasswordForEmail(correo, {
+    const { error } = await clienteDeSesion().auth.resetPasswordForEmail(correo, {
       redirectTo: urlPublica(req) + '/restablecer-contrasena.html'
     });
     if (error) {

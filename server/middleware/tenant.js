@@ -45,7 +45,7 @@ async function resolverEmpresa(req, res, next) {
       .eq('usuario_id', req.usuarioId)
       .eq('estado', 'activo')
       .eq('empresas.estado', 'activa');
-    if (error) throw new Error('No se pudo verificar la empresa');
+    if (error) throw new Error('No se pudo verificar la empresa: ' + (error.message || error.code || 'error desconocido'));
 
     if (!membresias || membresias.length === 0) {
       return res.status(403).json({ error: 'Tu usuario no pertenece a ninguna empresa activa', sin_empresa: true });

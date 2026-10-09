@@ -194,7 +194,7 @@ router.put('/contrasena', async (req, res, next) => {
       if (!actual) return res.status(400).json({ error: 'Escribe tu contraseña actual' });
       // Cliente desechable: verificar la contraseña NO debe dejar una sesión
       // de usuario pegada al cliente compartido del servidor.
-      const verificador = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY,
+      const verificador = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY,
         { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
       const { error } = await verificador.auth.signInWithPassword({ email: usuario.email, password: actual });
       if (error) return res.status(400).json({ error: 'La contraseña actual no es correcta' });
