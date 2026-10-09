@@ -546,3 +546,26 @@ body.con-barra-lateral .pagina {
 .tarjeta__encabezado-fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .tarjeta__encabezado-fila h2 { display: flex; align-items: center; gap: 8px; margin: 0; }
 .tarjeta__encabezado-fila h2 svg { width: 18px; height: 18px; color: var(--t-ink-tenue); }
+/* ============================================================
+   MI PERFIL — apariencia personal (solo afecta a esta persona)
+   ============================================================ */
+:root { --t-velo-fondo: rgba(244, 247, 251, 0.55); }
+[data-tema="oscuro"] { --t-velo-fondo: rgba(11, 18, 32, 0.62); }
+
+/* Fondo elegido en Apariencia: detrás del contenido, con un velo del
+   color del tema para que los títulos sigan leyéndose bien. */
+html.con-fondo-usuario body.con-barra-lateral {
+  background:
+    linear-gradient(var(--t-velo-fondo), var(--t-velo-fondo)),
+    var(--fondo-usuario) center / cover no-repeat fixed;
+}
+
+/* Puntito de estado sobre el avatar */
+.avatar-con-estado { position: relative; overflow: visible; flex-shrink: 0; }
+.avatar-con-estado > i {
+  position: absolute; right: -1px; bottom: -1px;
+  width: 30%; height: 30%; min-width: 8px; min-height: 8px; max-width: 14px; max-height: 14px;
+  border-radius: 50%; border: 2px solid var(--t-tarjeta-bg);
+}
+.barra-lateral .avatar-con-estado > i { border-color: var(--t-sidebar-bg); }
+a.barra-superior__usuario { text-decoration: none; color: inherit; }

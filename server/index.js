@@ -18,11 +18,17 @@ const log = require('./seguridad/log');
 const { esErrorInterno, sanitizarTexto } = require('./seguridad/sanitize');
 const { randomUUID } = require('node:crypto');
 const { capturarErrorApi } = require('./servicios/sentry');
+const { exigirBorde, encabezadosSeguridad, limitarTasa } = require('./seguridad/borde');
 const rutasAuth = require('./rutas/auth');
 const rutasMateriales = require('./rutas/materiales');
 const rutasProductos = require('./rutas/productos');
 
 const app = express();
+app.disable('x-powered-by');
+// FASE 10 — Cloudflare delante: solo tráfico que pasó por el borde,
+// y cabeceras de seguridad en todas las respuestas.
+app.use(exigirBorde);
+app.use(encabezadosSeguridad);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // por si algún formulario manda datos así, no en JSON
 
@@ -35,6 +41,10 @@ app.get('/', (req, res) => {
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ---- Rutas públicas de autenticación (sin token todavía) ----
+// Freno por IP en las rutas que más se atacan (fuerza bruta / spam de correos)
+app.use('/api/auth/login', limitarTasa({ nombre: 'login', ventanaMs: 15 * 60 * 1000, maximo: 10 }));
+app.use('/api/auth/registro', limitarTasa({ nombre: 'registro', ventanaMs: 60 * 60 * 1000, maximo: 5 }));
+app.use('/api/auth/olvide-contrasena', limitarTasa({ nombre: 'recuperar', ventanaMs: 60 * 60 * 1000, maximo: 5 }));
 app.use('/api/auth', rutasAuth);
 
 // ---- Webhooks de terceros: PÚBLICOS también, nunca llevan nuestro
@@ -64,6 +74,8 @@ app.use('/api', ocultarCostos);
 
 // ---- Empresas y equipo (permisos se validan ruta por ruta adentro).
 app.use('/api/empresas', require('./rutas/empresas'));
+// Mi perfil: espacio personal de cada usuario (no depende de permisos ni de la suscripción)
+app.use('/api/perfil', require('./rutas/perfil'));
 
 // ---- Suscripción va ANTES del bloqueo por vencimiento: aunque la
 // cuenta esté vencida, la persona siempre debe poder pagar/renovar.

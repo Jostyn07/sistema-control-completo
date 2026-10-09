@@ -183,10 +183,10 @@ function mostrarUsuarioActual() {
   contenedor.className = 'navegacion__usuario';
   contenedor.innerHTML = `
     <span class="barra-lateral__usuario">
-      <span class="barra-lateral__avatar">${iniciales}</span>
+      ${typeof htmlAvatar === 'function' ? htmlAvatar(usuario, 34) : `<span class="barra-lateral__avatar">${iniciales}</span>`}
       <span class="barra-lateral__usuario-texto">
         <span class="barra-lateral__usuario-nombre">${escaparHtmlAuth(nombre)}</span>
-        <span class="barra-lateral__usuario-empresa">Mi Empresa</span>
+        <span class="barra-lateral__usuario-empresa">${escaparHtmlAuth(usuario.cargo || 'Mi Empresa')}</span>
       </span>
     </span>
     <button type="button" class="boton boton--pequeno" onclick="alternarTema()">${esOscuro ? '☀ Tema claro' : '🌙 Tema oscuro'}</button>
@@ -199,6 +199,8 @@ function cerrarSesion() {
   localStorage.removeItem('token_sesion');
   localStorage.removeItem('refresh_token_sesion');
   localStorage.removeItem('usuario_sesion');
+  localStorage.removeItem('preferencias_ui');
+  try { sessionStorage.removeItem('perfil_sincronizado'); } catch (_) {}
   window.location.href = '/login.html';
 }
 

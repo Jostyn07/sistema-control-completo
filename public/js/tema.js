@@ -17,11 +17,100 @@ const TEMA_CLAVE = 'tema_preferido';
 
 // Se ejecuta de inmediato (no espera DOMContentLoaded) para que el
 // atributo quede puesto antes del primer pintado de la página.
+// ---- Apariencia personal (Mi perfil → Apariencia) ----
+// Solo afecta la interfaz de ESTA persona. Se guarda en su cuenta y se
+// copia aquí (localStorage) para aplicarla antes del primer pintado.
+const PREFS_UI_CLAVE = 'preferencias_ui';
+const FONDOS_DEGRADADOS = {
+  aurora:    'linear-gradient(135deg, #c9e4ff 0%, #e8dcff 50%, #ffe3ef 100%)',
+  atardecer: 'linear-gradient(135deg, #ffd8b5 0%, #ffb8c6 55%, #d9c2ff 100%)',
+  oceano:    'linear-gradient(135deg, #b8f0ec 0%, #9fd4ff 55%, #b8c4ff 100%)',
+  bosque:    'linear-gradient(135deg, #d6f5c9 0%, #a8e0c4 55%, #9cc9b5 100%)',
+  lavanda:   'linear-gradient(135deg, #efe4ff 0%, #d8ccff 55%, #c3d0ff 100%)',
+  grafito:   'linear-gradient(135deg, #3a4253 0%, #232a37 55%, #151a24 100%)'
+};
+
+function leerPreferenciasUi() {
+  try { return JSON.parse(localStorage.getItem(PREFS_UI_CLAVE) || 'null') || {}; }
+  catch (_) { return {}; }
+}
+
+// Oscurece un color #rrggbb (para el "hover" del acento)
+function oscurecerHex(hex, factor) {
+  const n = parseInt(hex.slice(1), 16);
+  const c = (v) => Math.max(0, Math.round(v * (1 - factor))).toString(16).padStart(2, '0');
+  return '#' + c(n >> 16) + c((n >> 8) & 255) + c(n & 255);
+}
+
+function aplicarApariencia(prefs) {
+  prefs = prefs || leerPreferenciasUi();
+  const raiz = document.documentElement;
+  // Tema: lo elegido en Apariencia manda; si no, el botón viejo (tema_preferido)
+  let tema = prefs.tema || (localStorage.getItem(TEMA_CLAVE) === 'oscuro' ? 'oscuro' : 'claro');
+  if (tema === 'auto') tema = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro';
+  if (tema === 'oscuro') raiz.setAttribute('data-tema', 'oscuro'); else raiz.removeAttribute('data-tema');
+
+  if (prefs.acento && /^#[0-9a-f]{6}$/i.test(prefs.acento)) {
+    raiz.style.setProperty('--t-accent', prefs.acento);
+    raiz.style.setProperty('--t-accent-hover', oscurecerHex(prefs.acento, 0.15));
+  } else {
+    raiz.style.removeProperty('--t-accent');
+    raiz.style.removeProperty('--t-accent-hover');
+  }
+
+  const f = prefs.fondo || {};
+  let fondo = '';
+  if (f.tipo === 'solido' && /^#[0-9a-f]{6}$/i.test(f.valor || '')) fondo = f.valor;
+  else if (f.tipo === 'degradado' && FONDOS_DEGRADADOS[f.valor]) fondo = FONDOS_DEGRADADOS[f.valor];
+  else if (f.tipo === 'imagen' && /^https:\/\//.test(f.valor || '')) fondo = `url("${String(f.valor).replace(/"/g, '')}")`;
+  if (fondo) { raiz.style.setProperty('--fondo-usuario', fondo); raiz.classList.add('con-fondo-usuario'); }
+  else { raiz.style.removeProperty('--fondo-usuario'); raiz.classList.remove('con-fondo-usuario'); }
+}
+
+function guardarPreferenciasUiLocal(prefs) {
+  try { localStorage.setItem(PREFS_UI_CLAVE, JSON.stringify(prefs || {})); } catch (_) {}
+}
+
+// Se ejecuta de inmediato (no espera DOMContentLoaded) para que el
+// tema quede puesto antes del primer pintado de la página.
 (function aplicarTemaGuardado() {
-  if (localStorage.getItem(TEMA_CLAVE) === 'oscuro') {
-    document.documentElement.setAttribute('data-tema', 'oscuro');
+  aplicarApariencia();
+  if (window.matchMedia) {
+    matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => {
+      if (leerPreferenciasUi().tema === 'auto') aplicarApariencia();
+    });
   }
 })();
+
+// Una vez por sesión del navegador: trae el perfil de la cuenta para
+// que la apariencia, el nombre y la foto sigan a la persona en
+// cualquier dispositivo.
+function sincronizarPerfil() {
+  try {
+    if (!localStorage.getItem('token_sesion') || typeof API === 'undefined') return;
+    if (sessionStorage.getItem('perfil_sincronizado')) return;
+    sessionStorage.setItem('perfil_sincronizado', '1');
+    API.obtener('/api/perfil').then((perfil) => {
+      actualizarSesionLocalConPerfil(perfil);
+      guardarPreferenciasUiLocal(perfil.apariencia || {});
+      aplicarApariencia(perfil.apariencia || {});
+      pintarUsuarioSuperior();
+    }).catch(() => sessionStorage.removeItem('perfil_sincronizado'));
+  } catch (_) { /* nunca afecta la página */ }
+}
+
+function actualizarSesionLocalConPerfil(perfil) {
+  try {
+    const actual = JSON.parse(localStorage.getItem('usuario_sesion') || '{}');
+    localStorage.setItem('usuario_sesion', JSON.stringify({
+      ...actual,
+      nombre: perfil.nombre_visible || [perfil.nombre, perfil.apellido].filter(Boolean).join(' ') || actual.nombre,
+      avatar_url: perfil.avatar_url || '',
+      cargo: perfil.cargo || '',
+      estado: perfil.estado || 'disponible'
+    }));
+  } catch (_) {}
+}
 
 // Un ícono lineal por página — mismo criterio de "sin dependencias
 // nuevas" del resto del proyecto: SVG a mano, no una librería de íconos.
@@ -38,8 +127,13 @@ const ICONOS_NAV = {
   'nomina.html': '<circle cx="9" cy="7" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 4.2a3.2 3.2 0 0 1 0 6M22 20c0-2.8-2-5.1-4.7-5.8"/>',
   'importar-exportar.html': '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
   'suscripcion.html': '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
-  'historial.html': '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>'
+  'historial.html': '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+  'perfil.html': '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>'
 };
+
+// Páginas que aparecen en la sidebar aunque la página actual no las
+// tenga en su <nav> (así no hay que editar el HTML de cada página).
+const PAGINAS_SIEMPRE = { 'perfil.html': 'Mi perfil' };
 
 // Agrupación de la sidebar — módulos reales del sistema.
 const SECCIONES_NAV = [
@@ -48,7 +142,7 @@ const SECCIONES_NAV = [
   { titulo: 'Finanzas', paginas: ['finanzas.html', 'facturacion.html'] },
   { titulo: 'Equipo', paginas: ['nomina.html'] },
   { titulo: 'Herramientas', paginas: ['importar-exportar.html'] },
-  { titulo: 'Cuenta', paginas: ['suscripcion.html', 'historial.html'] }
+  { titulo: 'Cuenta', paginas: ['perfil.html', 'suscripcion.html', 'historial.html'] }
 ];
 
 function construirBarraLateral() {
@@ -77,12 +171,13 @@ function construirBarraLateral() {
     }
     for (const pagina of seccion.paginas) {
       const original = porPagina.get(pagina);
-      if (!original) continue;
-      const activo = original.classList.contains('navegacion__enlace--activo');
+      if (!original && !PAGINAS_SIEMPRE[pagina]) continue;
+      const enEstaPagina = location.pathname.endsWith('/' + pagina);
+      const activo = original ? original.classList.contains('navegacion__enlace--activo') : enEstaPagina;
       const item = document.createElement('a');
-      item.href = original.getAttribute('href');
+      item.href = original ? original.getAttribute('href') : './' + pagina;
       item.className = 'barra-lateral__enlace' + (activo ? ' barra-lateral__enlace--activo' : '');
-      item.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS_NAV[pagina] || ''}</svg><span>${original.textContent}</span>`;
+      item.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS_NAV[pagina] || ''}</svg><span>${original ? original.textContent : PAGINAS_SIEMPRE[pagina]}</span>`;
       aside.appendChild(item);
     }
   }
@@ -113,7 +208,6 @@ function construirBarraSuperior(enlaceAyuda) {
 
   const usuario = JSON.parse(localStorage.getItem('usuario_sesion') || 'null');
   const nombre = usuario ? (usuario.nombre || usuario.correo) : '';
-  const iniciales = obtenerIniciales(nombre);
 
   superior.innerHTML = `
     <button type="button" class="barra-superior__menu" id="botonAbrirSidebar" aria-label="Abrir menú">
@@ -131,14 +225,14 @@ function construirBarraSuperior(enlaceAyuda) {
       <a class="barra-superior__icono" aria-label="¿Cómo funciona?" href="${enlaceAyuda || '#'}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_AYUDA}</svg>
       </a>
-      <button type="button" class="barra-superior__usuario" id="botonUsuarioSuperior">
-        <span class="barra-lateral__avatar" style="width:32px;height:32px;font-size:12px;">${iniciales}</span>
+      <a href="./perfil.html" class="barra-superior__usuario" id="botonUsuarioSuperior" title="Mi perfil">
+        ${htmlAvatar(usuario, 32)}
         <span class="barra-superior__usuario-texto">
           <span class="barra-superior__usuario-nombre">${escaparHtmlTema(nombre.split(' ')[0] || 'Cuenta')}</span>
-          <span class="barra-superior__usuario-empresa">Mi Empresa</span>
+          <span class="barra-superior__usuario-empresa">${escaparHtmlTema((usuario && usuario.cargo) || 'Mi perfil')}</span>
         </span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONO_CHEVRON}</svg>
-      </button>
+      </a>
     </div>
   `;
 
@@ -161,6 +255,32 @@ function construirBarraSuperior(enlaceAyuda) {
   buscador.addEventListener('input', () => {
     if (typeof window.buscarDesdeTopbar === 'function') window.buscarDesdeTopbar(buscador.value);
   });
+}
+
+// Avatar: foto si la hay; si no, iniciales. Con el puntito de estado.
+const COLORES_ESTADO = { disponible: '#22B07D', ocupado: '#E8A33D', ausente: '#8C96A8', no_disponible: '#D6455F' };
+function htmlAvatar(usuario, tamano) {
+  const nombre = usuario ? (usuario.nombre || usuario.correo || '') : '';
+  const foto = usuario && /^https:\/\//.test(usuario.avatar_url || '') ? usuario.avatar_url : '';
+  const estado = COLORES_ESTADO[(usuario && usuario.estado) || 'disponible'];
+  const interior = foto
+    ? `<img src="${escaparHtmlTema(foto)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+    : obtenerIniciales(nombre);
+  return `<span class="barra-lateral__avatar avatar-con-estado" style="width:${tamano}px;height:${tamano}px;font-size:${Math.round(tamano * 0.38)}px;">${interior}<i style="background:${estado}"></i></span>`;
+}
+
+// Repinta el bloque de usuario de la topbar (tras sincronizar o guardar el perfil)
+function pintarUsuarioSuperior() {
+  const boton = document.getElementById('botonUsuarioSuperior');
+  if (!boton) return;
+  const usuario = JSON.parse(localStorage.getItem('usuario_sesion') || 'null');
+  const nombre = usuario ? (usuario.nombre || usuario.correo) : '';
+  const avatar = boton.querySelector('.barra-lateral__avatar');
+  if (avatar) avatar.outerHTML = htmlAvatar(usuario, 32);
+  const n = boton.querySelector('.barra-superior__usuario-nombre');
+  if (n) n.textContent = nombre.split(' ')[0] || 'Cuenta';
+  const c = boton.querySelector('.barra-superior__usuario-empresa');
+  if (c) c.textContent = (usuario && usuario.cargo) || 'Mi perfil';
 }
 
 function obtenerIniciales(nombre) {
@@ -207,10 +327,18 @@ function alternarTema() {
   const activarOscuro = document.documentElement.getAttribute('data-tema') !== 'oscuro';
   if (activarOscuro) localStorage.setItem(TEMA_CLAVE, 'oscuro');
   else localStorage.removeItem(TEMA_CLAVE);
-  window.location.reload();
+  // Mantiene en sintonía la preferencia de "Apariencia" y la guarda en la cuenta
+  const prefs = { ...leerPreferenciasUi(), tema: activarOscuro ? 'oscuro' : 'claro' };
+  guardarPreferenciasUiLocal(prefs);
+  const recargar = () => window.location.reload();
+  try {
+    if (typeof API === 'undefined') return recargar();
+    Promise.race([API.actualizar('/api/perfil/apariencia', { tema: prefs.tema }), new Promise(r => setTimeout(r, 1500))])
+      .catch(() => {}).finally(recargar);
+  } catch (_) { recargar(); }
 }
 
-document.addEventListener('DOMContentLoaded', iniciarLayout);
+document.addEventListener('DOMContentLoaded', () => { iniciarLayout(); sincronizarPerfil(); });
 
 // ============================================================
 // Telemetría del navegador (Fase 8): solo "qué pantalla se abrió".

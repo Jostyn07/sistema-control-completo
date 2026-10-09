@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi perfil — Fincil</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/landing/img/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/landing/img/favicon-192.png">
+  <link rel="apple-touch-icon" href="/landing/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/estilos.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/tema.css">
+  <link rel="stylesheet" href="css/perfil.css">
+</head>
+<body>
+
+  <nav class="navegacion">
+    <a href="./index.html" class="navegacion__enlace">Inicio</a>
+    <a href="./materiales.html" class="navegacion__enlace">Materiales</a>
+    <a href="./productos.html" class="navegacion__enlace">Productos</a>
+    <a href="./procesos.html" class="navegacion__enlace">Procesos</a>
+    <a href="./inventario.html" class="navegacion__enlace">Inventario</a>
+    <a href="./compras.html" class="navegacion__enlace">Compras</a>
+    <a href="./ventas.html" class="navegacion__enlace">Ventas</a>
+    <a href="./finanzas.html" class="navegacion__enlace">Finanzas</a>
+    <a href="./facturacion.html" class="navegacion__enlace">Facturación</a>
+    <a href="./nomina.html" class="navegacion__enlace">Nóminas</a>
+    <a href="./importar-exportar.html" class="navegacion__enlace">Importar/Exportar</a>
+    <a href="./index.html?recorrido=1" class="navegacion__enlace">❓ Ayuda</a>
+    <a href="./perfil.html" class="navegacion__enlace navegacion__enlace--activo">Mi perfil</a>
+    <a href="./suscripcion.html" class="navegacion__enlace">Suscripción</a>
+    <a href="./historial.html" class="navegacion__enlace">Historial</a>
+  </nav>
+
+  <main class="pagina pf">
+
+    <!-- ===== Tarjeta principal: portada + avatar + identidad ===== -->
+    <section class="pf-hero">
+      <div class="pf-hero__portada" id="portada">
+        <label class="pf-boton-flotante" title="Cambiar portada">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/></svg>
+          <span>Cambiar portada</span>
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-subir="portada" hidden>
+        </label>
+        <button type="button" class="pf-boton-flotante pf-boton-flotante--quitar" id="quitarPortada" hidden title="Quitar portada">Quitar</button>
+      </div>
+      <div class="pf-hero__cuerpo">
+        <div class="pf-avatar" id="avatarGrande">
+          <span class="pf-avatar__img" id="avatarImg"></span>
+          <i class="pf-avatar__estado" id="avatarEstado"></i>
+          <label class="pf-avatar__camara" title="Cambiar foto">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/></svg>
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-subir="avatar" hidden>
+          </label>
+        </div>
+        <div class="pf-hero__texto">
+          <h1 id="heroNombre">Mi perfil</h1>
+          <p id="heroCargo" class="pf-hero__cargo"></p>
+          <div class="pf-hero__chips">
+            <span class="pf-chip" id="heroEstado"></span>
+            <span class="pf-chip pf-chip--suave" id="heroCorreo"></span>
+            <span class="pf-chip pf-chip--suave" id="heroDesde"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Pestañas ===== -->
+    <div class="pf-pestanas" role="tablist">
+      <button type="button" class="pf-pestana pf-pestana--activa" data-pestana="perfil" role="tab">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>Mi perfil</button>
+      <button type="button" class="pf-pestana" data-pestana="apariencia" role="tab">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.3"/><circle cx="17.5" cy="10.5" r="1.3"/><circle cx="8.5" cy="7.5" r="1.3"/><circle cx="6.5" cy="12.5" r="1.3"/><path d="M12 2a10 10 0 0 0 0 20c.9 0 1.7-.7 1.7-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.7 1.7-1.7h2A5.6 5.6 0 0 0 22 11c0-5-4.5-9-10-9Z"/></svg>Apariencia</button>
+      <button type="button" class="pf-pestana" data-pestana="seguridad" role="tab">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>Seguridad</button>
+    </div>
+
+    <!-- ===== MI PERFIL ===== -->
+    <section class="pf-panel" data-panel="perfil">
+      <div class="pf-dos-columnas">
+        <form class="tarjeta pf-tarjeta" id="formPerfil" autocomplete="off">
+          <h2>Datos personales</h2>
+          <p class="texto-secundario pf-ayuda">Así te identificas dentro de Fincil. Solo tú puedes cambiarlos.</p>
+          <div class="pf-rejilla">
+            <label class="campo"><span class="campo__etiqueta">Nombre *</span><input id="cNombre" maxlength="60" required></label>
+            <label class="campo"><span class="campo__etiqueta">Apellido</span><input id="cApellido" maxlength="60"></label>
+            <label class="campo"><span class="campo__etiqueta">Nombre para mostrar</span><input id="cVisible" maxlength="60" placeholder="Cómo quieres que te vean"></label>
+            <label class="campo"><span class="campo__etiqueta">Cargo</span><input id="cCargo" maxlength="60" placeholder="Ej. Administradora, Vendedor"></label>
+            <label class="campo"><span class="campo__etiqueta">Teléfono</span><input id="cTelefono" maxlength="30" inputmode="tel" placeholder="+57 300 000 0000"></label>
+            <label class="campo"><span class="campo__etiqueta">Correo</span><input id="cCorreo" disabled></label>
+            <label class="campo pf-rejilla__completa"><span class="campo__etiqueta">Descripción corta <small class="texto-secundario" id="contadorDesc">0/200</small></span>
+              <textarea id="cDescripcion" maxlength="200" rows="2" placeholder="Una línea sobre ti o lo que haces"></textarea></label>
+          </div>
+          <span class="campo__etiqueta">Estado</span>
+          <div class="pf-estados" id="selectorEstado">
+            <button type="button" data-estado="disponible"><i></i>Disponible</button>
+            <button type="button" data-estado="ocupado"><i></i>Ocupado</button>
+            <button type="button" data-estado="ausente"><i></i>Ausente</button>
+            <button type="button" data-estado="no_disponible"><i></i>No disponible</button>
+          </div>
+          <div class="pf-acciones">
+            <button type="submit" class="boton boton--primario" id="guardarPerfil">Guardar cambios</button>
+          </div>
+        </form>
+
+        <aside class="pf-lateral">
+          <span class="pf-lateral__titulo">Tu tarjeta</span>
+          <div class="pf-tarjeta-presentacion" id="tarjetaPresentacion">
+            <div class="pf-tp__portada" id="tpPortada"></div>
+            <div class="pf-tp__avatar" id="tpAvatar"></div>
+            <strong class="pf-tp__nombre" id="tpNombre"></strong>
+            <span class="pf-tp__cargo" id="tpCargo"></span>
+            <span class="pf-chip" id="tpEstado"></span>
+            <p class="pf-tp__desc" id="tpDesc"></p>
+            <div class="pf-tp__contacto" id="tpContacto"></div>
+          </div>
+          <p class="texto-secundario pf-ayuda">Vista previa en vivo de cómo apareces en Fincil.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ===== APARIENCIA ===== -->
+    <section class="pf-panel" data-panel="apariencia" hidden>
+      <div class="pf-dos-columnas">
+        <div class="tarjeta pf-tarjeta">
+          <h2>Mi espacio</h2>
+          <p class="texto-secundario pf-ayuda">Estos cambios son solo para ti: no afectan lo que ven las demás personas de tu empresa.</p>
+
+          <h3 class="pf-subtitulo">Tema</h3>
+          <div class="pf-temas" id="selectorTema">
+            <button type="button" data-tema-opcion="claro"><span class="pf-tema-muestra pf-tema-muestra--claro"></span>Claro</button>
+            <button type="button" data-tema-opcion="oscuro"><span class="pf-tema-muestra pf-tema-muestra--oscuro"></span>Oscuro</button>
+            <button type="button" data-tema-opcion="auto"><span class="pf-tema-muestra pf-tema-muestra--auto"></span>Automático</button>
+          </div>
+
+          <h3 class="pf-subtitulo">Color de acento</h3>
+          <div class="pf-colores" id="selectorAcento">
+            <button type="button" data-acento="" title="Fincil (predeterminado)" style="--c:#168FF0"></button>
+            <button type="button" data-acento="#7C5CDB" title="Morado" style="--c:#7C5CDB"></button>
+            <button type="button" data-acento="#1D9A6C" title="Verde" style="--c:#1D9A6C"></button>
+            <button type="button" data-acento="#C9971C" title="Dorado" style="--c:#C9971C"></button>
+            <button type="button" data-acento="#E0533D" title="Coral" style="--c:#E0533D"></button>
+            <button type="button" data-acento="#D6457F" title="Rosa" style="--c:#D6457F"></button>
+            <label class="pf-color-propio" title="Personalizado">
+              <input type="color" id="acentoPropio" value="#168ff0">
+              <span>+</span>
+            </label>
+          </div>
+
+          <h3 class="pf-subtitulo">Fondo</h3>
+          <div class="pf-segmento" id="tipoFondo">
+            <button type="button" data-fondo-tipo="ninguno">Sin fondo</button>
+            <button type="button" data-fondo-tipo="solido">Color</button>
+            <button type="button" data-fondo-tipo="degradado">Degradado</button>
+            <button type="button" data-fondo-tipo="imagen">Imagen</button>
+          </div>
+          <div class="pf-fondos" id="opcionesFondo"></div>
+
+          <div class="pf-acciones">
+            <button type="button" class="boton" id="restablecerApariencia">Restablecer</button>
+            <button type="button" class="boton boton--primario" id="guardarApariencia">Guardar apariencia</button>
+          </div>
+        </div>
+
+        <aside class="pf-lateral">
+          <span class="pf-lateral__titulo">Vista previa</span>
+          <div class="pf-previa" id="previa">
+            <div class="pf-previa__lateral"><i></i><i></i><i class="activo"></i><i></i><i></i></div>
+            <div class="pf-previa__contenido">
+              <div class="pf-previa__barra"><span></span><b id="previaAvatar"></b></div>
+              <strong id="previaSaludo">Hola 👋</strong>
+              <div class="pf-previa__kpis"><span></span><span></span><span></span></div>
+              <div class="pf-previa__fila"><button type="button">Nueva venta</button><span class="pf-previa__chip">Hoy</span></div>
+            </div>
+          </div>
+          <p class="texto-secundario pf-ayuda">Los cambios se ven aquí al instante. Guarda para aplicarlos en toda la app.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ===== SEGURIDAD ===== -->
+    <section class="pf-panel" data-panel="seguridad" hidden>
+      <div class="pf-dos-columnas">
+        <form class="tarjeta pf-tarjeta" id="formContrasena" autocomplete="off">
+          <h2 id="tituloContrasena">Cambiar contraseña</h2>
+          <p class="texto-secundario pf-ayuda" id="ayudaContrasena">Usa al menos 8 caracteres. Combina letras, números y símbolos.</p>
+          <label class="campo" id="campoActual"><span class="campo__etiqueta">Contraseña actual</span><input type="password" id="cActual" autocomplete="current-password"></label>
+          <label class="campo"><span class="campo__etiqueta">Contraseña nueva</span><input type="password" id="cNueva" autocomplete="new-password"></label>
+          <div class="pf-fuerza"><span id="barraFuerza"></span></div>
+          <label class="campo"><span class="campo__etiqueta">Repite la contraseña nueva</span><input type="password" id="cRepetir" autocomplete="new-password"></label>
+          <div class="pf-acciones">
+            <button type="submit" class="boton boton--primario" id="guardarContrasena">Actualizar contraseña</button>
+          </div>
+        </form>
+
+        <div class="pf-columna">
+          <div class="tarjeta pf-tarjeta">
+            <h2>Sesiones</h2>
+            <dl class="pf-datos">
+              <dt>Último ingreso</dt><dd id="ultimoIngreso">—</dd>
+              <dt>Forma de ingreso</dt><dd id="formaIngreso">—</dd>
+            </dl>
+            <p class="texto-secundario pf-ayuda">¿Dejaste la sesión abierta en otro computador o celular? Ciérrala desde aquí. Este dispositivo seguirá conectado.</p>
+            <button type="button" class="boton" id="cerrarOtras">Cerrar sesión en otros dispositivos</button>
+          </div>
+          <div class="tarjeta pf-tarjeta pf-nota">
+            <strong>Lo que se administra aparte</strong>
+            <p class="texto-secundario">Usuarios, roles, datos de la empresa y facturación los gestiona la persona propietaria de la cuenta. Aquí solo cambias lo tuyo.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/tema.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/perfil.js"></script>
+  <script>
+    if (exigirSesion()) { mostrarUsuarioActual(); iniciarPerfil(); }
+  </script>
+</body>
+</html>

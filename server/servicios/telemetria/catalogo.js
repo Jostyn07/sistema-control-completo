@@ -8,7 +8,7 @@
 
 // Valores permitidos (enums cerrados) para propiedades de texto
 const PANTALLAS = ['index', 'materiales', 'productos', 'procesos', 'inventario', 'compras', 'ventas',
-  'finanzas', 'facturacion', 'nomina', 'importar-exportar', 'suscripcion', 'historial'];
+  'finanzas', 'facturacion', 'nomina', 'importar-exportar', 'suscripcion', 'historial', 'perfil'];
 const MODULOS_EXCEL = ['materiales', 'productos', 'procesos', 'inventario', 'compras', 'ventas',
   'finanzas', 'facturacion', 'nominas'];
 
