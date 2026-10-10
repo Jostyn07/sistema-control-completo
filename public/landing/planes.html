@@ -88,14 +88,19 @@
 
     <div class="planes__tarjetas">
 
+    <div class="planes__periodo" role="group" aria-label="Forma de pago">
+      <button type="button" class="planes__periodo-opcion planes__periodo-opcion--activa" data-periodo="mensual">Mensual</button>
+      <button type="button" class="planes__periodo-opcion" data-periodo="anual">Anual <span class="planes__periodo-ahorro">Ahorra 30 %</span></button>
+    </div>
+
     <div class="planes__tarjeta">
       
       <div class="planes__tarjeta-cabecera">
         <span class="planes__icono"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
         <div>
           <h3>Básico</h3>
-          <div class="planes__precio">$ 10.000<span>/mes</span></div>
-          <span class="planes__descuento">50% de descuento tu primer mes</span>
+          <div class="planes__precio" data-mensual="$ 10.000" data-anual="$ 84.000">$ 10.000<span>/mes</span></div>
+          <span class="planes__descuento" data-mensual="50% de descuento tu primer mes" data-anual="Equivale a $ 7.000/mes, pagando el año">50% de descuento tu primer mes</span>
         </div>
       </div>
       <p class="texto-secundario">Para empezar a organizar tu producción.</p>
@@ -131,8 +136,8 @@
         <span class="planes__icono"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7Z"/><path d="M2 20h20"/></svg></span>
         <div>
           <h3>Pro</h3>
-          <div class="planes__precio">$ 25.000<span>/mes</span></div>
-          <span class="planes__descuento">50% de descuento tu primer mes</span>
+          <div class="planes__precio" data-mensual="$ 25.000" data-anual="$ 210.000">$ 25.000<span>/mes</span></div>
+          <span class="planes__descuento" data-mensual="50% de descuento tu primer mes" data-anual="Equivale a $ 17.500/mes, pagando el año">50% de descuento tu primer mes</span>
         </div>
       </div>
       <p class="texto-secundario">Sin límites, para negocios en crecimiento.</p>
@@ -335,5 +340,24 @@
 
 <script src="/landing/js/interacciones.js"></script>
 <script src="/landing/js/home.js"></script>
+<script>
+  // Selector Mensual / Anual: el anual tiene 30 % de descuento sobre 12 meses
+  (function () {
+    var botones = document.querySelectorAll('.planes__periodo-opcion');
+    function aplicar(periodo) {
+      botones.forEach(function (b) { b.classList.toggle('planes__periodo-opcion--activa', b.dataset.periodo === periodo); });
+      document.querySelectorAll('.planes__precio[data-mensual]').forEach(function (el) {
+        el.innerHTML = el.dataset[periodo] + '<span>' + (periodo === 'anual' ? '/año' : '/mes') + '</span>';
+      });
+      document.querySelectorAll('.planes__descuento[data-mensual]').forEach(function (el) { el.textContent = el.dataset[periodo]; });
+      document.querySelectorAll('.planes__cta').forEach(function (a) {
+        var url = new URL(a.getAttribute('href'), location.href);
+        if (periodo === 'anual') url.searchParams.set('periodo', 'anual'); else url.searchParams.delete('periodo');
+        a.setAttribute('href', url.pathname.replace(/^\/landing\//, '../').replace(/^\/(?!\.)/, '/') + url.search);
+      });
+    }
+    botones.forEach(function (b) { b.addEventListener('click', function () { aplicar(b.dataset.periodo); }); });
+  })();
+</script>
 </body>
 </html>

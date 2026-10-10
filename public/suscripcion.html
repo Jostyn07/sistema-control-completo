@@ -43,7 +43,13 @@
 
     <!-- Planes disponibles -->
     <section class="seccion">
-      <h2>Planes</h2>
+      <div class="planes-encabezado">
+        <h2>Planes</h2>
+        <div class="selector-periodo-pago" role="group" aria-label="Forma de pago">
+          <button type="button" data-periodo-pago="mensual" class="activo">Mensual</button>
+          <button type="button" data-periodo-pago="anual">Anual <span class="selector-periodo-pago__ahorro">−30 %</span></button>
+        </div>
+      </div>
       <div id="listaPlanes">
         <p class="tabla__vacio">Cargando planes…</p>
       </div>

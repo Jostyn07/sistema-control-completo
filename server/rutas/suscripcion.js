@@ -23,7 +23,8 @@ const log = require('../seguridad/log');
 const { supabaseAdmin: supabase } = require('../supabase/cliente');
 const wompi = require('../servicios/wompi');
 const { enviarSuscripcionMeta } = require('../servicios/meta-capi');
-const { sincronizarEstadoSuscripcion, calcularBloqueo, tienePagoAceptadoPrevio, crearPruebaGratis } = require('../servicios/suscripcion');
+const { sincronizarEstadoSuscripcion, calcularBloqueo, tienePagoAceptadoPrevio, crearPruebaGratis, activarSuscripcion } = require('../servicios/suscripcion');
+const precios = require('../servicios/precios');
 const router = express.Router();
 
 // GET /api/suscripcion/llave-publica-wompi
@@ -75,60 +76,61 @@ router.get('/mi-suscripcion', async (req, res, next) => {
       .maybeSingle();
     if (error) throw new Error(error.message);
     const bloqueo = calcularBloqueo(data);
+    // Periodo vigente (sin columna nueva): un tramo de más de 60 días es anual
+    const dias = data && data.fecha_inicio && data.fecha_vencimiento
+      ? (new Date(data.fecha_vencimiento) - new Date(data.fecha_inicio)) / 86400000 : 0;
+    const periodo = data && data.estado !== 'prueba' && dias > 60 ? 'anual' : 'mensual';
     // El Widget de Wompi no guarda tarjeta para cobros futuros (no
     // hace falta: el sistema no cobra automático todavía, así que
     // cada renovación abre el Widget de nuevo).
-    res.json({ ...data, ...bloqueo });
+    res.json({ ...data, ...bloqueo, periodo });
   } catch (err) { next(err); }
 });
 
-// POST /api/suscripcion/iniciar-pago — cuerpo: { plan_id }
-// Devuelve los datos que el navegador necesita para abrir el Widget
-// de Wompi (referencia + firma de integridad). No activa nada
-// todavía: eso solo pasa cuando el pago se confirma (síncrono en
-// /confirmar-pago, o por el webhook si llega antes o después).
+// POST /api/suscripcion/iniciar-pago — cuerpo: { plan_id, periodo: 'mensual' | 'anual' }
+// Devuelve los datos para abrir el Widget de Wompi (referencia + firma
+// de integridad). No activa nada todavía: eso solo pasa cuando el pago
+// se confirma (en /confirmar-pago o por el webhook).
+// Montos (ver servicios/precios.js): mensual con 50 % solo en el primer
+// pago real; anual = 12 meses con 30 % de descuento.
 router.post('/iniciar-pago', async (req, res, next) => {
   try {
     const { plan_id } = req.body;
     if (!plan_id) return res.status(400).json({ error: 'Falta indicar el plan' });
+    if (req.body.periodo && !precios.PERIODOS.includes(req.body.periodo))
+      return res.status(400).json({ error: 'Periodo no válido' });
+    const periodo = precios.normalizarPeriodo(req.body.periodo);
 
     const { data: plan, error: ePlan } = await supabase
       .from('planes_suscripcion').select('*').eq('id', plan_id).eq('activo', true).single();
     if (ePlan || !plan) return res.status(404).json({ error: 'Plan no encontrado' });
 
-    // El 50% de descuento solo aplica la primera vez que alguien paga
-    // de verdad — no en cada renovación ni cada vez que cambia de plan.
     const yaPagoAntes = await tienePagoAceptadoPrevio(req.empresa.id);
     const precioLista = Number(plan.precio_mensual);
-    const monto = yaPagoAntes ? precioLista : Math.round(precioLista / 2);
+    const monto = precios.calcularMonto(precioLista, periodo, yaPagoAntes);
     const montoEnCentavos = monto * 100;
+    const montoOriginal = periodo === 'anual' ? precioLista * 12 : precioLista;
 
-    // A propósito, NO se toca la fila de suscripciones aquí. El webhook
-    // (o la confirmación síncrona de /confirmar-pago) ya recibe el
-    // usuario y el plan directo en la referencia, así que no hace falta
-    // "avisarle" por adelantado escribiendo "pendiente_pago" — si lo
-    // hiciéramos, y la persona cierra el Widget sin pagar, se perdería
-    // el estado real que tenía antes (días de prueba restantes, o el
-    // plan cancelado que aún conserva vigencia). Solo cuando el pago se
-    // confirma de verdad se actualiza esta fila.
-
-    // La referencia lleva el usuario y el plan embebidos (separados por
-    // "_", que nunca aparece dentro de un uuid) para que tanto la
-    // confirmación síncrona como el webhook sepan a quién activar sin
-    // tener que confiar en nada más que mande el navegador.
+    // A propósito NO se toca la fila de suscripciones aquí: si la
+    // persona cierra el Widget sin pagar, conserva su estado real.
+    // La referencia lleva empresa, plan y periodo para que la
+    // confirmación y el webhook sepan qué activar sin confiar en el
+    // navegador.
     const { publicKey } = wompi.obtenerCredenciales();
-    const referencia = `SUB_${req.empresa.id}_${plan.id}_${Date.now()}`; // empresa, no usuario: la suscripción es de la empresa
+    const referencia = precios.armarReferencia(req.empresa.id, plan.id, periodo);
     const firma = wompi.generarFirmaIntegridad({ referencia, montoEnCentavos, moneda: 'COP' });
 
     res.json({
       public_key: publicKey,
       referencia,
       firma,
-      descripcion: `Suscripción ${plan.nombre} — Sistema de Control`,
+      descripcion: `Suscripción ${plan.nombre} ${periodo === 'anual' ? 'anual' : 'mensual'} — Fincil`,
+      periodo,
       monto,
       monto_en_centavos: montoEnCentavos,
-      monto_original: precioLista,
-      descuento_aplicado: !yaPagoAntes,
+      monto_original: montoOriginal,
+      ahorro: montoOriginal - monto,
+      descuento_aplicado: periodo === 'anual' ? 'anual_30' : (!yaPagoAntes ? 'primer_mes_50' : null),
       moneda: 'COP',
       correo: req.usuarioEmail,
       plan_id: plan.id
@@ -155,55 +157,52 @@ router.post('/confirmar-pago', async (req, res, next) => {
 
     const transaccion = await wompi.consultarTransaccion(transaction_id);
 
-    // La referencia debe corresponder a este usuario y a este plan —
-    // si no calza, alguien está intentando activar su cuenta con la
+    // La referencia debe corresponder a esta empresa y a este plan —
+    // si no calza, alguien intenta activar su cuenta con la
     // transacción de otra persona.
-    const [prefijo, empresaReferencia, planReferencia] = String(transaccion.reference || '').split('_');
-    if (prefijo !== 'SUB' || empresaReferencia !== req.empresa.id || planReferencia !== plan.id)
+    const ref = precios.leerReferencia(transaccion.reference);
+    if (ref.prefijo !== 'SUB' || ref.empresaId !== req.empresa.id || ref.planId !== plan.id)
       return res.status(400).json({ error: 'La transacción no corresponde a esta empresa/plan' });
 
-    // Idempotencia: si el webhook ya la procesó (o si el navegador
-    // reintenta esta llamada), no se duplica el registro del pago.
+    const montoPagado = Math.round(Number(transaccion.amount_in_cents) / 100);
+
+    // Idempotencia: si el webhook ya la procesó (o el navegador
+    // reintenta), no se duplica el pago NI se vuelven a sumar días.
     const { data: yaExiste } = await supabase
-      .from('pagos_suscripcion').select('id').eq('wompi_transaction_id', transaccion.id).maybeSingle();
+      .from('pagos_suscripcion').select('id, estado').eq('wompi_transaction_id', transaccion.id).maybeSingle();
     if (!yaExiste) {
       await supabase.from('pagos_suscripcion').insert({
         empresa_id: req.empresa.id,
         usuario_id: req.usuarioId,
         plan_id: plan.id,
         wompi_transaction_id: transaccion.id,
-        monto: Math.round(Number(transaccion.amount_in_cents) / 100),
+        monto: montoPagado,
         estado: transaccion.status,
         datos_crudos: transaccion
       });
+    } else if (yaExiste.estado !== transaccion.status) {
+      await supabase.from('pagos_suscripcion')
+        .update({ estado: transaccion.status, datos_crudos: transaccion }).eq('id', yaExiste.id);
     }
+    const yaActivada = yaExiste && yaExiste.estado === 'APPROVED';
 
-    // Si Wompi ya respondió "APPROVED" en el momento, activamos de una
-    // vez — no hace falta esperar al webhook. Si quedó "PENDING" (por
-    // ejemplo PSE), el webhook es quien la activará cuando se resuelva.
-    if (transaccion.status === 'APPROVED') {
-      const ahora = new Date();
-      const vencimiento = new Date(ahora);
-      vencimiento.setDate(vencimiento.getDate() + 30);
-      const { error: eSusc } = await supabase
-        .from('suscripciones')
-        .upsert({
-          empresa_id: req.empresa.id,
-          usuario_id: req.usuarioId,
-          plan_id: plan.id,
-          estado: 'activa',
-          fecha_inicio: ahora.toISOString(),
-          fecha_vencimiento: vencimiento.toISOString(),
-          actualizado_en: ahora.toISOString()
-        }, { onConflict: 'empresa_id' });
-      if (eSusc) throw new Error(eSusc.message);
+    // "APPROVED" en el momento → se activa ya. "PENDING" (ej. PSE) → lo
+    // activará el webhook cuando se resuelva.
+    if (transaccion.status === 'APPROVED' && !yaActivada) {
+      // El monto se comprueba contra el periodo de la referencia: nadie
+      // puede pagar el precio mensual y llevarse un año.
+      if (montoPagado < precios.montoMinimoAceptable(plan.precio_mensual, ref.periodo)) {
+        log.error('[confirmar-pago] Monto menor al esperado', { transaccion: transaccion.id, montoPagado, periodo: ref.periodo });
+        return res.status(400).json({ error: 'El monto pagado no corresponde al plan elegido. Escríbenos a soporte.' });
+      }
+      await activarSuscripcion({ empresaId: req.empresa.id, usuarioId: req.usuarioId, planId: plan.id, periodo: ref.periodo });
 
       // Conversión para Meta (servidor). Mismo event_id que el pixel del
       // navegador, así que Meta no la cuenta doble.
       await enviarSuscripcionMeta({ transaccion, plan, usuarioId: req.usuarioId, email: req.usuarioEmail, req });
     }
 
-    res.json({ status: transaccion.status, monto: Math.round(Number(transaccion.amount_in_cents) / 100) });
+    res.json({ status: transaccion.status, monto: Math.round(Number(transaccion.amount_in_cents) / 100), periodo: ref.periodo });
   } catch (err) { next(err); }
 });
 

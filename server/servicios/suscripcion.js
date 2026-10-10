@@ -14,7 +14,10 @@ const log = require('../seguridad/log');
 
 const DIAS_PRUEBA_GRATIS = 7;
 const DIAS_GRACIA = 3; // días de solo-lectura extra después de vencer, antes de bloquear la edición
-const ESTADOS_ACEPTADOS = ['Aceptada', 'Aceptado'];
+// Wompi guarda 'APPROVED'; 'Aceptada'/'Aceptado' quedan por pagos de
+// pasarelas anteriores. Sin 'APPROVED' el 50 % del primer mes se
+// aplicaba en TODOS los pagos.
+const ESTADOS_ACEPTADOS = ['APPROVED', 'Aceptada', 'Aceptado'];
 
 // Al registrarse, cualquier usuario nuevo arranca con el plan más
 // completo disponible (para que pueda ver todo el valor del sistema
@@ -102,7 +105,33 @@ async function tienePagoAceptadoPrevio(empresaId) {
   return (count || 0) > 0;
 }
 
+// Activa (o renueva) la suscripción de una empresa tras un pago
+// aprobado. Si aún le quedan días pagados, el periodo nuevo se suma
+// encima. Llamar UNA sola vez por transacción aprobada.
+async function activarSuscripcion({ empresaId, usuarioId, planId, periodo }) {
+  const { calcularVencimiento, normalizarPeriodo } = require('./precios');
+  const { data: actual, error: eGet } = await supabase
+    .from('suscripciones').select('estado, fecha_vencimiento').eq('empresa_id', empresaId).maybeSingle();
+  if (eGet) throw new Error(eGet.message);
+  const ahora = new Date();
+  const vencimiento = calcularVencimiento(actual && actual.fecha_vencimiento, actual && actual.estado, normalizarPeriodo(periodo), ahora);
+  const { error } = await supabase
+    .from('suscripciones')
+    .upsert({
+      empresa_id: empresaId,
+      usuario_id: usuarioId,
+      plan_id: planId,
+      estado: 'activa',
+      fecha_inicio: ahora.toISOString(),
+      fecha_vencimiento: vencimiento.toISOString(),
+      actualizado_en: ahora.toISOString()
+    }, { onConflict: 'empresa_id' });
+  if (error) throw new Error(error.message);
+  return vencimiento;
+}
+
 module.exports = {
+  activarSuscripcion,
   crearPruebaGratis,
   sincronizarEstadoSuscripcion,
   calcularBloqueo,

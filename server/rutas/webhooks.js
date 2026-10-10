@@ -11,6 +11,8 @@ const log = require('../seguridad/log');
 const supabase = require('../supabase/cliente');
 const wompi = require('../servicios/wompi');
 const { enviarSuscripcionMeta } = require('../servicios/meta-capi');
+const { leerReferencia, montoMinimoAceptable } = require('../servicios/precios');
+const { activarSuscripcion } = require('../servicios/suscripcion');
 const router = express.Router();
 
 // La referencia de pago es SUB_<empresaId>_<planId>_<ts>. Pagos abiertos
@@ -59,7 +61,7 @@ router.post('/wompi', async (req, res, next) => {
     const { data: yaExiste } = await supabase
       .from('pagos_suscripcion').select('id, estado').eq('wompi_transaction_id', transaccion.id).maybeSingle();
 
-    const [prefijo, idReferencia, planId] = String(transaccion.reference || '').split('_');
+    const { prefijo, empresaId: idReferencia, planId, periodo } = leerReferencia(transaccion.reference);
     const aceptado = transaccion.status === 'APPROVED';
     const destino = prefijo === 'SUB' ? await resolverEmpresaDeReferencia(idReferencia) : null;
     const empresaId = destino ? destino.empresaId : null;
@@ -88,23 +90,19 @@ router.post('/wompi', async (req, res, next) => {
     // Solo se activa la suscripción si el pago fue aceptado Y trae el
     // usuario/plan (siempre deberían venir, se mandaron en la
     // referencia al abrir el Widget).
-    if (aceptado && prefijo === 'SUB' && empresaId && planId) {
-      const ahora = new Date();
-      const vencimiento = new Date(ahora);
-      vencimiento.setDate(vencimiento.getDate() + 30);
-
-      const { error: eSusc } = await supabase
-        .from('suscripciones')
-        .upsert({
-          empresa_id: empresaId,
-          usuario_id: usuarioId,
-          plan_id: planId,
-          estado: 'activa',
-          fecha_inicio: ahora.toISOString(),
-          fecha_vencimiento: vencimiento.toISOString(),
-          actualizado_en: ahora.toISOString()
-        }, { onConflict: 'empresa_id' });
-      if (eSusc) throw new Error(eSusc.message);
+    // Se activa solo si el pago fue aceptado, trae empresa/plan, y es la
+    // PRIMERA vez que vemos esta transacción aprobada (si /confirmar-pago
+    // ya la activó, no se vuelven a sumar días).
+    const yaEstabaAprobada = yaExiste && yaExiste.estado === 'APPROVED';
+    if (aceptado && prefijo === 'SUB' && empresaId && planId && !yaEstabaAprobada) {
+      const { data: planPago } = await supabase
+        .from('planes_suscripcion').select('precio_mensual').eq('id', planId).maybeSingle();
+      const montoPagado = Math.round(Number(transaccion.amount_in_cents) / 100);
+      if (!planPago || montoPagado < montoMinimoAceptable(planPago.precio_mensual, periodo)) {
+        log.error('[Wompi] Monto menor al esperado; no se activa', { transaccion: transaccion.id, montoPagado, periodo });
+        return res.status(200).json({ ok: false, motivo: 'monto' });
+      }
+      await activarSuscripcion({ empresaId, usuarioId, planId, periodo });
 
       // Conversión para Meta. Cubre sobre todo los pagos que se aprueban
       // después (PSE): el navegador ya no está abierto para avisarle a

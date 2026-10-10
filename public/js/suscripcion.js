@@ -67,7 +67,7 @@ async function cargarEstadoActual() {
         <span class="campo__etiqueta">Estado</span>
         <strong style="font-size:1.2rem">${ETIQUETA_ESTADO_SUSCRIPCION[r.estado] || r.estado}</strong>
       </div>
-      ${plan ? `<p style="margin:8px 0 0">Plan actual: <strong>${escaparHtml(plan.nombre)}</strong> — ${formatearPesos(plan.precio_mensual)}/mes</p>` : ''}
+      ${plan ? `<p style="margin:8px 0 0">Plan actual: <strong>${escaparHtml(plan.nombre)}</strong> — ${r.periodo === 'anual' ? `${formatearPesos(precioAnual(plan.precio_mensual))}/año (pago anual)` : `${formatearPesos(plan.precio_mensual)}/mes`}</p>` : ''}
       ${notaFecha}
       ${notaEstado}
       ${botonAccion}
@@ -101,6 +101,17 @@ async function reactivarSuscripcion() {
 // Planes cargados, por id — para saber el nombre del plan elegido al
 // reportar la conversión al Pixel de Meta.
 const planesPorId = {};
+let periodoPago = 'mensual';
+const DESCUENTO_ANUAL = 0.30; // debe coincidir con server/servicios/precios.js
+const precioAnual = (mensual) => Math.round(Number(mensual) * 12 * (1 - DESCUENTO_ANUAL));
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-periodo-pago]');
+  if (!b) return;
+  periodoPago = b.dataset.periodoPago;
+  document.querySelectorAll('[data-periodo-pago]').forEach(x => x.classList.toggle('activo', x === b));
+  cargarPlanes();
+});
 
 async function cargarPlanes() {
   const contenedor = document.getElementById('listaPlanes');
@@ -152,8 +163,11 @@ async function cargarPlanes() {
       <article class="tarjeta-plan${destacado ? ' tarjeta-plan--destacado' : ''}">
         ${destacado ? '<span class="tarjeta-plan__badge">Recomendado</span>' : ''}
         <h3 class="tarjeta-plan__nombre">${escaparHtml(p.nombre)}</h3>
-        <p class="tarjeta-plan__precio">${formatearPesos(p.precio_mensual)}<span>/mes</span></p>
-        <p class="tarjeta-plan__descuento">50% de descuento tu primer mes</p>
+        ${periodoPago === 'anual'
+          ? `<p class="tarjeta-plan__precio">${formatearPesos(precioAnual(p.precio_mensual))}<span>/año</span></p>
+        <p class="tarjeta-plan__descuento">Equivale a ${formatearPesos(Math.round(precioAnual(p.precio_mensual) / 12))}/mes · ahorras ${formatearPesos(Number(p.precio_mensual) * 12 - precioAnual(p.precio_mensual))}</p>`
+          : `<p class="tarjeta-plan__precio">${formatearPesos(p.precio_mensual)}<span>/mes</span></p>
+        <p class="tarjeta-plan__descuento">50% de descuento tu primer mes</p>`}
         <p class="tarjeta-plan__descripcion">${escaparHtml(p.descripcion || '')}</p>
         <ul class="tarjeta-plan__lista">
           ${filasComunes.map(t => filaHtml(t, true)).join('')}
@@ -162,7 +176,7 @@ async function cargarPlanes() {
         <ul class="tarjeta-plan__lista">
           ${filasDiferenciadas.map(f => filaHtml(f.texto, f.si)).join('')}
         </ul>
-        <button type="button" class="boton ${destacado ? 'boton--primario' : ''} boton--ancho" onclick="elegirPlan('${p.id}')">Elegir ${escaparHtml(p.nombre)}</button>
+        <button type="button" class="boton ${destacado ? 'boton--primario' : ''} boton--ancho" onclick="elegirPlan('${p.id}')">Elegir ${escaparHtml(p.nombre)}${periodoPago === 'anual' ? ' anual' : ''}</button>
       </article>`;
     }).join('') + `</div>`;
   } catch (err) {
@@ -176,7 +190,7 @@ async function cargarPlanes() {
 // nosotros tengamos que construir un formulario para cada uno.
 async function elegirPlan(planId) {
   try {
-    const datos = await API.enviar('/api/suscripcion/iniciar-pago', { plan_id: planId });
+    const datos = await API.enviar('/api/suscripcion/iniciar-pago', { plan_id: planId, periodo: periodoPago });
 
     const checkout = new WidgetCheckout({
       currency: datos.moneda,
@@ -228,7 +242,7 @@ function manejarResultadoPago(resultado, planId, transactionId) {
         content_type: 'product'
       }, { eventID: 'sub_' + transactionId });
     }
-    mostrarAviso('¡Pago aprobado! Tu suscripción ya está activa.');
+    mostrarAviso(resultado.periodo === 'anual' ? '¡Pago aprobado! Tu plan anual ya está activo.' : '¡Pago aprobado! Tu suscripción ya está activa.');
     cargarEstadoActual();
   } else if (resultado.status === 'PENDING') {
     mostrarAviso('Tu pago está en proceso de confirmación. Te avisamos aquí en cuanto se apruebe.');

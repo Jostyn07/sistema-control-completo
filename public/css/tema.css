@@ -590,3 +590,12 @@ a.barra-superior__usuario { text-decoration: none; color: inherit; }
    ============================================================ */
 :root { --t-accent-boton: #1279CB; --t-accent-boton-hover: #0F66AD; }
 [data-tema="oscuro"] { --t-accent-boton: #1279CB; --t-accent-boton-hover: #0F66AD; }
+
+/* Suscripción: selector Mensual / Anual */
+.planes-encabezado { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.planes-encabezado h2 { margin: 0; }
+.selector-periodo-pago { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--t-tarjeta-bg); border: 1px solid var(--t-borde); }
+.selector-periodo-pago button { border: 0; background: transparent; border-radius: 999px; padding: 7px 16px; font: inherit; font-size: 14px; font-weight: 700; color: var(--t-ink-suave); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.selector-periodo-pago button.activo { background: var(--t-accent-boton); color: #fff; }
+.selector-periodo-pago__ahorro { font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: var(--t-exito-fondo); color: var(--t-exito); }
+.selector-periodo-pago button.activo .selector-periodo-pago__ahorro { background: rgba(255, 255, 255, 0.22); color: #fff; }

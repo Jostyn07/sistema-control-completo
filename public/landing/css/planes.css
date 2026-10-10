@@ -118,3 +118,23 @@
 @media (max-width: 640px) {
   .planes-confianza__fila { gap: var(--esp-5); justify-content: flex-start; }
 }
+/* ---- Selector Mensual / Anual ---- */
+.planes__periodo {
+  grid-column: 1 / -1; justify-self: center;
+  display: inline-flex; gap: 4px; padding: 4px; margin-bottom: var(--esp-2);
+  border-radius: var(--radio-pill); background: var(--blanco); border: 1px solid var(--borde);
+  box-shadow: var(--sombra-tarjeta);
+}
+.planes__periodo-opcion {
+  border: 0; background: transparent; cursor: pointer;
+  padding: 9px 18px; border-radius: var(--radio-pill);
+  font-family: var(--fuente-texto); font-weight: 600; font-size: 0.9375rem; color: var(--azul-profundo);
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: background var(--duracion-rapida) var(--curva), color var(--duracion-rapida) var(--curva);
+}
+.planes__periodo-opcion--activa { background: var(--boton-primario); color: var(--blanco); }
+.planes__periodo-ahorro {
+  font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: var(--radio-pill);
+  background: rgba(29, 122, 90, 0.12); color: var(--verde);
+}
+.planes__periodo-opcion--activa .planes__periodo-ahorro { background: rgba(255, 255, 255, 0.22); color: var(--blanco); }
