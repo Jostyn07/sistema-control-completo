@@ -158,4 +158,4 @@
   padding: var(--esp-5) var(--esp-6);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   font-size: 0.8125rem;
-}
+}.pie .marca-fincil__eslogan { color: rgba(255, 255, 255, 0.7); } /* Manual v1.1 obs. 3: contraste sobre azul profundo */

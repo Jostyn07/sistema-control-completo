@@ -70,14 +70,14 @@
   text-decoration: none;
 }
 .boton--primario {
-  background: var(--azul-fincil);
+  background: var(--boton-primario);
   color: var(--blanco);
 }
 .boton--primario:hover {
-  background: var(--azul-fincil-hover);
+  background: var(--boton-primario-hover);
   color: var(--blanco);
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(22, 143, 240, 0.28);
+  box-shadow: 0 8px 20px rgba(18, 121, 203, 0.30);
 }
 .boton--secundario {
   background: transparent;

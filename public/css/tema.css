@@ -314,12 +314,12 @@ body.con-barra-lateral .pagina {
 /* ---- Botones ---- */
 .boton { font-family: "Manrope", sans-serif; font-weight: 600; border-radius: var(--t-radio-chico); color: var(--t-accent); text-decoration: none; border: 1px solid transparent; }
 .boton:hover { background: rgba(22, 143, 240, 0.08); }
-.boton--primario { background: var(--t-accent); color: #fff; border: none; }
-.boton--primario:hover { background: var(--t-accent-hover); }
-.boton--primario:active { background: var(--t-accent-hover); }
+.boton--primario { background: var(--t-accent-boton); color: #fff; border: none; }
+.boton--primario:hover { background: var(--t-accent-boton-hover); }
+.boton--primario:active { background: var(--t-accent-boton-hover); }
 .boton--peligro { color: var(--t-peligro); }
 .boton--peligro:hover { background: var(--t-peligro-fondo); }
-.boton--activo, .boton--activo:hover { background: var(--t-accent); color: #fff; }
+.boton--activo, .boton--activo:hover { background: var(--t-accent-boton); color: #fff; }
 .boton--google { background: #fff; border: 1px solid var(--t-borde); color: var(--t-ink); }
 
 /* ---- Campos: con borde real (no subrayado) ---- */
@@ -354,7 +354,7 @@ body.con-barra-lateral .pagina {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
   max-width: min(560px, calc(100vw - 32px)); width: max-content; text-align: center;
 }
-.aviso--error { background: #C93652; color: #FFFFFF; border-color: transparent; }
+.aviso--error { background: #D6455F; color: #FFFFFF; border-color: transparent; }
 
 /* ---- Productos ---- */
 .tarjeta-producto { background: var(--t-tarjeta-bg); border: 1px solid var(--t-borde); border-radius: var(--t-radio); box-shadow: var(--t-sombra); padding-bottom: 0; overflow: hidden; }
@@ -552,7 +552,7 @@ body.con-barra-lateral .pagina {
 }
 .paginacion__botones button:disabled { opacity: 0.4; cursor: default; }
 .paginacion__botones button:hover:not(:disabled):not(.paginacion__botones--activa) { background: var(--t-bg); }
-.paginacion__botones button.paginacion__botones--activa { background: var(--t-accent); color: #fff; border-color: var(--t-accent); }
+.paginacion__botones button.paginacion__botones--activa { background: var(--t-accent-boton); color: #fff; border-color: var(--t-accent-boton); }
 
 .tarjeta__encabezado-fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .tarjeta__encabezado-fila h2 { display: flex; align-items: center; gap: 8px; margin: 0; }
@@ -580,3 +580,13 @@ html.con-fondo-usuario body.con-barra-lateral {
 }
 .barra-lateral .avatar-con-estado > i { border-color: var(--t-sidebar-bg); }
 a.barra-superior__usuario { text-decoration: none; color: inherit; }
+
+/* ============================================================
+   Contraste AA en botones con texto blanco (Manual de marca v1.1,
+   observación 2): el fondo del botón es el tono "hover" del azul
+   Fincil (#1279CB, 4,54:1). El azul #168FF0 sigue para acentos,
+   gráficos y enlaces. Con un acento personal, tema.js oscurece el
+   color elegido para el botón.
+   ============================================================ */
+:root { --t-accent-boton: #1279CB; --t-accent-boton-hover: #0F66AD; }
+[data-tema="oscuro"] { --t-accent-boton: #1279CB; --t-accent-boton-hover: #0F66AD; }

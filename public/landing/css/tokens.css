@@ -18,20 +18,43 @@
   --rosa-acento: #E96B86;      /* Detalles puntuales, promociones */
   --azul-fincil-oscuro: #134EAB; /* Segunda hoja del isotipo Fincil */
 
-  /* ---- Colores de módulo (Fase 1, tarjetas de funcionalidades) ----
-     Extensión de apoyo sobre la paleta base para distinguir los 10
-     módulos del grid 1.5 y los nodos del diagrama 1.4. No sustituyen
-     la paleta de marca: solo se usan como fondo suave + ícono. */
-  --mod-1-fondo: rgba(22, 143, 240, 0.12);  --mod-1-icono: #168FF0; /* Productos */
-  --mod-2-fondo: rgba(29, 122, 90, 0.12);   --mod-2-icono: #1D7A5A; /* Materiales / Inventario */
-  --mod-3-fondo: rgba(124, 92, 219, 0.12);  --mod-3-icono: #7C5CDB; /* Procesos / Producción */
-  --mod-4-fondo: rgba(233, 154, 43, 0.14);  --mod-4-icono: #C97A1E; /* Compras */
-  --mod-5-fondo: rgba(233, 107, 134, 0.14); --mod-5-icono: #C74C6B; /* Ventas / acento */
-  --mod-6-fondo: rgba(22, 143, 240, 0.10);  --mod-6-icono: #123B68; /* Finanzas */
-  --mod-7-fondo: rgba(233, 154, 43, 0.12);  --mod-7-icono: #A6660B; /* Facturación */
-  --mod-8-fondo: rgba(29, 122, 90, 0.10);   --mod-8-icono: #0E5A41; /* Nóminas */
-  --mod-9-fondo: rgba(102, 114, 127, 0.14); --mod-9-icono: #4A5560; /* Importar / Exportar */
-  --mod-10-fondo: rgba(124, 92, 219, 0.10); --mod-10-icono: #5B3FB0; /* de reserva */
+  /* ---- Colores de módulo (Manual de marca v1.1, pág. 10) ----
+     Un color por módulo: fondo suave (10–14 %) + ícono en color sólido.
+     Distinguen módulos; no sustituyen la paleta de marca. Úsalos SIEMPRE
+     por su nombre de módulo (--mod-compras-*), no por número. */
+  --mod-productos-fondo: rgba(22, 143, 240, 0.12);   --mod-productos-icono: #168FF0;
+  --mod-materiales-fondo: rgba(29, 122, 90, 0.12);   --mod-materiales-icono: #1D7A5A;
+  --mod-procesos-fondo: rgba(124, 92, 219, 0.12);    --mod-procesos-icono: #7C5CDB;
+  --mod-inventario-fondo: rgba(201, 122, 30, 0.14);  --mod-inventario-icono: #C97A1E;
+  --mod-compras-fondo: rgba(233, 107, 134, 0.14);    --mod-compras-icono: #E96B86;
+  --mod-ventas-fondo: rgba(29, 122, 90, 0.12);       --mod-ventas-icono: #1D7A5A;
+  --mod-finanzas-fondo: rgba(22, 143, 240, 0.10);    --mod-finanzas-icono: #168FF0;
+  --mod-facturacion-fondo: rgba(166, 102, 11, 0.12); --mod-facturacion-icono: #A6660B;
+  --mod-nominas-fondo: rgba(14, 90, 65, 0.10);       --mod-nominas-icono: #0E5A41;
+  --mod-importar-fondo: rgba(74, 85, 96, 0.14);      --mod-importar-icono: #4A5560;
+
+  /* Alias numéricos heredados (mockups y tarjetas decorativas ya los usan).
+     Apuntan al módulo que de verdad representan en pantalla. */
+  --mod-1-fondo: var(--mod-productos-fondo);   --mod-1-icono: var(--mod-productos-icono);
+  --mod-2-fondo: var(--mod-materiales-fondo);  --mod-2-icono: var(--mod-materiales-icono);
+  --mod-3-fondo: var(--mod-procesos-fondo);    --mod-3-icono: var(--mod-procesos-icono);
+  --mod-4-fondo: var(--mod-inventario-fondo);  --mod-4-icono: var(--mod-inventario-icono);
+  --mod-5-fondo: var(--mod-compras-fondo);     --mod-5-icono: var(--mod-compras-icono);
+  --mod-6-fondo: var(--mod-finanzas-fondo);    --mod-6-icono: var(--mod-finanzas-icono);
+  --mod-7-fondo: var(--mod-facturacion-fondo); --mod-7-icono: var(--mod-facturacion-icono);
+  --mod-8-fondo: var(--mod-nominas-fondo);     --mod-8-icono: var(--mod-nominas-icono);
+  --mod-9-fondo: var(--mod-importar-fondo);    --mod-9-icono: var(--mod-importar-icono);
+
+  /* ---- Un solo rojo de alerta (errores, faltantes, indicadores a la baja).
+     El rosa acento queda SOLO para promociones y detalles decorativos. ---- */
+  --rojo-alerta: #D6455F;
+  --rojo-alerta-suave: rgba(214, 69, 95, 0.12);
+
+  /* ---- Botón principal: base = tono hover del azul Fincil para que el
+     texto blanco cumpla contraste AA (4,54:1). El azul #168FF0 sigue
+     siendo el color de marca para enlaces grandes, íconos y acentos. ---- */
+  --boton-primario: #1279CB;
+  --boton-primario-hover: #0F66AD;
 
   /* ---- Variantes derivadas (interacción, no rompen la paleta base) ---- */
   --azul-fincil-hover: #1279CB;

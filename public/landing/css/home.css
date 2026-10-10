@@ -158,7 +158,7 @@
 .mockup__kpi-valor { font-family: var(--fuente-titulos); font-size: 0.75rem; font-weight: 700; color: var(--azul-profundo); display: block; }
 .mockup__kpi-cambio { font-size: 0.625rem; font-weight: 600; }
 .mockup__kpi-cambio--positivo { color: var(--verde); }
-.mockup__kpi-cambio--negativa { color: var(--rosa-acento); }
+.mockup__kpi-cambio--negativa { color: var(--rojo-alerta); }
 
 .mockup__fila-inferior { display: grid; grid-template-columns: 1.3fr 1fr; gap: 8px; }
 .mockup__panel { background: var(--azul-claro); border-radius: var(--radio-sm); padding: 8px; }
@@ -379,7 +379,7 @@
 }
 .ejemplo-real__paso-numero {
   width: 24px; height: 24px; border-radius: 50%;
-  background: var(--azul-fincil); color: var(--blanco);
+  background: var(--boton-primario); color: var(--blanco);
   display: flex; align-items: center; justify-content: center;
   font-size: 0.75rem; font-weight: 700; margin-bottom: var(--esp-3);
 }

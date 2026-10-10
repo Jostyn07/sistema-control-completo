@@ -97,7 +97,7 @@
   font-size: 0.6875rem; font-weight: 600; padding: 6px 10px; border-radius: var(--radio-sm);
   border: 1px solid var(--borde-fuerte); color: var(--azul-profundo); white-space: nowrap;
 }
-.pantalla-modulo__boton--primario { background: var(--azul-fincil); color: var(--blanco); border-color: transparent; }
+.pantalla-modulo__boton--primario { background: var(--boton-primario); color: var(--blanco); border-color: transparent; }
 
 .pantalla-modulo__cuerpo { display: flex; }
 .pantalla-modulo__principal { flex: 1; min-width: 0; padding: var(--esp-4); }

@@ -21,6 +21,7 @@
   --fz-texto-3: var(--t-ink-tenue);
   --fz-acento: var(--t-accent);
   --fz-acento-texto: #FFFFFF;
+  --fz-acento-boton: var(--t-accent-boton);   /* AA con texto blanco */
   --fz-morado: var(--t-info);
   --fz-verde: var(--t-exito);
   --fz-rojo: var(--t-peligro);
@@ -41,6 +42,7 @@
   --fz-texto-3: #74859E;
   --fz-acento: #59ABFF;
   --fz-acento-texto: #0B101B;
+  --fz-acento-boton: #59ABFF;
   --fz-morado: #AC91F5;
   --fz-verde: #54CEA0;
   --fz-sombra: none;
@@ -74,7 +76,7 @@
   cursor: pointer; white-space: nowrap;
 }
 .fz-boton:hover { filter: brightness(1.08); }
-.fz-boton--primario { background: var(--fz-acento); color: var(--fz-acento-texto); }
+.fz-boton--primario { background: var(--fz-acento-boton, var(--fz-acento)); color: var(--fz-acento-texto); }
 .fz-boton--enlace { background: none; padding: 0; font-size: 12px; }
 .fz-boton--mini { padding: 6px 10px; font-size: 12px; }
 .fz-boton--peligro { color: var(--fz-rojo); }

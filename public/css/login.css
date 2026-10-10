@@ -107,8 +107,8 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .login__campo-caja:focus-within {
-  border-color: #1B6B72;
-  box-shadow: 0 0 0 3px rgba(27, 107, 114, 0.12);
+  border-color: #1279CB;
+  box-shadow: 0 0 0 3px rgba(18, 121, 203, 0.14);
 }
 .login__campo-icono {
   display: flex; align-items: center; justify-content: center;
@@ -130,7 +130,7 @@
   padding: 0 14px;
   color: #9AA8B8;
 }
-.login__campo-ojo:hover { color: #1B6B72; }
+.login__campo-ojo:hover { color: #1279CB; }
 
 /* ---- Fila: recordarme / olvidaste contraseña ---- */
 .login__fila-extra {
@@ -156,9 +156,9 @@
 }
 .login__recordarme input:checked + .login__recordarme-caja,
 .login__terminos-fila input:checked + .login__terminos-caja {
-  background: #1B6B72; border-color: #1B6B72; color: #fff;
+  background: #1279CB; border-color: #1279CB; color: #fff;
 }
-.login__olvidaste { font-size: 0.8438rem; font-weight: 600; color: #1B6B72; text-decoration: none; }
+.login__olvidaste { font-size: 0.8438rem; font-weight: 600; color: #1279CB; text-decoration: none; }
 .login__olvidaste:hover { text-decoration: underline; }
 
 /* ---- Términos (modo registro) ---- */
@@ -166,13 +166,13 @@
 .login__terminos-fila { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
 .login__terminos-fila .login__terminos-caja { margin-top: 1px; }
 .login__terminos-texto { font-size: 0.8125rem; color: #6B7A8D; line-height: 1.45; }
-.login__terminos-texto a { color: #1B6B72; }
+.login__terminos-texto a { color: #1279CB; }
 
 /* ---- Botón Entrar ---- */
 .login__boton-entrar {
   width: 100%;
   display: flex; align-items: center; justify-content: center; gap: 10px;
-  background: #1B6B72;
+  background: #1279CB;
   color: #fff;
   border: none;
   border-radius: 14px;
@@ -182,7 +182,7 @@
   cursor: pointer;
   transition: background 0.15s ease, transform 0.15s ease;
 }
-.login__boton-entrar:hover { background: #175A60; transform: translateY(-1px); }
+.login__boton-entrar:hover { background: #0F66AD; transform: translateY(-1px); }
 .login__boton-entrar:active { transform: translateY(0); }
 
 /* ---- Separador "o" (redefine el existente, exclusivo de login) ---- */
@@ -208,7 +208,7 @@
   color: #8894A3 !important;
   margin: 12px 0 0;
 }
-.login__nota-google a { color: #1B6B72; }
+.login__nota-google a { color: #1279CB; }
 
 .login__alternar {
   text-align: center;
@@ -216,7 +216,7 @@
   color: #45536A;
   margin: 18px 0 0;
 }
-.login__alternar a { color: #1B6B72; font-weight: 700; text-decoration: none; margin-left: 4px; }
+.login__alternar a { color: #1279CB; font-weight: 700; text-decoration: none; margin-left: 4px; }
 .login__alternar a:hover { text-decoration: underline; }
 
 /* ---- Panel lateral (manuscrito + mensaje vertical) ---- */
@@ -243,7 +243,7 @@
   color: #14213D;
 }
 .login__mensaje span { display: block; }
-.login__mensaje-linea { width: 28px; height: 2px; background: #1B6B72; flex-shrink: 0; }
+.login__mensaje-linea { width: 28px; height: 2px; background: #1279CB; flex-shrink: 0; }
 
 /* ---- Pie de página ---- */
 .login__pie {
@@ -253,4 +253,4 @@
   text-align: center;
 }
 .login__pie a { color: #6B7A8D; text-decoration: none; }
-.login__pie a:hover { color: #1B6B72; }
+.login__pie a:hover { color: #1279CB; }

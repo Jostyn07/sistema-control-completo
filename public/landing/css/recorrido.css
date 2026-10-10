@@ -44,10 +44,11 @@
 .recorrido__nota strong { display: block; font-size: 0.875rem; color: var(--azul-profundo); }
 .recorrido__nota span { font-size: 0.8125rem; color: var(--gris-texto); }
 
-/* ---- Los 5 pasos ---- */
+/* ---- Los 6 pasos (3 por fila: Materiales → Compras → Productos /
+   Procesos → Venta → Finanzas) ---- */
 .recorrido__pasos {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--esp-5);
   margin-bottom: var(--esp-8);
 }
@@ -57,7 +58,7 @@
 .recorrido__numero-circulo {
   width: 32px; height: 32px; flex-shrink: 0;
   border-radius: 50%;
-  background: var(--azul-fincil);
+  background: var(--boton-primario);
   color: var(--blanco);
   font-family: var(--fuente-titulos);
   font-weight: 700;
@@ -67,13 +68,16 @@
 .recorrido__paso-numero p { font-size: 0.75rem; color: var(--gris-texto); margin: 0; }
 
 .recorrido__paso-pantalla { position: relative; }
+/* La flecha del último paso de cada fila no apunta a nada */
+.recorrido__paso:nth-child(3n) .recorrido__flecha,
+.recorrido__paso:last-child .recorrido__flecha { display: none; }
 .recorrido__flecha {
   position: absolute;
   top: 50%; right: calc(var(--esp-5) / -2);
   transform: translate(50%, -50%);
   width: 24px; height: 24px;
   border-radius: 50%;
-  background: var(--azul-fincil);
+  background: var(--boton-primario);
   color: var(--blanco);
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 2px 8px rgba(22, 143, 240, 0.35);
@@ -110,7 +114,7 @@
 .recorrido-pantalla__campana { color: var(--gris-texto); }
 .recorrido-pantalla__avatar {
   width: 18px; height: 18px; border-radius: 50%;
-  background: var(--azul-fincil); color: var(--blanco);
+  background: var(--boton-primario); color: var(--blanco);
   font-size: 0.5625rem; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
 }
@@ -144,7 +148,7 @@
   padding: 6px 4px; border-radius: var(--radio-sm);
   border: 1px solid var(--borde-fuerte); color: var(--azul-profundo);
 }
-.recorrido-pantalla__boton-mini--primario { background: var(--azul-fincil); color: var(--blanco); border-color: transparent; }
+.recorrido-pantalla__boton-mini--primario { background: var(--boton-primario); color: var(--blanco); border-color: transparent; }
 
 .recorrido-pantalla__kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: var(--esp-3); }
 .recorrido-pantalla__kpi { background: var(--azul-claro); border-radius: var(--radio-sm); padding: 6px 8px; }
@@ -203,7 +207,7 @@
 .recorrido-stepper__paso { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 0 4px; }
 .recorrido-stepper__circulo {
   width: 30px; height: 30px; border-radius: 50%;
-  background: var(--azul-fincil); color: var(--blanco);
+  background: var(--boton-primario); color: var(--blanco);
   font-family: var(--fuente-titulos); font-weight: 700; font-size: 0.8125rem;
   display: flex; align-items: center; justify-content: center;
 }
@@ -223,7 +227,7 @@
 
 /* ---- Responsive ---- */
 @media (max-width: 1180px) {
-  .recorrido__pasos { grid-template-columns: repeat(3, 1fr); }
+  .recorrido__pasos { grid-template-columns: repeat(2, 1fr); }
   .recorrido__flecha { display: none; }
   .recorrido-final { grid-template-columns: 1fr; text-align: center; }
   .recorrido-final__intro,

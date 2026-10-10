@@ -53,9 +53,13 @@ function aplicarApariencia(prefs) {
   if (prefs.acento && /^#[0-9a-f]{6}$/i.test(prefs.acento)) {
     raiz.style.setProperty('--t-accent', prefs.acento);
     raiz.style.setProperty('--t-accent-hover', oscurecerHex(prefs.acento, 0.15));
+    raiz.style.setProperty('--t-accent-boton', oscurecerHex(prefs.acento, 0.18));
+    raiz.style.setProperty('--t-accent-boton-hover', oscurecerHex(prefs.acento, 0.30));
   } else {
     raiz.style.removeProperty('--t-accent');
     raiz.style.removeProperty('--t-accent-hover');
+    raiz.style.removeProperty('--t-accent-boton');
+    raiz.style.removeProperty('--t-accent-boton-hover');
   }
 
   const f = prefs.fondo || {};

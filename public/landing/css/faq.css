@@ -29,7 +29,7 @@
 .faq__burbuja--2 {
   width: 130px; height: 100px;
   left: 40px; top: 0;
-  background: var(--azul-fincil);
+  background: var(--boton-primario);
   color: var(--blanco);
   border-bottom-left-radius: 4px;
   display: flex; align-items: center; justify-content: center;

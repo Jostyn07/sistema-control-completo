@@ -59,7 +59,7 @@
 .planes__badge-recomendado {
   position: absolute;
   top: -14px; left: var(--esp-5);
-  background: var(--azul-fincil);
+  background: var(--boton-primario);
   color: var(--blanco);
   font-size: 0.75rem;
   font-weight: 700;
