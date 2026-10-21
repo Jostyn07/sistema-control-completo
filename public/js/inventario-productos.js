@@ -5,6 +5,7 @@
 // ============================================================
 let productosStock = [];
 let claveMovProducto = null;
+let decisionPendiente = null; // vista previa mostrada, esperando confirmación
 
 const TITULOS_MOV = {
   ingreso: 'Ingresar unidades',
@@ -106,6 +107,9 @@ function abrirMovProducto(id, tipo) {
   const p = productosStock.find(x => x.producto_id === id);
   if (!p) return;
   claveMovProducto = null;
+  decisionPendiente = null;
+  document.getElementById('bloqueDecision').hidden = true;
+  document.getElementById('botonMovProducto').textContent = 'Guardar';
   document.getElementById('campoMovProductoId').value = id;
   document.getElementById('campoMovTipo').value = tipo;
   document.getElementById('tituloMovProducto').textContent = `${TITULOS_MOV[tipo]} · ${p.nombre}`;
@@ -124,6 +128,7 @@ function abrirMovProducto(id, tipo) {
 function cerrarMovProducto() {
   document.getElementById('modalMovProducto').hidden = true;
   claveMovProducto = null;
+  decisionPendiente = null;
 }
 
 async function confirmarMovProducto(forzar = false) {
@@ -139,7 +144,23 @@ async function confirmarMovProducto(forzar = false) {
   claveMovProducto = claveMovProducto || (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
   const cuerpo = { clave: claveMovProducto.replace(/[^A-Za-z0-9_-]/g, ''), motivo, forzar };
   let ruta;
-  if (tipo === 'ingreso') { ruta = 'ingreso'; cuerpo.cantidad = Number(cantidad); }
+  if (tipo === 'ingreso') {
+    ruta = 'ingreso'; cuerpo.cantidad = Number(cantidad);
+    if (!decisionPendiente) {
+      // Primero se muestra qué consumiría (si la política es preguntar)
+      try {
+        const plan = await API.enviar(`/api/inventario/productos/${id}/vista-previa`, { cantidad: Number(cantidad) });
+        if (plan.tipo !== 'ninguno' && plan.politica_descuento === 'preguntar') {
+          mostrarDecision(plan);
+          return;
+        }
+      } catch (err) { mostrarAviso(err.message, 'error'); return; }
+    } else {
+      if (decisionPendiente.cantidad !== Number(cantidad)) { decisionPendiente = null; return confirmarMovProducto(forzar); }
+      cuerpo.descontar_materiales = document.querySelector('input[name="decisionDescuento"]:checked').value === 'si';
+      cuerpo.recordar = document.getElementById('campoRecordarDecision').checked;
+    }
+  }
   if (tipo === 'salida') { ruta = 'salida'; cuerpo.cantidad = Number(cantidad); }
   if (tipo === 'ajuste') { ruta = 'ajuste'; cuerpo.cantidad_nueva = Number(cantidad); }
   if (tipo === 'reventa') {
@@ -161,7 +182,12 @@ async function confirmarMovProducto(forzar = false) {
     cerrarMovProducto();
     cargarProductosStock();
   } catch (err) {
-    if (!forzar && tipo === 'salida' && err.message.includes('No hay suficiente stock')) {
+    if (!forzar && tipo === 'ingreso' && err.message.includes('No hay material suficiente para fabricar')) {
+      if (confirm(`${err.message}.\n\n¿Fabricar de todas formas? Los materiales que faltan quedarán en negativo.`)) {
+        boton.disabled = false;
+        return confirmarMovProducto(true);
+      }
+    } else if (!forzar && tipo === 'salida' && err.message.includes('No hay suficiente stock')) {
       if (confirm(`${err.message}.\n\n¿Registrar la salida de todas formas? El stock quedará en negativo.`)) {
         boton.disabled = false;
         return confirmarMovProducto(true);
@@ -172,6 +198,26 @@ async function confirmarMovProducto(forzar = false) {
   } finally {
     boton.disabled = false;
   }
+}
+
+function mostrarDecision(plan) {
+  decisionPendiente = plan;
+  const esEtapa = plan.tipo === 'procesos';
+  document.getElementById('encabezadoConsumo').textContent = esEtapa ? 'Etapa final' : 'Material';
+  document.getElementById('textoDescontar').textContent = esEtapa ? `Tomar de lo terminado en ${plan.etapa.nombre}` : 'Descontar materiales';
+  const filas = esEtapa
+    ? [{ nombre: plan.etapa.nombre, requerido: plan.etapa.requerido, disponible: plan.etapa.disponible, falta: plan.etapa.falta }]
+    : plan.materiales;
+  document.getElementById('cuerpoDecision').innerHTML = filas.map(m => `
+    <tr>
+      <td>${escaparHtml(m.nombre)}</td>
+      <td>${m.requerido}${m.unidad ? ' ' + escaparHtml(m.unidad) : ''}</td>
+      <td style="${m.falta > 0 ? 'color:var(--t-peligro);font-weight:600;' : ''}">${m.disponible}${m.falta > 0 ? ` (faltan ${m.falta})` : ''}</td>
+    </tr>`).join('');
+  document.querySelector('input[name="decisionDescuento"][value="si"]').checked = true;
+  document.getElementById('campoRecordarDecision').checked = false;
+  document.getElementById('bloqueDecision').hidden = false;
+  document.getElementById('botonMovProducto').textContent = 'Confirmar';
 }
 
 // ---- Configuración ----

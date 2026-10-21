@@ -215,6 +215,24 @@
           <span class="campo__etiqueta" id="etiquetaMovMotivo">Motivo</span>
           <input type="text" id="campoMovMotivo">
         </label>
+        <div id="bloqueDecision" hidden>
+          <table class="tabla">
+            <thead><tr><th id="encabezadoConsumo">Material</th><th>Se usa</th><th>Hay</th></tr></thead>
+            <tbody id="cuerpoDecision"></tbody>
+          </table>
+          <label style="display:flex;align-items:center;gap:8px;margin:10px 0;cursor:pointer;">
+            <input type="radio" name="decisionDescuento" value="si" checked style="width:auto;margin:0;">
+            <span class="campo__etiqueta" id="textoDescontar">Descontar materiales</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;margin:10px 0;cursor:pointer;">
+            <input type="radio" name="decisionDescuento" value="no" style="width:auto;margin:0;">
+            <span class="campo__etiqueta">No descontar</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;margin:10px 0;cursor:pointer;">
+            <input type="checkbox" id="campoRecordarDecision" style="width:auto;margin:0;">
+            <span class="campo__etiqueta">No volver a preguntar para este producto</span>
+          </label>
+        </div>
         <div class="modal__acciones">
           <button type="button" class="boton" onclick="cerrarMovProducto()">Cancelar</button>
           <button type="button" class="boton boton--primario" id="botonMovProducto" onclick="confirmarMovProducto()">Guardar</button>
@@ -227,8 +245,8 @@
       <div class="modal__contenido tarjeta">
         <h2 id="tituloConfigProducto">Inventario del producto</h2>
         <input type="hidden" id="campoConfigProductoId">
-        <label class="campo" style="flex-direction:row;align-items:center;gap:8px;">
-          <input type="checkbox" id="campoConfigControla">
+        <label style="display:flex;align-items:center;gap:8px;margin:10px 0;cursor:pointer;">
+          <input type="checkbox" id="campoConfigControla" style="width:auto;margin:0;">
           <span class="campo__etiqueta">Controlar stock de este producto</span>
         </label>
         <label class="campo">

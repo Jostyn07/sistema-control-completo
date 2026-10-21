@@ -4,7 +4,8 @@
 //
 //  GET  /                       productos con su stock, mínimo y estado
 //  PUT  /:id/config             controla_stock, stock_minimo, politica_descuento, recordar_decision
-//  POST /:id/ingreso            { cantidad, motivo?, clave? }   entra stock (sin tocar materiales)
+//  POST /:id/vista-previa       { cantidad }  qué materiales o etapa final consumiría
+//  POST /:id/ingreso            { cantidad, descontar_materiales?, recordar?, forzar?, motivo?, clave? }
 //  POST /:id/compra-reventa     { cantidad, costo_unitario, proveedor, clave? }
 //  POST /:id/salida             { cantidad, motivo, forzar?, clave? }   (inventario.editar)
 //  POST /:id/ajuste             { cantidad_nueva, motivo, clave? }      (inventario.editar)
@@ -19,6 +20,7 @@ const { supabaseAdminBase } = require('../supabase/cliente');
 const requierePermiso = require('../middleware/permissions');
 const libro = require('../servicios/inventario/libro');
 const { redondear } = require('../servicios/inventario/nucleo');
+const fabricacion = require('../servicios/inventario/fabricacion');
 const router = express.Router();
 
 const POLITICAS = ['preguntar', 'automatico', 'no_descontar'];
@@ -150,19 +152,79 @@ async function mover(req, res, { tipo, movimiento, motivo, forzar, prefijoClave 
     stock_anterior: m.stock_anterior, stock_nuevo: m.stock_nuevo });
 }
 
+// POST /api/inventario/productos/:id/vista-previa — { cantidad }
+// Qué consumiría fabricar esas unidades (materiales o última etapa).
+router.post('/:id/vista-previa', async (req, res, next) => {
+  try {
+    const producto = await productoDeEmpresa(req.params.id, req.empresa.id);
+    if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
+    const cantidad = cantidadPositiva(req.body.cantidad) || 1;
+    const [plan, politica] = await Promise.all([
+      fabricacion.planDeFabricacion(producto.id, cantidad, req.empresa.id),
+      fabricacion.politicaDe(producto.id, req.empresa.id)
+    ]);
+    res.json({ cantidad, ...plan, politica_descuento: politica.politica_descuento });
+  } catch (err) { next(err); }
+});
+
 // POST /api/inventario/productos/:id/ingreso
+// { cantidad, descontar_materiales?, recordar?, forzar?, motivo?, clave? }
+// Si el producto tiene ficha o procesos y la política es "preguntar",
+// sin descontar_materiales responde 409 { requiere_decision, plan }.
 router.post('/:id/ingreso', async (req, res, next) => {
   try {
     const producto = await productoDeEmpresa(req.params.id, req.empresa.id);
     if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
     const cantidad = cantidadPositiva(req.body.cantidad);
     if (!cantidad) return res.status(400).json({ error: 'La cantidad debe ser mayor a 0' });
-    await mover(req, res, {
-      tipo: 'ingreso_producto', prefijoClave: 'ingreso',
-      motivo: (req.body.motivo || '').trim() || 'Ingreso de producto terminado',
-      // Valor del inventario: costo de la ficha EN ESTE MOMENTO
-      movimiento: { cantidad, costo_unitario: Number(producto.costo_calculado || 0) }
+    const costo = Number(producto.costo_calculado || 0); // valor al costo de HOY
+    const motivoLibre = (req.body.motivo || '').trim();
+
+    const plan = await fabricacion.planDeFabricacion(producto.id, cantidad, req.empresa.id);
+    if (plan.tipo === 'ninguno') {
+      return mover(req, res, { tipo: 'ingreso_producto', prefijoClave: 'ingreso',
+        motivo: motivoLibre || 'Ingreso de producto terminado', movimiento: { cantidad, costo_unitario: costo } });
+    }
+
+    let descontar = typeof req.body.descontar_materiales === 'boolean' ? req.body.descontar_materiales : undefined;
+    if (descontar === undefined) {
+      const { politica_descuento } = await fabricacion.politicaDe(producto.id, req.empresa.id);
+      if (politica_descuento === 'automatico') descontar = true;
+      else if (politica_descuento === 'no_descontar') descontar = false;
+      else return res.status(409).json({ error: 'Elige si se descuentan los materiales', requiere_decision: true, ...plan });
+    }
+
+    if (req.body.recordar) {
+      await supabaseAdminBase.from('inventario_productos').upsert({
+        producto_id: producto.id, empresa_id: req.empresa.id, controla_stock: true,
+        politica_descuento: descontar ? 'automatico' : 'no_descontar', recordar_decision: true,
+        actualizado_en: new Date().toISOString(), actualizado_por: req.usuarioId
+      }, { onConflict: 'producto_id' });
+    }
+
+    if (!descontar) {
+      return mover(req, res, { tipo: 'ingreso_producto', prefijoClave: 'ingreso',
+        motivo: motivoLibre || 'Ingreso sin consumo de materiales', movimiento: { cantidad, costo_unitario: costo } });
+    }
+
+    const r = await fabricacion.fabricar({
+      empresaId: req.empresa.id, usuarioId: req.usuarioId, productoId: producto.id, cantidad,
+      costoUnitario: costo, clave: libro.claveDe(req, 'fabricar'), motivo: motivoLibre || null, forzar: req.body.forzar
     });
+    if (!r.ok) {
+      if (r.etapa) {
+        return res.status(409).json({
+          error: `Solo hay ${r.etapa.unidades_posibles} listas en la etapa final (${r.etapa.nombre}). Faltan ${r.etapa.falta}.`,
+          etapa: r.etapa, puede_forzar: false
+        });
+      }
+      return res.status(409).json({ error: 'No hay material suficiente para fabricar', faltantes: r.faltantes, puede_forzar: true });
+    }
+    await supabaseAdminBase.from('inventario_productos').update({ controla_stock: true })
+      .eq('producto_id', producto.id).eq('empresa_id', req.empresa.id).eq('controla_stock', false);
+    const entrada = (r.movimientos || []).find(m => m.producto_id === producto.id) || {};
+    res.status(201).json({ operacion_id: r.operacionId, repetida: r.repetida, forzada: r.forzada, fabricado: true,
+      stock_anterior: entrada.stock_anterior, stock_nuevo: entrada.stock_nuevo });
   } catch (err) { next(err); }
 });
 
