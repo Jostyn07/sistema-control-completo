@@ -42,7 +42,7 @@ function leerCookie(req, nombre) {
 // IP, navegador y las cookies _fbp/_fbc que crea el pixel.
 function datosDelNavegador(req) {
   if (!req) return {};
-  const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '')
+  const ip = String(req.headers['cf-connecting-ip'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '')
     .split(',')[0].trim() || undefined;
   return {
     ip,
