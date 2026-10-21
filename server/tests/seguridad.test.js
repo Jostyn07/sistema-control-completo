@@ -35,6 +35,8 @@ test('Fase 6 — API', async (t) => {
     estado.error = 'duplicate key value violates unique constraint "x" Key (nit)=(900123456) already exists';
     const errores = []; const original = console.error; console.error = (...a) => errores.push(a.join(' '));
     const r = await pedir(srv, 'GET', '/api/categorias');
+    // El log puede escribirse justo después de enviar la respuesta
+    for (let i = 0; i < 20 && !errores.join('\n').includes(r.json.referencia || '#'); i++) await new Promise(res => setTimeout(res, 10));
     console.error = original; estado.error = null;
     assert.equal(r.status, 500);
     assert.match(r.json.error, /error inesperado/);

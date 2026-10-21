@@ -45,6 +45,20 @@
         y volver a subirla.</p>
     </section>
 
+    <!-- 0. Importación con IA (plan Pro) -->
+    <section class="tarjeta ia-importar" id="tarjetaIA">
+      <div class="ia-importar__texto">
+        <span class="ia-importar__etiqueta">✨ Nuevo · Plan Pro</span>
+        <h2>Sube tu Excel tal como lo tienes</h2>
+        <p class="texto-secundario">La IA reconoce tus columnas (aunque tengan otros nombres, títulos arriba o precios con $ y puntos) y las organiza en el formato de Fincil. Antes de guardar, revisas todo.</p>
+        <p class="ia-importar__privacidad">🔒 A la IA solo se le muestran los encabezados y las primeras 20 filas. Fincil convierte el resto por su cuenta.</p>
+      </div>
+      <div class="ia-importar__accion">
+        <button type="button" class="boton boton--primario" id="botonAbrirIA" onclick="abrirModalIA()">Subir cualquier Excel</button>
+        <span class="texto-secundario ia-importar__uso" id="usoIA"></span>
+      </div>
+    </section>
+
     <!-- 1. Descarga masiva -->
     <section class="tarjeta">
       <h2>Descargar todo</h2>
@@ -69,9 +83,17 @@
         <h2 id="tituloModalExcel">Subir Excel</h2>
 
         <div id="pasoSeleccionArchivo">
+          <label class="campo" id="campoModuloIA" hidden>
+            <span class="campo__etiqueta">¿Qué información trae el archivo?</span>
+            <select id="selectorModuloIA"></select>
+          </label>
           <label class="campo">
-            <span class="campo__etiqueta">Elige el archivo (.xlsx) ya completado</span>
+            <span class="campo__etiqueta" id="etiquetaArchivoExcel">Elige el archivo (.xlsx) ya completado</span>
             <input type="file" id="campoArchivoExcel" accept=".xlsx" onchange="alSeleccionarArchivo(event)">
+          </label>
+          <label class="ia-casilla" id="casillaUsarIA" hidden>
+            <input type="checkbox" id="checkUsarIA" onchange="alCambiarUsoIA()">
+            <span>Mi archivo no tiene el formato de la plantilla — <strong>organizarlo con IA</strong></span>
           </label>
         </div>
 

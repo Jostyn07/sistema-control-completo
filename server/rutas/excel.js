@@ -24,6 +24,9 @@ const multer = require('multer');
 const router = express.Router();
 
 const { crearZip } = require('../servicios/excel/zip');
+const { convertirConIA, ErrorConversion } = require('../servicios/ia/convertidor');
+const { verificarAcceso, registrarUso, LIMITE_MES } = require('../servicios/ia/acceso');
+const { iaConfigurada } = require('../servicios/ia/openai');
 const materialesImportador = require('../servicios/importadores/materiales');
 const materialesExportador = require('../servicios/exportadores/materiales');
 const productosImportador = require('../servicios/importadores/productos');
@@ -148,6 +151,65 @@ function enviarXlsx(res, nombreArchivo, buffer) {
   res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
   res.send(buffer);
 }
+
+// ---------------- IMPORTACIÓN CON IA (plan Pro) ----------------
+// Acepta cualquier Excel (.xlsx/.xls) o CSV, sin el formato de la plantilla.
+const subidaIA = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: TAMANO_MAXIMO },
+  fileFilter: (req, file, cb) => {
+    if (!/\.(xlsx|xls|csv)$/i.test(file.originalname)) return cb(new Error('Sube un archivo de Excel (.xlsx, .xls) o CSV'));
+    cb(null, true);
+  }
+});
+
+// GET /api/excel/ia/estado → ¿puede usarla esta empresa? ¿cuántos usos le quedan?
+router.get('/ia/estado', async (req, res, next) => {
+  try {
+    if (!iaConfigurada()) return res.json({ disponible: false, motivo: 'no_configurada' });
+    try {
+      const { usados, limite } = await verificarAcceso(req.empresa.id);
+      res.json({ disponible: true, usados, limite });
+    } catch (err) {
+      if (err.status === 403) return res.json({ disponible: false, motivo: 'plan', requiere_plan: 'pro' });
+      if (err.status === 429) return res.json({ disponible: false, motivo: 'limite', limite: LIMITE_MES() });
+      throw err;
+    }
+  } catch (err) { next(err); }
+});
+
+// POST /api/excel/ia/convertir?modulo=auto|materiales|… — campo "archivo"
+// La IA ve solo encabezados + primeras filas, devuelve un mapeo, Fincil
+// convierte todas las filas al formato de la plantilla y las pasa por el
+// importador normal. Respuesta: { modulo, resumen, advertencias, mapeo,
+// confianza, filas_convertidas, reporte } — NO guarda nada todavía; se
+// confirma con POST /api/excel/:modulo/importar como siempre.
+router.post('/ia/convertir', (req, res, next) => {
+  subidaIA.single('archivo')(req, res, async (errSubida) => {
+    if (errSubida) {
+      const mensaje = errSubida.code === 'LIMIT_FILE_SIZE' ? 'El archivo no puede pesar más de 10 MB' : errSubida.message;
+      return res.status(400).json({ error: mensaje });
+    }
+    const moduloPedido = String(req.query.modulo || 'auto');
+    let resultado = null;
+    try {
+      if (!req.file) return res.status(400).json({ error: 'No se recibió ningún archivo' });
+      await verificarAcceso(req.empresa.id);
+      resultado = await convertirConIA({ buffer: req.file.buffer, modulo: moduloPedido });
+      const modulo = MODULOS[resultado.modulo];
+      const reporte = await modulo.analizar(resultado.buffer, req.empresa.id);
+      await registrarUso({ empresaId: req.empresa.id, usuarioId: req.usuarioId, modulo: resultado.modulo, uso: resultado.uso, exito: true });
+      const { buffer, uso, ...resto } = resultado;
+      res.json({ ...resto, reporte });
+    } catch (err) {
+      if (resultado) await registrarUso({ empresaId: req.empresa.id, usuarioId: req.usuarioId, modulo: resultado.modulo, uso: resultado.uso, exito: false });
+      if (err instanceof ErrorConversion || [403, 429, 502, 503].includes(err.status)) {
+        return res.status(err.status || 400).json({ error: err.message, requiere_plan: err.requiere_plan });
+      }
+      next(err);
+    }
+  });
+});
 
 // GET /api/excel/:modulo/plantilla
 router.get('/:modulo/plantilla', async (req, res, next) => {

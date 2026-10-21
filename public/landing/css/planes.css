@@ -119,8 +119,9 @@
   .planes-confianza__fila { gap: var(--esp-5); justify-content: flex-start; }
 }
 /* ---- Selector Mensual / Anual ---- */
+.planes__columna { display: flex; flex-direction: column; align-items: center; gap: var(--esp-5); min-width: 0; }
+.planes__columna .planes__tarjetas { width: 100%; }
 .planes__periodo {
-  grid-column: 1 / -1; justify-self: center;
   display: inline-flex; gap: 4px; padding: 4px; margin-bottom: var(--esp-2);
   border-radius: var(--radio-pill); background: var(--blanco); border: 1px solid var(--borde);
   box-shadow: var(--sombra-tarjeta);

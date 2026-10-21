@@ -599,3 +599,41 @@ a.barra-superior__usuario { text-decoration: none; color: inherit; }
 .selector-periodo-pago button.activo { background: var(--t-accent-boton); color: #fff; }
 .selector-periodo-pago__ahorro { font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: var(--t-exito-fondo); color: var(--t-exito); }
 .selector-periodo-pago button.activo .selector-periodo-pago__ahorro { background: rgba(255, 255, 255, 0.22); color: #fff; }
+
+/* ============================================================
+   Importación con IA (Importar/Exportar)
+   ============================================================ */
+.ia-importar {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--t-accent) 10%, var(--t-tarjeta-bg)), var(--t-tarjeta-bg) 70%);
+  border: 1px solid color-mix(in srgb, var(--t-accent) 30%, var(--t-borde));
+}
+.ia-importar__texto { flex: 1 1 420px; min-width: 0; }
+.ia-importar__texto h2 { margin: 6px 0 6px; }
+.ia-importar__texto p { margin: 0 0 6px; }
+.ia-importar__etiqueta {
+  display: inline-block; font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--t-info) 14%, transparent); color: var(--t-info);
+}
+.ia-importar__privacidad { font-size: 13px; color: var(--t-ink-suave); }
+.ia-importar__accion { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.ia-importar__uso { font-size: 12.5px; }
+
+.ia-casilla { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: var(--t-radio-chico);
+  background: color-mix(in srgb, var(--t-info) 8%, transparent); border: 1px dashed color-mix(in srgb, var(--t-info) 40%, transparent);
+  font-size: 14px; cursor: pointer; margin-top: 4px; }
+.ia-casilla input { margin-top: 3px; }
+
+.ia-resultado { border: 1px solid color-mix(in srgb, var(--t-info) 35%, var(--t-borde)); border-radius: var(--t-radio);
+  padding: 14px 16px; margin-bottom: 16px; background: color-mix(in srgb, var(--t-info) 6%, var(--t-tarjeta-bg)); }
+.ia-resultado p { margin: 6px 0; }
+.ia-resultado__cabecera { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ia-resultado__avisos { margin: 8px 0; padding-left: 20px; color: var(--t-advertencia); font-size: 14px; }
+.ia-confianza { font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px; }
+.ia-confianza--alta { background: var(--t-exito-fondo); color: var(--t-exito); }
+.ia-confianza--media { background: var(--t-advertencia-fondo); color: var(--t-advertencia); }
+.ia-confianza--baja { background: var(--t-peligro-fondo); color: var(--t-peligro); }
+.ia-mapeo summary { cursor: pointer; font-weight: 700; color: var(--t-accent); margin-top: 6px; }
+.ia-mapeo table { margin-top: 10px; }
+.ia-mapeo__hoja { text-align: left; background: var(--t-bg); }
+.ia-mapeo__falta td { color: var(--t-peligro); font-weight: 600; }

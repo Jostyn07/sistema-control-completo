@@ -150,7 +150,8 @@ async function cargarPlanes() {
         { texto: 'Rentabilidad por producto', si: p.incluye_rentabilidad_productos },
         { texto: 'Análisis de clientes', si: p.incluye_analisis_clientes },
         { texto: 'Meta de ventas y proyección', si: p.incluye_meta_ventas },
-        { texto: 'Valor del inventario', si: p.incluye_valor_inventario }
+        { texto: 'Valor del inventario', si: p.incluye_valor_inventario },
+        { texto: 'Importar cualquier Excel con IA', si: !!p.incluye_importacion_ia }
       ];
 
       const filaHtml = (texto, si) => `

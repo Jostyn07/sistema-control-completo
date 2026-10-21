@@ -33,6 +33,9 @@ const MODULOS_EXCEL = [
 
 let moduloActualExcel = null;
 let reporteActualExcel = null;
+let modoIA = false;            // ¿el archivo se organiza con IA?
+let estadoIA = { disponible: false };
+let resultadoIA = null;
 
 // -------------------- Arranque de la página --------------------
 function inicializarPaginaExcel() {
@@ -48,6 +51,76 @@ function inicializarPaginaExcel() {
       </div>
     </article>
   `).join('');
+  cargarEstadoIA();
+}
+
+// -------------------- Importación con IA --------------------
+async function cargarEstadoIA() {
+  try { estadoIA = await API.obtener('/api/excel/ia/estado'); } catch (_) { estadoIA = { disponible: false }; }
+  const boton = document.getElementById('botonAbrirIA');
+  const uso = document.getElementById('usoIA');
+  if (!boton) return;
+  if (estadoIA.disponible) {
+    uso.textContent = `${estadoIA.limite - estadoIA.usados} de ${estadoIA.limite} análisis disponibles este mes`;
+  } else if (estadoIA.motivo === 'plan') {
+    boton.textContent = 'Disponible en el plan Pro';
+    boton.onclick = () => { window.location.href = './suscripcion.html'; };
+    uso.textContent = 'Mejora tu plan para usarla';
+  } else if (estadoIA.motivo === 'limite') {
+    boton.disabled = true;
+    uso.textContent = `Ya usaste los ${estadoIA.limite} análisis de este mes`;
+  } else {
+    document.getElementById('tarjetaIA').hidden = true; // IA no configurada en el servidor
+  }
+}
+
+function abrirModalIA() {
+  abrirModalExcel(null);
+  modoIA = true;
+  document.getElementById('tituloModalExcel').textContent = 'Subir cualquier Excel con IA';
+  const selector = document.getElementById('selectorModuloIA');
+  selector.innerHTML = '<option value="auto">Detectar automáticamente</option>' +
+    MODULOS_EXCEL.map(m => `<option value="${m.clave}">${m.nombre}</option>`).join('');
+  document.getElementById('campoModuloIA').hidden = false;
+  document.getElementById('casillaUsarIA').hidden = true;
+  prepararCampoArchivo();
+}
+
+function alCambiarUsoIA() {
+  modoIA = document.getElementById('checkUsarIA').checked;
+  prepararCampoArchivo();
+}
+
+function prepararCampoArchivo() {
+  const campo = document.getElementById('campoArchivoExcel');
+  campo.accept = modoIA ? '.xlsx,.xls,.csv' : '.xlsx';
+  document.getElementById('etiquetaArchivoExcel').textContent = modoIA
+    ? 'Elige tu archivo tal como lo tienes (.xlsx, .xls o .csv)'
+    : 'Elige el archivo (.xlsx) ya completado';
+}
+
+function bloqueResultadoIA(r) {
+  const pct = Math.round((r.confianza || 0) * 100);
+  const nivel = pct >= 75 ? 'alta' : pct >= 50 ? 'media' : 'baja';
+  const filasMapeo = (r.mapeo || []).map(h => `
+      ${r.mapeo.length > 1 ? `<tr><th colspan="2" class="ia-mapeo__hoja">${escaparHtml(h.hoja_destino)}${h.hoja_origen ? ` ← hoja "${escaparHtml(h.hoja_origen)}"` : ' — sin datos en tu archivo'}</th></tr>` : ''}
+      ${h.columnas.map(c => `<tr class="${!c.desde && c.obligatorio ? 'ia-mapeo__falta' : ''}">
+        <td>${escaparHtml(c.destino)}${c.obligatorio ? ' *' : ''}</td>
+        <td>${c.desde ? escaparHtml(c.desde) : (c.obligatorio ? '⚠ No encontrada' : '—')}</td></tr>`).join('')}`).join('');
+  return `
+    <div class="ia-resultado">
+      <div class="ia-resultado__cabecera">
+        <strong>✨ La IA lo identificó como: ${escaparHtml((MODULOS_EXCEL.find(m => m.clave === r.modulo) || {}).nombre || r.modulo)}</strong>
+        <span class="ia-confianza ia-confianza--${nivel}">Confianza ${nivel} (${pct} %)</span>
+      </div>
+      ${r.resumen ? `<p>${escaparHtml(r.resumen)}</p>` : ''}
+      <p class="texto-secundario">${r.filas_convertidas} filas organizadas. Revisa abajo cada fila antes de confirmar.</p>
+      ${(r.advertencias || []).length ? `<ul class="ia-resultado__avisos">${r.advertencias.map(a => `<li>${escaparHtml(a)}</li>`).join('')}</ul>` : ''}
+      <details class="ia-mapeo">
+        <summary>Ver cómo se organizaron tus columnas</summary>
+        <table class="tabla"><thead><tr><th>Campo de Fincil</th><th>Tomado de tu archivo</th></tr></thead><tbody>${filasMapeo}</tbody></table>
+      </details>
+    </div>`;
 }
 
 // -------------------- Descargas (requieren el token, pero no son JSON) --------------------
@@ -87,9 +160,15 @@ async function descargarTodo(tipo) {
 
 // -------------------- Modal: subir → analizar --------------------
 function abrirModalExcel(clave) {
-  moduloActualExcel = MODULOS_EXCEL.find((m) => m.clave === clave);
+  moduloActualExcel = clave ? MODULOS_EXCEL.find((m) => m.clave === clave) : null;
   reporteActualExcel = null;
-  document.getElementById('tituloModalExcel').textContent = `Subir Excel — ${moduloActualExcel.nombre}`;
+  resultadoIA = null;
+  modoIA = false;
+  document.getElementById('checkUsarIA').checked = false;
+  document.getElementById('campoModuloIA').hidden = true;
+  document.getElementById('casillaUsarIA').hidden = !(clave && estadoIA.disponible);
+  prepararCampoArchivo();
+  if (moduloActualExcel) document.getElementById('tituloModalExcel').textContent = `Subir Excel — ${moduloActualExcel.nombre}`;
   document.getElementById('campoArchivoExcel').value = '';
   document.getElementById('pasoSeleccionArchivo').hidden = false;
   document.getElementById('lineaCargandoExcel').hidden = true;
@@ -117,7 +196,16 @@ async function alSeleccionarArchivo(evento) {
     const token = localStorage.getItem('token_sesion');
     const formData = new FormData();
     formData.append('archivo', archivo);
-    const respuesta = await fetch(`/api/excel/${moduloActualExcel.clave}/analizar`, {
+    let ruta;
+    if (modoIA) {
+      const moduloIA = moduloActualExcel ? moduloActualExcel.clave : document.getElementById('selectorModuloIA').value;
+      ruta = `/api/excel/ia/convertir?modulo=${encodeURIComponent(moduloIA)}`;
+      document.getElementById('lineaCargandoExcel').textContent = 'La IA está organizando tu archivo… puede tardar unos segundos.';
+    } else {
+      ruta = `/api/excel/${moduloActualExcel.clave}/analizar`;
+      document.getElementById('lineaCargandoExcel').textContent = 'Analizando el archivo…';
+    }
+    const respuesta = await fetch(ruta, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}`, ...API.encabezadoEmpresa() } : {},
       body: formData
@@ -125,8 +213,18 @@ async function alSeleccionarArchivo(evento) {
     const datos = await respuesta.json().catch(() => ({}));
     if (!respuesta.ok) throw new Error(datos.error || `Error ${respuesta.status}`);
 
-    reporteActualExcel = datos;
-    renderizarReporteExcel();
+    if (modoIA) {
+      resultadoIA = datos;
+      moduloActualExcel = MODULOS_EXCEL.find((m) => m.clave === datos.modulo);
+      document.getElementById('tituloModalExcel').textContent = `Revisar importación con IA — ${moduloActualExcel.nombre}`;
+      reporteActualExcel = datos.reporte;
+      renderizarReporteExcel();
+      document.getElementById('contenidoReporteExcel').insertAdjacentHTML('afterbegin', bloqueResultadoIA(datos));
+      cargarEstadoIA();
+    } else {
+      reporteActualExcel = datos;
+      renderizarReporteExcel();
+    }
     document.getElementById('botonConfirmarImportacion').hidden = false;
   } catch (err) {
     mostrarAviso(err.message, 'error');
