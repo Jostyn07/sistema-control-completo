@@ -242,11 +242,16 @@ async function importarVentas(empresaId, filas) {
 
     // Igual que la creación manual: los productos SIN procesos activos
     // descuentan material directo; los que SÍ tienen, van por WIP.
-    const itemsSinProcesos = itemsValidos.filter((i) => !idsConProcesos.has(i.producto_id));
-    const itemsConProcesos = itemsValidos.filter((i) => idsConProcesos.has(i.producto_id));
+    // Productos con stock de terminados: se descuenta el producto (Fase 5)
+    const { data: filasStock } = await supabase.from('inventario_productos').select('producto_id')
+      .eq('empresa_id', empresaId).eq('controla_stock', true).in('producto_id', itemsValidos.map((i) => i.producto_id));
+    const conStock = new Set((filasStock || []).map((f) => f.producto_id));
+    const itemsConStock = itemsValidos.filter((i) => conStock.has(i.producto_id));
+    const itemsSinProcesos = itemsValidos.filter((i) => !conStock.has(i.producto_id) && !idsConProcesos.has(i.producto_id));
+    const itemsConProcesos = itemsValidos.filter((i) => !conStock.has(i.producto_id) && idsConProcesos.has(i.producto_id));
 
-    if (itemsSinProcesos.length > 0) {
-      const fichas = await obtenerFichasEfectivasParaProductos(itemsSinProcesos.map((i) => i.producto_id), empresaId);
+    if (itemsSinProcesos.length > 0 || itemsConStock.length > 0) {
+      const fichas = itemsSinProcesos.length ? await obtenerFichasEfectivasParaProductos(itemsSinProcesos.map((i) => i.producto_id), empresaId) : [];
       const requeridoPorMaterial = new Map();
       for (const item of itemsSinProcesos) {
         for (const f of (fichas || []).filter((f) => f.producto_id === item.producto_id)) {
@@ -264,16 +269,20 @@ async function importarVentas(empresaId, filas) {
         const cantidad = -Math.round(requerido * 10000) / 10000;
         if (cantidad) movimientos.push({ material_id: materialId, cantidad });
       }
+      const unidadesTerminado = new Map();
+      for (const i of itemsConStock) unidadesTerminado.set(i.producto_id, (unidadesTerminado.get(i.producto_id) || 0) + Number(i.cantidad));
+      for (const [productoId, unidades] of unidadesTerminado) movimientos.push({ producto_id: productoId, cantidad: -unidades });
+      const idDe = (m) => m.material_id || m.producto_id;
       for (let intento = 0; intento < 2 && movimientos.length > 0; intento++) {
         const operacion = await aplicarOperacion({
           empresaId, tipo: 'importacion', origenTabla: 'ventas', origenId: venta.id,
           motivo: `Venta ${fila.codigo} importada desde Excel`, clave: `venta-importada:${venta.id}`, movimientos
         });
         if (operacion.ok) break;
-        const faltaPorId = new Map(operacion.faltantes.map((f) => [f.material_id, f]));
+        const faltaPorId = new Map(operacion.faltantes.map((f) => [f.material_id || f.producto_id, f]));
         for (const f of operacion.faltantes) materialesInsuficientes.push(f.nombre);
         movimientos = movimientos
-          .map((m) => faltaPorId.has(m.material_id) ? { ...m, cantidad: -Math.max(0, Number(faltaPorId.get(m.material_id).disponible)) } : m)
+          .map((m) => faltaPorId.has(idDe(m)) ? { ...m, cantidad: -Math.max(0, Number(faltaPorId.get(idDe(m)).disponible)) } : m)
           .filter((m) => m.cantidad < 0);
       }
       if (materialesInsuficientes.length > 0) {

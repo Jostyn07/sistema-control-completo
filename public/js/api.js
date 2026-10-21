@@ -95,7 +95,12 @@ const API = {
       return this._peticion(ruta, { ...opciones, headers: this._encabezados() }, true);
     }
 
-    if (!respuesta.ok) throw new Error(datos.error || `Error ${respuesta.status}`);
+    if (!respuesta.ok) {
+      const error = new Error(datos.error || `Error ${respuesta.status}`);
+      error.status = respuesta.status;
+      error.datos = datos; // detalle (ej. faltantes) para quien lo necesite
+      throw error;
+    }
     return datos;
   },
 

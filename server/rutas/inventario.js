@@ -21,6 +21,8 @@ const router = express.Router();
 
 // Productos terminados (Fase 3)
 router.use('/productos', require('./inventario-productos'));
+// Historial unificado (Fase 6)
+router.use('/', require('./inventario-historial'));
 
 // GET /api/inventario/materiales
 router.get('/materiales', async (req, res, next) => {

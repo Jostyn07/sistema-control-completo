@@ -23,10 +23,12 @@ const ORIGENES = {
 function cambiarVistaInventario(vista) {
   document.getElementById('vistaMateriales').hidden = vista !== 'materiales';
   document.getElementById('vistaProductos').hidden = vista !== 'productos';
+  document.getElementById('vistaHistorial').hidden = vista !== 'historial';
   document.querySelectorAll('#pestanasInventario .tabs-modulo__item').forEach(b =>
     b.classList.toggle('tabs-modulo__item--activo', b.dataset.vista === vista));
   try { localStorage.setItem('inventario_vista', vista); } catch {}
   if (vista === 'productos') cargarProductosStock();
+  if (vista === 'historial' && typeof cargarHistorialInventario === 'function') cargarHistorialInventario(1);
 }
 
 async function cargarProductosStock() {
@@ -278,5 +280,5 @@ async function verHistorialProducto(id) {
 document.addEventListener('DOMContentLoaded', () => {
   let vista = 'materiales';
   try { vista = localStorage.getItem('inventario_vista') || 'materiales'; } catch {}
-  if (vista === 'productos') cambiarVistaInventario('productos');
+  if (vista === 'productos' || vista === 'historial') cambiarVistaInventario(vista);
 });

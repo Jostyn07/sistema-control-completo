@@ -57,6 +57,7 @@
     <div class="tabs-modulo" id="pestanasInventario">
       <button type="button" class="tabs-modulo__item tabs-modulo__item--activo" data-vista="materiales" onclick="cambiarVistaInventario('materiales')">Materiales</button>
       <button type="button" class="tabs-modulo__item" data-vista="productos" onclick="cambiarVistaInventario('productos')">Productos terminados</button>
+      <button type="button" class="tabs-modulo__item" data-vista="historial" onclick="cambiarVistaInventario('historial')">Historial</button>
     </div>
 
     <div id="vistaMateriales">
@@ -192,6 +193,88 @@
       </section>
     </div>
 
+    <!-- Historial unificado (Fase 6) -->
+    <div id="vistaHistorial" hidden>
+      <section class="tarjeta seccion">
+        <div class="tarjeta__encabezado-fila">
+          <h2>Historial de movimientos</h2>
+          <button type="button" class="boton boton--pequeno" onclick="exportarHistorialCsv()">Exportar CSV</button>
+        </div>
+        <div class="barra-herramientas-tabla" style="gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Artículo</span>
+            <select id="filtroHistArticulo" onchange="cargarHistorialInventario(1)">
+              <option value="">Todos</option>
+              <option value="material">Materiales</option>
+              <option value="producto">Productos terminados</option>
+            </select>
+          </label>
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Origen</span>
+            <select id="filtroHistOrigen" onchange="cargarHistorialInventario(1)">
+              <option value="">Todos</option>
+              <option value="venta">Venta</option>
+              <option value="venta_edicion">Venta editada</option>
+              <option value="venta_eliminacion">Venta eliminada</option>
+              <option value="compra">Compra</option>
+              <option value="compra_reventa">Compra reventa</option>
+              <option value="ajuste">Ajuste</option>
+              <option value="fabricacion">Fabricación</option>
+              <option value="ingreso_producto">Ingreso</option>
+              <option value="salida_producto">Salida</option>
+              <option value="entrega_proceso">Entrega de proceso</option>
+              <option value="importacion">Importación</option>
+              <option value="reversion">Reversión</option>
+            </select>
+          </label>
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Desde</span>
+            <input type="date" id="filtroHistDesde" onchange="cargarHistorialInventario(1)">
+          </label>
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Hasta</span>
+            <input type="date" id="filtroHistHasta" onchange="cargarHistorialInventario(1)">
+          </label>
+          <label class="barra-herramientas-tabla__buscador" style="min-width:220px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="filtroHistTexto" placeholder="Buscar en el motivo…" onkeydown="if(event.key==='Enter')cargarHistorialInventario(1)">
+          </label>
+        </div>
+        <table class="tabla">
+          <thead>
+            <tr><th>Fecha</th><th>Artículo</th><th>Origen</th><th>Cantidad</th><th>Antes → después</th><th>Motivo</th><th>Usuario</th><th></th></tr>
+          </thead>
+          <tbody id="cuerpoHistorialInventario">
+            <tr><td colspan="8" class="tabla__vacio">Cargando…</td></tr>
+          </tbody>
+        </table>
+        <div class="paginacion" id="paginacionHistorialInventario"></div>
+      </section>
+    </div>
+
+    <!-- Detalle de una operación -->
+    <div class="modal" id="modalOperacion" hidden>
+      <div class="modal__contenido tarjeta" style="max-width:760px;">
+        <h2 id="tituloOperacion">Operación</h2>
+        <p class="texto-secundario" id="textoOperacion"></p>
+        <table class="tabla">
+          <thead><tr><th>Artículo</th><th>Cantidad</th><th>Antes → después</th></tr></thead>
+          <tbody id="cuerpoOperacion"></tbody>
+        </table>
+        <div id="bloqueRevertir" hidden>
+          <label class="campo">
+            <span class="campo__etiqueta">Motivo de la reversión *</span>
+            <input type="text" id="campoMotivoRevertir">
+          </label>
+        </div>
+        <div class="modal__acciones">
+          <a class="boton" id="enlaceOrigenOperacion" hidden>Ver origen</a>
+          <button type="button" class="boton" onclick="document.getElementById('modalOperacion').hidden = true">Cerrar</button>
+          <button type="button" class="boton boton--primario" id="botonRevertir" hidden onclick="revertirOperacionActual()">Revertir</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Movimiento de producto: ingreso / compra para reventa / salida / ajuste -->
     <div class="modal" id="modalMovProducto" hidden>
       <div class="modal__contenido tarjeta">
@@ -314,6 +397,7 @@
   <script src="js/recorrido-progresivo.js"></script>
   <script src="js/inventario.js"></script>
   <script src="js/inventario-productos.js"></script>
+  <script src="js/inventario-historial.js"></script>
   <script>
     if (exigirSesion()) { mostrarUsuarioActual(); iniciarRecorridoProgresivoSiPrimeraVez('inventario'); }
   </script>

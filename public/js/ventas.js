@@ -34,7 +34,7 @@ async function cargarProductosParaVenta() {
   productosParaVenta = await API.obtener('/api/ventas/productos-disponibles');
 
   const opciones = productosParaVenta
-    .map(p => `<option value="${p.id}">${escaparHtml(p.nombre)} — ${formatearPesos(p.precio_venta)} (puedes fabricar ${p.unidades_fabricables})</option>`)
+    .map(p => `<option value="${p.id}">${escaparHtml(p.nombre)} — ${formatearPesos(p.precio_venta)} (${p.controla_stock ? `${p.stock_terminado} listas` : `puedes fabricar ${p.unidades_fabricables}`})</option>`)
     .join('');
   document.getElementById('selectorProductoVenta').innerHTML = opciones;
   // El selector del modal de edición solo existe en esa vista; si no está
@@ -114,7 +114,10 @@ function agregarItemVenta() {
   }
 
   // Aviso temprano (el backend valida de nuevo con la ficha técnica completa)
-  if (cantidad > producto.unidades_fabricables) {
+  const limite = producto.controla_stock ? producto.stock_terminado : producto.unidades_fabricables;
+  if (producto.controla_stock && cantidad > limite) {
+    mostrarAviso(`Ojo: solo hay ${limite} unidad(es) lista(s) de este producto. El sistema te dará opciones al registrar.`, 'error');
+  } else if (!producto.controla_stock && cantidad > producto.unidades_fabricables) {
     mostrarAviso(`Ojo: con el stock actual solo alcanza para ${producto.unidades_fabricables} unidad(es) de este producto. El sistema te avisará al registrar.`, 'error');
   }
 
@@ -256,6 +259,11 @@ async function registrarVenta(forzar = false) {
     cargarPedidos();
     cargarHistorialVentas();
   } catch (err) {
+    // Productos terminados sin stock suficiente: vender lo que hay o forzar
+    if (!forzar && err.datos && err.datos.faltantes_productos) {
+      resolverFaltaDeTerminados(err.datos.faltantes_productos);
+      return;
+    }
     // El backend responde 409 con la lista de faltantes; ofrecemos forzar
     if (err.message.includes('No hay material suficiente')) {
       const confirmado = confirm(
@@ -266,6 +274,34 @@ async function registrarVenta(forzar = false) {
     } else {
       mostrarAviso(err.message, 'error');
     }
+  }
+}
+
+function resolverFaltaDeTerminados(faltantes) {
+  const lineas = faltantes.map(f => {
+    let texto = `• ${f.producto}: hay ${f.disponible}, pediste ${f.requerido}`;
+    if (f.se_fabrica) {
+      texto += ` → fabrica ${f.falta}`;
+      if (f.fabricables_ahora != null) texto += ` (con lo que tienes alcanza para ${f.fabricables_ahora})`;
+    }
+    return texto;
+  }).join('\n');
+  const hayAlgo = faltantes.some(f => f.disponible > 0) || itemsVentaEnEdicion.some(i => !faltantes.find(f => f.producto_id === i.producto_id));
+
+  if (hayAlgo && confirm(`No hay suficientes unidades terminadas:\n\n${lineas}\n\n¿Vender solo lo que hay?`)) {
+    const restante = new Map(faltantes.map(f => [f.producto_id, f.disponible]));
+    itemsVentaEnEdicion = itemsVentaEnEdicion.map(i => {
+      if (!restante.has(i.producto_id)) return i;
+      const usar = Math.min(Number(i.cantidad), restante.get(i.producto_id));
+      restante.set(i.producto_id, restante.get(i.producto_id) - usar);
+      return { ...i, cantidad: usar };
+    }).filter(i => i.cantidad > 0);
+    if (typeof pintarItemsVenta === 'function') pintarItemsVenta();
+    if (itemsVentaEnEdicion.length > 0) registrarVenta(false);
+    return;
+  }
+  if (confirm(`${hayAlgo ? '' : `No hay suficientes unidades terminadas:\n\n${lineas}\n\n`}¿Registrar la venta completa igual (por encargo)? El stock quedará en negativo hasta que fabriques.`)) {
+    registrarVenta(true);
   }
 }
 
@@ -432,9 +468,11 @@ async function guardarEdicionVenta() {
     cargarPedidos();
     cargarHistorialVentas();
   } catch (err) {
-    if (err.message.includes('No hay material suficiente')) {
+    if (err.message.includes('No hay material suficiente') || (err.datos && err.datos.faltantes_productos)) {
       const confirmado = confirm(
-        'No hay material suficiente según el sistema para estos cambios.\n\n' +
+        (err.datos && err.datos.faltantes_productos
+          ? 'No hay suficientes unidades terminadas: ' + err.datos.faltantes_productos.map(f => `${f.producto} (hay ${f.disponible}, faltan ${f.falta})`).join(', ') + '.\n\n'
+          : 'No hay material suficiente según el sistema para estos cambios.\n\n') +
         '¿Guardar de todas formas? (Luego corriges con un ajuste de inventario.)'
       );
       if (confirmado) {

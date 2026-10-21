@@ -23,6 +23,7 @@ const { consumirWIPYGenerarNecesidad } = require('../servicios/produccion');
 const { registrarEntrega, eliminarEntrega, obtenerHistorial } = require('../servicios/entregas');
 const { randomUUID } = require('crypto');
 const libro = require('../servicios/inventario/libro');
+const { planDeFabricacion } = require('../servicios/inventario/fabricacion');
 const router = express.Router();
 
 const ESTADOS_VALIDOS = ['pendiente', 'en_produccion', 'listo', 'entregado'];
@@ -48,6 +49,9 @@ router.get('/productos-disponibles', async (req, res, next) => {
     const fichas = await obtenerFichasEfectivasParaProductos(productos.map(p => p.id), req.empresa.id);
 
     const costoMinuto = await obtenerCostoMinutoManoObra(req.empresa.id);
+    const { data: stocks } = await supabase.from('inventario_productos')
+      .select('producto_id, stock_actual').eq('empresa_id', req.empresa.id).eq('controla_stock', true);
+    const stockTerminado = new Map((stocks || []).map(s => [s.producto_id, Number(s.stock_actual)]));
 
     const fichasPorProducto = new Map();
     for (const f of fichas || []) {
@@ -71,6 +75,8 @@ router.get('/productos-disponibles', async (req, res, next) => {
         ...p,
         categoria: p.categorias_productos ? p.categorias_productos.nombre : null,
         unidades_fabricables: fabricables,
+        controla_stock: stockTerminado.has(p.id),
+        stock_terminado: stockTerminado.has(p.id) ? stockTerminado.get(p.id) : null,
         costo_materiales_unitario: costoMaterialesUnitario,
         costo_mano_obra_unitario: costoManoObraUnitario
       };
@@ -123,6 +129,40 @@ async function deshacerOperacion(operacion, req, motivo) {
     await revertirOperacion({ empresaId: req.empresa.id, usuarioId: req.usuarioId,
       operacionId: operacion.operacionId, motivo, permitirNegativo: true });
   } catch (err) { log.error('[inventario] No se pudo deshacer la operación', operacion.operacionId, err); }
+}
+
+// Productos que llevan stock de terminados (Fase 5): la venta descuenta
+// el producto, no materiales ni WIP.
+async function idsConStock(productoIds, empresaId) {
+  if (!productoIds.length) return new Set();
+  const { data, error } = await supabase.from('inventario_productos')
+    .select('producto_id').eq('empresa_id', empresaId).eq('controla_stock', true).in('producto_id', productoIds);
+  if (error) throw new Error(error.message);
+  return new Set((data || []).map(f => f.producto_id));
+}
+
+function unidadesPorProducto(listaItems, ids) {
+  const mapa = new Map();
+  for (const i of listaItems) if (ids.has(i.producto_id)) mapa.set(i.producto_id, (mapa.get(i.producto_id) || 0) + Number(i.cantidad));
+  return mapa;
+}
+
+// 409 de productos terminados: cuánto hay y, si se fabrica, cuánto falta fabricar
+async function respuestaFaltanProductos(res, faltantes, empresaId, puedeForzar = true) {
+  const detalle = [];
+  for (const f of faltantes) {
+    const plan = await planDeFabricacion(f.producto_id, Number(f.falta), empresaId);
+    detalle.push({
+      producto_id: f.producto_id, producto: f.nombre,
+      disponible: Math.max(0, Number(f.disponible)), requerido: Number(f.requerido), falta: Number(f.falta),
+      se_fabrica: plan.tipo !== 'ninguno',
+      fabricables_ahora: plan.tipo === 'procesos' ? plan.etapa.unidades_posibles : (plan.unidades_posibles ?? null)
+    });
+  }
+  return res.status(409).json({
+    error: 'No hay suficientes unidades terminadas para esta venta',
+    faltantes_productos: detalle, puede_vender_disponible: true, puede_forzar: puedeForzar
+  });
 }
 
 // Consumo de material por item, con la ficha efectiva
@@ -178,9 +218,10 @@ router.post('/', async (req, res, next) => {
       .in('producto_id', productoIds);
     if (eProcActivos) throw new Error(eProcActivos.message);
     const idsConProcesos = new Set((procesosActivos || []).map(p => p.producto_id));
+    const conStock = await idsConStock(productoIds, req.empresa.id);
 
-    const itemsSinProcesos = items.filter(i => !idsConProcesos.has(i.producto_id));
-    const itemsConProcesos = items.filter(i => idsConProcesos.has(i.producto_id));
+    const itemsSinProcesos = items.filter(i => !conStock.has(i.producto_id) && !idsConProcesos.has(i.producto_id));
+    const itemsConProcesos = items.filter(i => !conStock.has(i.producto_id) && idsConProcesos.has(i.producto_id));
 
     const requeridoPorMaterial = new Map();
     for (const item of itemsSinProcesos) {
@@ -198,6 +239,10 @@ router.post('/', async (req, res, next) => {
     const ventaId = randomUUID();
     const clave = libro.claveDe(req, 'venta');
     const movimientos = libro.movimientosDeMateriales(requeridoPorMaterial, -1);
+    for (const [productoId, unidades] of unidadesPorProducto(items, conStock)) {
+      const p = productoPorId.get(productoId);
+      movimientos.push({ producto_id: productoId, cantidad: -unidades, costo_unitario: Number(p.costo_calculado || 0) });
+    }
     let faltantes = [];
     let operacion = null;
     if (movimientos.length > 0) {
@@ -208,6 +253,8 @@ router.post('/', async (req, res, next) => {
         detalleForzado: { confirmado: true }
       });
       if (!operacion.ok) {
+        const deProductos = operacion.faltantes.filter(f => f.producto_id);
+        if (deProductos.length > 0) return respuestaFaltanProductos(res, deProductos, req.empresa.id);
         return res.status(409).json({
           error: 'No hay material suficiente para esta venta',
           faltantes: libro.faltantesLegibles(operacion.faltantes, libro.unidadesDe(requeridoPorMaterial)),
@@ -222,7 +269,7 @@ router.post('/', async (req, res, next) => {
       }
       if (operacion.forzada) {
         faltantes = (operacion.movimientos || []).filter(m => m.stock_nuevo < 0)
-          .map(m => ({ material: m.nombre, stock_actual: m.stock_anterior, requerido: -m.cantidad }));
+          .map(m => ({ [m.producto_id ? 'producto' : 'material']: m.nombre, stock_actual: m.stock_anterior, requerido: -m.cantidad }));
       }
     }
 
@@ -484,7 +531,8 @@ router.put('/:id', async (req, res, next) => {
         .eq('activo', true)
         .in('producto_id', idsUnion);
       if (eProcActivos) throw new Error(eProcActivos.message);
-      if (procesosActivos && procesosActivos.length > 0) {
+      const conStockEdicion = await idsConStock(idsUnion, req.empresa.id);
+      if (procesosActivos && procesosActivos.some(p => !conStockEdicion.has(p.producto_id))) {
         return res.status(400).json({
           error: 'Esta venta incluye un producto con procesos (producción por etapas) — todavía no se puede editar productos/cantidades en ese caso. Elimínala y regístrala de nuevo con los datos correctos.'
         });
@@ -495,11 +543,13 @@ router.put('/:id', async (req, res, next) => {
 
     // Lo ya descontado sale del HISTORIAL de esta venta (no de la ficha
     // actual). Ventas viejas sin historial: se usa la ficha, como antes.
-    const requeridoNuevo = requeridoPorMaterialDe(items, fichas);
+    const conStockEd = await idsConStock(idsUnion, req.empresa.id);
+    const requeridoNuevo = requeridoPorMaterialDe(items.filter(i => !conStockEd.has(i.producto_id)), fichas);
     const registrado = await libro.saldoRegistrado(req.empresa.id, req.params.id);
     const actualPorMaterial = new Map(registrado.materiales); // negativo = consumido
     if (!registrado.hayRegistro) {
-      for (const [id, { requerido }] of requeridoPorMaterialDe(ventaActual.ventas_items || [], fichas))
+      const viejosSinStock = (ventaActual.ventas_items || []).filter(i => !conStockEd.has(i.producto_id));
+      for (const [id, { requerido }] of requeridoPorMaterialDe(viejosSinStock, fichas))
         actualPorMaterial.set(id, -requerido);
     }
     const ajuste = new Map(); // material_id -> { material, requerido } (requerido > 0 = consume más)
@@ -512,6 +562,12 @@ router.put('/:id', async (req, res, next) => {
 
     let faltantes = [];
     const movimientos = libro.movimientosDeMateriales(ajuste, -1);
+    // Productos terminados: objetivo = −unidades vendidas; se mueve la diferencia
+    const objetivoProductos = unidadesPorProducto(items, conStockEd);
+    for (const id of new Set([...registrado.productos.keys(), ...objetivoProductos.keys()])) {
+      const diferencia = -(objetivoProductos.get(id) || 0) - (registrado.productos.get(id) || 0);
+      if (Math.abs(diferencia) >= 0.00005) movimientos.push({ producto_id: id, cantidad: Math.round(diferencia * 10000) / 10000 });
+    }
     if (movimientos.length > 0) {
       const operacion = await libro.aplicarOperacion({
         empresaId: req.empresa.id, usuarioId: req.usuarioId,
@@ -521,6 +577,8 @@ router.put('/:id', async (req, res, next) => {
         movimientos, permitirNegativo: !!forzar, detalleForzado: { confirmado: true }
       });
       if (!operacion.ok) {
+        const deProductos = operacion.faltantes.filter(f => f.producto_id);
+        if (deProductos.length > 0) return respuestaFaltanProductos(res, deProductos, req.empresa.id);
         return res.status(409).json({
           error: 'No hay material suficiente para estos cambios',
           faltantes: libro.faltantesLegibles(operacion.faltantes, libro.unidadesDe(requeridoNuevo)),

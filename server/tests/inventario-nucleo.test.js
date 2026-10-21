@@ -94,3 +94,12 @@ test('semáforo de productos terminados', () => {
   assert.equal(rutaProductos.estadoStock(2, 2, true), 'amarillo');
   assert.equal(rutaProductos.estadoStock(3, 2, true), 'verde');
 });
+
+// ---- Fase 6: historial
+const { _interno: rutaHistorial } = require('../rutas/inventario-historial');
+test('solo se revierten aquí operaciones sin documento de origen', () => {
+  for (const t of ['venta', 'compra', 'entrega_proceso', 'reversion', 'importacion']) assert.ok(rutaHistorial.SE_REVIERTEN_EN_SU_ORIGEN[t], t);
+  for (const t of ['ajuste', 'ingreso_producto', 'compra_reventa', 'salida_producto', 'fabricacion']) assert.equal(rutaHistorial.SE_REVIERTEN_EN_SU_ORIGEN[t], undefined, t);
+  assert.equal(rutaHistorial.enlaceOrigen({ origen_tabla: 'ventas', origen_id: 'x' }), '/ventas.html');
+  assert.equal(rutaHistorial.enlaceOrigen({ origen_tabla: null }), null);
+});
