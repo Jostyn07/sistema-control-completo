@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Política de Cookies — Sistema de Control</title>
+  <title>Política de Cookies — Fincil</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/landing/img/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/landing/img/favicon-192.png">
   <link rel="apple-touch-icon" href="/landing/img/apple-touch-icon.png">
@@ -16,8 +16,14 @@
     .doc-legal { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; line-height: 1.7; }
     .doc-legal h1 { font-size: 1.8rem; margin-bottom: 4px; }
     .doc-legal h2 { font-size: 1.15rem; margin-top: 36px; }
-    .doc-legal p, .doc-legal li { color: var(--ink-suave); }
+    .doc-legal h3 { font-size: 1rem; margin-top: 20px; }
+    .doc-legal p, .doc-legal li, .doc-legal td { color: var(--ink-suave); }
     .doc-legal .fecha-actualizacion { color: var(--ink-tenue); font-size: 0.85rem; margin-bottom: 32px; }
+    .doc-legal .destacado { background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px; padding: 16px 18px; margin: 16px 0; }
+    .doc-legal .tabla-legal { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.92rem; }
+    .doc-legal .tabla-legal th, .doc-legal .tabla-legal td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+    .doc-legal .tabla-contenedor { overflow-x: auto; }
+    .doc-legal .otros-documentos { margin-top: 48px; font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -26,89 +32,73 @@
   </nav>
   <main class="doc-legal">
     <h1>Política de Cookies</h1>
-    <p class="fecha-actualizacion">Última actualización: 23 de septiembre de 2026</p>
+    <p class="fecha-actualizacion">Última actualización: 21 de octubre de 2026</p>
 
     <p>
-      Esta política explica, de forma honesta y sencilla, qué cookies y tecnologías similares
-      usa Fincil, para qué sirve cada una y cómo puede controlarlas.
+      Esta política explica, de forma clara, qué guarda Fincil en tu navegador, para qué sirve y cómo
+      puedes controlarlo.
     </p>
 
-    <h2>1. Almacenamiento necesario para que el sistema funcione</h2>
+    <h2>1. Lo necesario para que Fincil funcione</h2>
     <p>
-      Para mantener su sesión iniciada mientras navega entre las distintas secciones, usamos el
-      almacenamiento local de su navegador (<em>localStorage</em>), que guarda únicamente:
+      Usamos el almacenamiento local de tu navegador (localStorage y sessionStorage). No son cookies,
+      pero cumplen una función parecida. Sin esto no puedes usar el sistema:
     </p>
+    <div class="tabla-contenedor"><table class="tabla-legal"><thead><tr><th>Qué se guarda</th><th>Para qué</th><th>Cuánto dura</th></tr></thead><tbody><tr><td>Token de sesión y token para renovarla</td><td>Saber que iniciaste sesión y mantenerla abierta</td><td>Hasta que cierres sesión</td></tr><tr><td>Tu nombre y correo</td><td>Mostrarlos en el menú</td><td>Hasta que cierres sesión</td></tr><tr><td>Empresa activa</td><td>Recordar con qué empresa estás trabajando si perteneces a varias</td><td>Hasta que cierres sesión o cambies de empresa</td></tr><tr><td>Sincronización del perfil</td><td>Evitar volver a cargar tu perfil en cada pantalla</td><td>Hasta que cierres la pestaña</td></tr></tbody></table></div>
+
+    <h2>2. Preferencias</h2>
+    <p>Para que la aplicación se vea y se comporte como la dejaste:</p>
+    <div class="tabla-contenedor"><table class="tabla-legal"><thead><tr><th>Qué se guarda</th><th>Para qué</th></tr></thead><tbody><tr><td>Tema (claro u oscuro), color de acento y fondo</td><td>Aplicar tu apariencia</td></tr><tr><td>Vista elegida (por ejemplo, pestaña de Inventario o vista de Productos)</td><td>Volver a abrir donde estabas</td></tr><tr><td>Período elegido en reportes</td><td>Mantener el filtro de fechas</td></tr><tr><td>Recorridos de ayuda ya vistos</td><td>No volver a mostrártelos</td></tr></tbody></table></div>
+    <p>Todo esto se queda en tu dispositivo, no se envía a terceros y no se usa para publicidad.</p>
+
+    <h2>3. Medición de anuncios (Pixel de Meta)</h2>
+    <p>
+      Solo en las páginas públicas (sitio web, planes, preguntas frecuentes), en inicio de sesión y
+      registro, y en la página de suscripción, usamos el <strong>Pixel de Meta</strong> (Facebook e
+      Instagram) para saber si nuestros anuncios funcionan: cuántas personas visitan, se registran y se
+      suscriben. El Pixel puede crear las cookies <code>_fbp</code> y <code>_fbc</code>.
+    </p>
+    <p>
+      Además, cuando te registras o te suscribes, nuestro servidor le avisa ese evento a Meta. Enviamos
+      tu correo, tu nombre y un identificador interno cifrados de forma irreversible (SHA-256), tu IP,
+      tu navegador y, en suscripciones, el plan y el valor pagado.
+    </p>
+    <p>
+      <strong>El Pixel no se carga dentro del sistema</strong>, donde trabajas con ventas, inventario,
+      clientes, precios, facturas o nóminas, y nunca enviamos a Meta información de tu negocio. Meta trata
+      esta información según su
+      <a href="https://www.facebook.com/privacy/policy/" target="_blank" rel="noopener">Política de privacidad</a>.
+    </p>
+
+    <h2>4. Cookies de terceros necesarias</h2>
     <ul>
-      <li>Un token de sesión, que identifica que usted inició sesión correctamente.</li>
-      <li>Su nombre y correo, para mostrarlos en la barra de navegación.</li>
+      <li><strong>Wompi</strong> puede usar sus propias cookies mientras pagas, para procesar el pago de forma segura.</li>
+      <li><strong>Google</strong> puede usar sus cookies si eliges iniciar sesión con Google.</li>
+      <li><strong>Cloudflare</strong> puede usar cookies técnicas para distinguir visitas reales de ataques automáticos.</li>
     </ul>
+    <p>Esas cookies se rigen por las políticas de cada proveedor.</p>
+
+    <h2>5. Lo que no usamos</h2>
     <p>
-      Esta información se queda en su propio dispositivo y se borra al cerrar sesión. Sin ella
-      el sistema no puede funcionar.
+      No usamos cookies de publicidad dentro del sistema, ni herramientas que graben tu pantalla o lo
+      que escribes. Los errores técnicos y las mediciones de uso se envían desde nuestro servidor, sin
+      cookies y sin datos de tu negocio (ver <a href="./privacidad.html">Política de Privacidad</a>).
     </p>
 
-    <h2>2. Cookies de publicidad y medición (Pixel de Meta)</h2>
-    <p>
-      En nuestras páginas públicas (sitio web, planes, preguntas frecuentes), en la página de
-      inicio de sesión y registro, y en la página de suscripción usamos el
-      <strong>Pixel de Meta</strong> (la empresa detrás de Facebook e Instagram). Lo usamos
-      para saber si nuestros anuncios en esas redes funcionan: cuántas personas visitan el
-      sitio, cuántas crean una cuenta y cuántas se suscriben después de ver un anuncio.
-    </p>
-    <p>El Pixel puede crear en su navegador las cookies <code>_fbp</code> y <code>_fbc</code>.</p>
-    <p>
-      Además, cuando usted crea una cuenta o se suscribe, nuestro servidor le informa ese
-      evento a Meta mediante su <em>API de Conversiones</em>. En ese aviso enviamos:
-    </p>
+    <h2>6. Cómo controlarlo</h2>
     <ul>
-      <li>Su correo, su nombre y un identificador interno, siempre <strong>cifrados de forma
-        irreversible</strong> (hash SHA-256) antes de salir de nuestro servidor.</li>
-      <li>Su dirección IP y el tipo de navegador.</li>
-      <li>En suscripciones: el plan elegido y el valor pagado.</li>
-    </ul>
-    <p>
-      <strong>Nunca</strong> enviamos a Meta información de su negocio (ventas, inventario,
-      clientes, precios, facturas o nóminas). El Pixel no se carga en las secciones internas
-      del sistema donde usted trabaja con esos datos.
-    </p>
-    <p>
-      Meta trata esta información según su propia
-      <a href="https://www.facebook.com/privacy/policy" target="_blank" rel="noopener">Política de privacidad</a>.
-    </p>
-
-    <h2>3. Lo que un tercero puede usar durante el pago</h2>
-    <p>
-      Los pagos de su suscripción los procesa <strong>Wompi</strong> directamente en su
-      navegador, mediante su propio formulario seguro. Es posible que Wompi use sus propias
-      cookies durante ese proceso, necesarias para procesar el pago de forma segura. Esas
-      cookies se rigen por la política de privacidad de Wompi, no por esta.
-    </p>
-
-    <h2>4. Cómo puede controlar esto</h2>
-    <ul>
-      <li>
-        <strong>Cookies de publicidad:</strong> puede bloquearlas o borrarlas desde la
-        configuración de su navegador, o usar un bloqueador de anuncios. Esto no afecta el
-        funcionamiento del sistema.
-      </li>
-      <li>
-        <strong>Anuncios en Facebook e Instagram:</strong> puede administrar cómo Meta usa
-        información de otros sitios desde la
-        <a href="https://accountscenter.facebook.com/ad_preferences" target="_blank" rel="noopener">configuración de anuncios de Meta</a>.
-      </li>
-      <li>
-        <strong>Sesión:</strong> use el botón "Cerrar sesión" al terminar, o borre los datos
-        de almacenamiento local del sitio desde su navegador.
-      </li>
-      <li>
-        Puede ejercer sus derechos sobre sus datos personales (Ley 1581 de 2012) escribiéndonos
-        al correo de contacto.
-      </li>
+      <li><strong>Cookies de Meta:</strong> puedes bloquearlas o borrarlas en la configuración de tu navegador o con un bloqueador de anuncios. Fincil sigue funcionando igual.</li>
+      <li><strong>Anuncios en Facebook e Instagram:</strong> puedes administrar cómo Meta usa información de otros sitios en la <a href="https://accountscenter.facebook.com/ad_preferences" target="_blank" rel="noopener">configuración de anuncios de Meta</a>.</li>
+      <li><strong>Sesión y preferencias:</strong> usa "Cerrar sesión" o borra los datos del sitio en tu navegador. Tendrás que volver a iniciar sesión y tus preferencias de esa pantalla volverán a las de tu perfil.</li>
     </ul>
 
-    <h2>5. Contacto</h2>
-    <p>
-      Preguntas sobre esta política: <a href="mailto:toolkapcorp@gmail.com">toolkapcorp@gmail.com</a>.
+    <h2>7. Contacto</h2>
+    <p>Preguntas sobre esta política o sobre tus datos (Ley 1581 de 2012): <a href="mailto:toolkapcorp@gmail.com">toolkapcorp@gmail.com</a>.</p>
+
+    <p class="otros-documentos">
+      Otros documentos: <a href="./terminos.html">Términos y Condiciones</a> ·
+      <a href="./privacidad.html">Política de Privacidad</a> ·
+      <a href="./cookies.html">Política de Cookies</a>
     </p>
   </main>
   <script src="js/tema.js"></script>

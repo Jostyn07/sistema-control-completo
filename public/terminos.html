@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Términos y Condiciones — Sistema de Control</title>
+  <title>Términos y Condiciones — Fincil</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/landing/img/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/landing/img/favicon-192.png">
   <link rel="apple-touch-icon" href="/landing/img/apple-touch-icon.png">
@@ -16,8 +16,14 @@
     .doc-legal { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; line-height: 1.7; }
     .doc-legal h1 { font-size: 1.8rem; margin-bottom: 4px; }
     .doc-legal h2 { font-size: 1.15rem; margin-top: 36px; }
-    .doc-legal p, .doc-legal li { color: var(--ink-suave); }
+    .doc-legal h3 { font-size: 1rem; margin-top: 20px; }
+    .doc-legal p, .doc-legal li, .doc-legal td { color: var(--ink-suave); }
     .doc-legal .fecha-actualizacion { color: var(--ink-tenue); font-size: 0.85rem; margin-bottom: 32px; }
+    .doc-legal .destacado { background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px; padding: 16px 18px; margin: 16px 0; }
+    .doc-legal .tabla-legal { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.92rem; }
+    .doc-legal .tabla-legal th, .doc-legal .tabla-legal td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+    .doc-legal .tabla-contenedor { overflow-x: auto; }
+    .doc-legal .otros-documentos { margin-top: 48px; font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -25,131 +31,154 @@
     <a href="./index.html" class="navegacion__enlace">Inicio</a>
   </nav>
   <main class="doc-legal">
-    <h1>Términos y Condiciones de Uso</h1>
-    <p class="fecha-actualizacion">Última actualización: 24 de julio de 2026</p>
+    <h1>Términos y Condiciones</h1>
+    <p class="fecha-actualizacion">Última actualización: 21 de octubre de 2026</p>
 
     <p>
-      Estos Términos y Condiciones ("Términos") rigen el uso del software "Sistema de Control"
-      (el "Servicio"), desarrollado y operado por <strong>Toolkap</strong> ("nosotros", "el Proveedor").
-      Al crear una cuenta o usar el Servicio, usted ("el Usuario") acepta estos Términos en su
-      totalidad. Si no está de acuerdo, no debe usar el Servicio.
+      Estos Términos y Condiciones ("Términos") rigen el uso de <strong>Fincil</strong> (el "Servicio"),
+      el sistema de gestión para negocios que producen y venden, desarrollado y operado por
+      <strong>Toolkap</strong> ("nosotros"). Al crear una cuenta, iniciar sesión con Google o usar el
+      Servicio, aceptas estos Términos y la <a href="./privacidad.html">Política de Privacidad</a>.
+      Si no estás de acuerdo, no uses el Servicio.
     </p>
 
-    <h2>1. Descripción del servicio</h2>
+    <h2>1. Qué es Fincil</h2>
     <p>
-      El Servicio es una herramienta de software como servicio (SaaS) para la gestión de
-      materiales, productos, inventario, compras, ventas, finanzas y facturación de pequeños
-      negocios de producción. Se ofrece por suscripción mensual, con distintos planes según
-      las funciones y límites de uso.
+      Fincil es un software en la nube (SaaS) para gestionar materiales, productos, procesos de
+      producción, inventario de materiales y de productos terminados, compras, ventas, finanzas,
+      facturación, nóminas e importación y exportación de datos con Excel. Se ofrece por
+      suscripción, con planes que cambian según las funciones y los límites de uso.
     </p>
 
-    <h2>2. Cuenta de usuario</h2>
+    <h2>2. Tu cuenta y tu negocio</h2>
+    <ul>
+      <li>Necesitas un correo válido, o una cuenta de Google, y ser mayor de edad o representar legalmente al negocio.</li>
+      <li>Eres responsable de tu contraseña y de todo lo que se haga con tu cuenta.</li>
+      <li>Cada negocio se registra como una <strong>empresa</strong> dentro de Fincil. Su información está separada de la de cualquier otra empresa.</li>
+      <li>Quien crea la empresa es su <strong>propietario</strong> y puede invitar a otras personas con un rol (por ejemplo, administrador, supervisor u operador). Cada rol solo puede ver y hacer lo que su permiso le autoriza; por ejemplo, un operador puede vender sin ver costos ni márgenes.</li>
+      <li>El propietario de la empresa es responsable de a quién invita, qué rol le asigna y de retirar el acceso cuando esa persona ya no deba tenerlo.</li>
+    </ul>
+
+    <h2>3. Prueba gratis, planes y pagos</h2>
+    <ul>
+      <li><strong>Prueba gratis:</strong> 7 días desde el registro, sin tarjeta. Al terminar, la cuenta pasa a solo lectura (puedes ver tu información, pero no crear ni editar) hasta que pagues un plan.</li>
+      <li><strong>Pago mensual:</strong> cubre 30 días. El <strong>primer pago</strong> mensual de cada empresa tiene un 50&nbsp;% de descuento sobre el precio de lista; los siguientes se cobran a precio completo.</li>
+      <li><strong>Pago anual:</strong> cubre 365 días y tiene un 30&nbsp;% de descuento sobre doce meses al precio de lista. No se acumula con el descuento del primer pago mensual.</li>
+      <li>El valor a pagar lo calcula Fincil y se muestra antes de pagar. Los precios están en pesos colombianos.</li>
+      <li>Los pagos los procesa <strong>Wompi</strong>. Cada pago es independiente: <strong>no hacemos cobros automáticos</strong> ni guardamos tu tarjeta. Para seguir usando el plan debes pagar de nuevo antes del vencimiento.</li>
+      <li>Si pagas antes de que venza tu período, los días nuevos se suman a los que te quedaban.</li>
+      <li>Podemos cambiar los precios de los planes; el cambio no afecta los períodos que ya pagaste y lo avisaremos antes dentro del sistema.</li>
+    </ul>
+
+    <h2>4. Cancelación, retracto y reembolsos</h2>
+    <ul>
+      <li>Puedes cancelar cuando quieras desde "Suscripción". Conservas el acceso completo hasta el final del período pagado y después la cuenta pasa a solo lectura.</li>
+      <li>Si contratas como consumidor en los términos de la Ley 1480 de 2011, puedes ejercer el <strong>derecho de retracto</strong> dentro de los cinco (5) días hábiles siguientes al pago escribiendo a <a href="mailto:toolkapcorp@gmail.com">toolkapcorp@gmail.com</a>; en ese caso te devolvemos el valor pagado.</li>
+      <li>Fuera de ese caso, la cancelación no genera reembolso del período ya pagado, mensual o anual.</li>
+    </ul>
+
+    <h2>5. Importación con inteligencia artificial</h2>
+    <ul>
+      <li>Está disponible en los planes que la incluyen (hoy, el plan Pro y la prueba gratis), con un límite de usos por mes por empresa.</li>
+      <li>Cuando la usas, Fincil envía a <strong>OpenAI</strong> los encabezados y hasta las primeras 20 filas del archivo que subes, solo para que proponga cómo leer sus columnas. El resto del archivo no sale de Fincil.</li>
+      <li>La IA puede equivocarse. Siempre verás una vista previa antes de importar y eres tú quien decide confirmar. Revisa los datos antes de aceptar.</li>
+      <li>No subas archivos con información que no tengas derecho a tratar. Si el archivo trae datos personales de tus clientes (por ejemplo, teléfono o cédula), esas filas de muestra también se envían a OpenAI.</li>
+    </ul>
+
+    <h2>6. Inventario y producción</h2>
+    <ul>
+      <li>Fincil lleva un historial de cada movimiento de inventario (quién, cuándo, cuánto y por qué). Ese historial no se borra; las correcciones se hacen con un nuevo movimiento o una reversión.</li>
+      <li>Cuando el sistema avisa que falta stock y decides continuar, el movimiento queda marcado como <strong>forzado</strong> y el stock puede quedar en negativo. Es tu responsabilidad corregirlo después con un ajuste, una compra o una fabricación.</li>
+      <li>El stock, los costos y la capacidad de fabricación que muestra Fincil dependen de que la información que registras sea correcta (fichas técnicas, compras, ventas y conteos físicos).</li>
+    </ul>
+
+    <h2>7. Tu información es tuya</h2>
     <p>
-      Para usar el Servicio debe crear una cuenta con un correo electrónico válido. Usted es
-      responsable de mantener la confidencialidad de su contraseña y de toda actividad que
-      ocurra bajo su cuenta. Debe ser mayor de edad, o representar legalmente a un negocio,
-      para crear una cuenta.
+      Todo lo que registras (materiales, productos, ventas, clientes, inventario, facturas, nóminas)
+      sigue siendo tuyo. Solo lo guardamos y procesamos para prestarte el Servicio, como explica la
+      <a href="./privacidad.html">Política de Privacidad</a>. Puedes exportarlo a Excel en cualquier momento
+      mientras tu cuenta exista, incluso en modo solo lectura.
+    </p>
+    <p>
+      Si registras datos personales de tus clientes, colaboradores o proveedores, tú eres el
+      <strong>responsable</strong> de esos datos ante la Ley 1581 de 2012: debes contar con su autorización
+      y atender sus solicitudes. Nosotros actuamos como <strong>encargados</strong> del tratamiento y solo
+      usamos esos datos para prestarte el Servicio.
     </p>
 
-    <h2>3. Período de prueba y suscripción</h2>
-    <p>
-      Se ofrece un período de prueba gratuito de 7 días desde el registro, sin necesidad de
-      método de pago. Al finalizar la prueba, el acceso a las funciones de creación y edición
-      se suspende (conservando el acceso de solo lectura a su información) hasta que elija y
-      pague un plan. Los pagos se procesan mensualmente a través de un proveedor de pagos
-      externo (ver sección 8). El primer mes de cualquier plan tiene un descuento del 50%
-      sobre el precio de lista.
-    </p>
-
-    <h2>4. Cancelación</h2>
-    <p>
-      Puede cancelar su suscripción en cualquier momento desde la sección "Suscripción" del
-      sistema. La cancelación no genera reembolsos por el período ya pagado; usted conserva
-      el acceso completo hasta la fecha de vencimiento de su período pagado actual, después
-      de lo cual el acceso pasa a modo de solo lectura.
-    </p>
-
-    <h2>5. Propiedad intelectual</h2>
-    <p>
-      El Servicio, su código fuente, diseño, marca, logotipos y toda la propiedad intelectual
-      relacionada son propiedad exclusiva de <strong>Toolkap</strong>. Estos Términos le
-      otorgan una licencia limitada, no exclusiva e intransferible para usar el Servicio
-      únicamente para los fines previstos, mientras su suscripción esté vigente. Esta licencia
-      no le transfiere ningún derecho de propiedad sobre el software.
-    </p>
-    <p>
-      La información que usted ingresa al sistema (sus materiales, productos, ventas, datos de
-      clientes, etc.) sigue siendo de su propiedad. Nosotros solo la almacenamos y procesamos
-      para prestarle el Servicio, según se describe en la Política de Privacidad.
-    </p>
-
-    <h2>6. Uso permitido</h2>
-    <p>Usted se compromete a no:</p>
+    <h2>8. Uso permitido</h2>
+    <p>No puedes:</p>
     <ul>
       <li>Usar el Servicio para actividades ilegales o fraudulentas.</li>
-      <li>Intentar acceder a cuentas o datos de otros usuarios.</li>
-      <li>Realizar ingeniería inversa, copiar o revender el software.</li>
-      <li>Sobrecargar deliberadamente la infraestructura del Servicio.</li>
+      <li>Intentar acceder a información de otras empresas o cuentas, o saltarte los permisos de tu rol.</li>
+      <li>Hacer ingeniería inversa, copiar, revender o sublicenciar el software.</li>
+      <li>Sobrecargar el Servicio de forma deliberada, usar robots para extraer información o probar su seguridad sin nuestra autorización escrita.</li>
     </ul>
+    <p>Podemos suspender una cuenta que incumpla estas reglas, avisándote cuando sea posible.</p>
 
-    <h2>7. Naturaleza de la herramienta — no es asesoría profesional</h2>
-    <p>
-      El Servicio es una herramienta de apoyo a la gestión de su negocio. Los cálculos
-      financieros (costos, márgenes, punto de equilibrio, flujo de caja) y los documentos de
-      facturación que genera <strong>no constituyen asesoría contable, tributaria o legal</strong>,
-      y no reemplazan a un contador o asesor tributario. Cuando su cuenta no tiene una
-      resolución de numeración de la DIAN configurada, los documentos generados son recibos
-      internos sin validez fiscal, y el sistema se lo indica claramente en cada caso. Usted es
-      responsable de verificar el cumplimiento de sus obligaciones tributarias con las
-      autoridades competentes.
-    </p>
-
-    <h2>8. Terceros involucrados en el Servicio</h2>
-    <p>
-      Para operar, el Servicio utiliza proveedores externos:
-    </p>
+    <h2>9. Seguridad y registro de actividad</h2>
     <ul>
-      <li><strong>Supabase</strong> — aloja la base de datos y gestiona la autenticación de usuarios.</li>
-      <li><strong>Mercado Pago</strong> — procesa los pagos de suscripción. Nosotros nunca recibimos ni
-        almacenamos los números de tarjeta de crédito; esos datos los maneja Mercado Pago directamente,
-        bajo su propia certificación de seguridad (PCI DSS).</li>
-      <li><strong>Vercel</strong> — aloja la aplicación web.</li>
+      <li>Guardamos un <strong>historial de cambios</strong> (por ejemplo, cambios de precios, costos, inventario, equipo, configuración y facturas) con quién lo hizo y cuándo. Ese historial no se puede editar ni borrar y está disponible para los roles con permiso dentro de tu empresa.</li>
+      <li>Para proteger el Servicio filtramos el tráfico (Cloudflare), limitamos los intentos de inicio de sesión y registramos los errores técnicos sin incluir los datos de tu negocio. Detalles en la <a href="./privacidad.html">Política de Privacidad</a>.</li>
     </ul>
 
-    <h2>9. Disponibilidad del servicio</h2>
+    <h2>10. No es asesoría profesional</h2>
     <p>
-      Nos esforzamos por mantener el Servicio disponible de forma continua, pero no
-      garantizamos un funcionamiento ininterrumpido o libre de errores. No somos responsables
-      por interrupciones causadas por fallas de nuestros proveedores externos (Supabase,
-      Mercado Pago, Vercel) fuera de nuestro control razonable.
+      Fincil es una herramienta de apoyo. Sus cálculos (costos, márgenes, punto de equilibrio, flujo
+      de caja, nómina) y los documentos que genera no son asesoría contable, tributaria, laboral ni
+      legal, y no reemplazan a un contador. Si tu cuenta no tiene una resolución de numeración de la
+      DIAN configurada, los documentos son recibos internos sin validez fiscal, y el sistema lo indica.
+      Tú eres responsable de cumplir tus obligaciones tributarias y laborales.
     </p>
 
-    <h2>10. Límite de responsabilidad</h2>
+    <h2>11. Proveedores que hacen posible el Servicio</h2>
+    <div class="tabla-contenedor"><table class="tabla-legal"><thead><tr><th>Proveedor</th><th>Para qué</th></tr></thead><tbody><tr><td>Supabase</td><td>Base de datos, autenticación y almacenamiento de imágenes</td></tr><tr><td>Vercel</td><td>Alojamiento de la aplicación</td></tr><tr><td>Cloudflare</td><td>Red de entrega y protección contra ataques</td></tr><tr><td>Wompi</td><td>Procesamiento de pagos</td></tr><tr><td>Google</td><td>Inicio de sesión con Google, si lo eliges</td></tr><tr><td>OpenAI</td><td>Importación con inteligencia artificial, solo cuando la usas</td></tr><tr><td>Sentry</td><td>Registro de errores técnicos</td></tr><tr><td>Meta</td><td>Medición de nuestros anuncios, solo en páginas públicas, registro y suscripción</td></tr></tbody></table></div>
+
+    <h2>12. Disponibilidad</h2>
     <p>
-      En la máxima medida permitida por la ley, la responsabilidad total de Toolkap frente a
-      usted por cualquier reclamo relacionado con el Servicio se limita al monto que usted
-      haya pagado por la suscripción en los tres (3) meses anteriores al hecho que originó el
-      reclamo. No somos responsables por daños indirectos, lucro cesante, o pérdida de datos
-      resultante de un uso indebido del Servicio por parte del Usuario.
+      Trabajamos para que Fincil esté disponible siempre, pero no garantizamos un servicio sin
+      interrupciones ni errores. No respondemos por fallas de nuestros proveedores fuera de nuestro
+      control razonable. Cuando hagamos mantenimientos planeados que afecten el uso, intentaremos
+      avisarte antes.
     </p>
 
-    <h2>11. Modificaciones</h2>
+    <h2>13. Límite de responsabilidad</h2>
     <p>
-      Podemos actualizar estos Términos ocasionalmente. Los cambios importantes se
-      notificarán dentro del sistema. El uso continuado del Servicio después de una
-      actualización implica la aceptación de los nuevos Términos.
+      En la máxima medida que permita la ley, nuestra responsabilidad total frente a ti por cualquier
+      reclamo relacionado con el Servicio se limita a lo que pagaste por la suscripción en los tres (3)
+      meses anteriores al hecho que lo originó. No respondemos por daños indirectos, lucro cesante ni
+      pérdida de información causada por un uso indebido del Servicio, por decisiones tomadas con base
+      en datos mal registrados, o por accesos hechos con tus credenciales o por personas que tú invitaste.
+      Nada de esto limita los derechos que la ley te reconoce y que no se pueden renunciar.
     </p>
 
-    <h2>12. Ley aplicable</h2>
+    <h2>14. Fin de la cuenta</h2>
     <p>
-      Estos Términos se rigen por las leyes de la República de Colombia. Cualquier disputa se
-      someterá a los jueces competentes de Colombia.
+      Si dejas de pagar, la cuenta queda en solo lectura y puedes exportar tu información. Puedes pedir
+      que eliminemos tu cuenta y los datos de tu empresa escribiendo a <a href="mailto:toolkapcorp@gmail.com">toolkapcorp@gmail.com</a>. Algunos registros
+      (por ejemplo, pagos y facturas) pueden conservarse el tiempo que exija la ley.
     </p>
 
-    <h2>13. Contacto</h2>
+    <h2>15. Cambios a estos Términos</h2>
     <p>
-      Para preguntas sobre estos Términos, escriba a
-      <a href="mailto:toolkapcorp@gmail.com">toolkapcorp@gmail.com</a>.
+      Podemos actualizar estos Términos. Los cambios importantes los avisaremos dentro del sistema
+      antes de que entren en vigencia. Si sigues usando el Servicio después, se entiende que los aceptas.
+    </p>
+
+    <h2>16. Ley aplicable</h2>
+    <p>
+      Estos Términos se rigen por las leyes de la República de Colombia. Cualquier controversia se
+      someterá a los jueces competentes de Colombia, sin perjuicio de tu derecho a acudir a la
+      Superintendencia de Industria y Comercio.
+    </p>
+
+    <h2>17. Contacto</h2>
+    <p>Preguntas sobre estos Términos: <a href="mailto:toolkapcorp@gmail.com">toolkapcorp@gmail.com</a>.</p>
+
+    <p class="otros-documentos">
+      Otros documentos: <a href="./terminos.html">Términos y Condiciones</a> ·
+      <a href="./privacidad.html">Política de Privacidad</a> ·
+      <a href="./cookies.html">Política de Cookies</a>
     </p>
   </main>
   <script src="js/tema.js"></script>

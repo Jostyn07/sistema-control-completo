@@ -24,6 +24,7 @@ async function pedirJson({ sistema, usuario, esquemaJson, nombreEsquema }) {
       body: JSON.stringify({
         model: modelo,
         temperature: 0,
+        store: false, // OpenAI no guarda la conversación como registro consultable
         messages: [{ role: 'system', content: sistema }, { role: 'user', content: usuario }],
         response_format: { type: 'json_schema', json_schema: { name: nombreEsquema, strict: true, schema: esquemaJson } }
       })

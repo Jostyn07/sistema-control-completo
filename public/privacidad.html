@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Política de Privacidad — Sistema de Control</title>
+  <title>Política de Privacidad y Tratamiento de Datos Personales — Fincil</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/landing/img/favicon-32.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/landing/img/favicon-192.png">
   <link rel="apple-touch-icon" href="/landing/img/apple-touch-icon.png">
@@ -16,9 +16,14 @@
     .doc-legal { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; line-height: 1.7; }
     .doc-legal h1 { font-size: 1.8rem; margin-bottom: 4px; }
     .doc-legal h2 { font-size: 1.15rem; margin-top: 36px; }
-    .doc-legal p, .doc-legal li { color: var(--ink-suave); }
+    .doc-legal h3 { font-size: 1rem; margin-top: 20px; }
+    .doc-legal p, .doc-legal li, .doc-legal td { color: var(--ink-suave); }
     .doc-legal .fecha-actualizacion { color: var(--ink-tenue); font-size: 0.85rem; margin-bottom: 32px; }
     .doc-legal .destacado { background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px; padding: 16px 18px; margin: 16px 0; }
+    .doc-legal .tabla-legal { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.92rem; }
+    .doc-legal .tabla-legal th, .doc-legal .tabla-legal td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+    .doc-legal .tabla-contenedor { overflow-x: auto; }
+    .doc-legal .otros-documentos { margin-top: 48px; font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -27,145 +32,166 @@
   </nav>
   <main class="doc-legal">
     <h1>Política de Privacidad y Tratamiento de Datos Personales</h1>
-    <p class="fecha-actualizacion">Última actualización: 23 de septiembre de 2026</p>
+    <p class="fecha-actualizacion">Última actualización: 21 de octubre de 2026</p>
 
     <p>
-      <strong>Toolkap</strong> ("nosotros"), como responsable del tratamiento de datos personales
-      del Sistema de Control (el "Servicio"), cumple con la Ley 1581 de 2012 y el Decreto 1377
-      de 2013 de Colombia sobre protección de datos personales. Esta política explica qué
-      información recolectamos, para qué la usamos, cómo la protegemos, y cuáles son sus
-      derechos.
+      <strong>Toolkap</strong> ("nosotros") opera <strong>Fincil</strong> (el "Servicio") y cumple la
+      Ley 1581 de 2012, el Decreto 1377 de 2013 (incorporado en el Decreto 1074 de 2015) y demás normas
+      colombianas de protección de datos personales. Esta política explica qué información tratamos,
+      para qué, con quién la compartimos, cómo la protegemos y cómo ejercer tus derechos.
     </p>
 
     <div class="destacado">
-      <strong>Resumen rápido:</strong> los datos sensibles (teléfono y cédula de sus clientes)
-      se guardan cifrados — ni siquiera nosotros podemos leerlos directamente desde la base de
-      datos. Ningún dato que usted ingrese se usa para entrenar modelos de inteligencia
-      artificial. La información de su negocio nunca se comparte con terceros para fines
-      distintos a prestarle el Servicio.
+      <strong>En resumen:</strong> la información de tu negocio es tuya y está separada de la de cualquier
+      otra empresa. El teléfono y la cédula de tus clientes se guardan cifrados. No vendemos datos ni usamos
+      tu información para entrenar modelos de inteligencia artificial. Las mediciones de uso y los
+      registros de errores no incluyen los datos de tu negocio.
     </div>
 
-    <h2>1. Qué información recolectamos</h2>
-    <p><strong>Datos de su cuenta:</strong></p>
+    <h2>1. Quién es responsable</h2>
     <ul>
-      <li>Nombre y correo electrónico (al registrarse, o los que provea Google si inicia sesión así).</li>
-      <li>Contraseña (nunca la vemos en texto plano; Supabase la guarda con cifrado irreversible).</li>
-    </ul>
-    <p><strong>Datos de su negocio, que usted ingresa voluntariamente:</strong></p>
-    <ul>
-      <li>Materiales, productos, precios, costos, proveedores.</li>
-      <li>Ventas, incluyendo el nombre, teléfono y cédula de sus clientes (si usted decide registrarlos).</li>
-      <li>Información de facturación de su negocio (razón social, NIT, si aplica).</li>
-    </ul>
-    <p><strong>Datos de pago:</strong></p>
-    <ul>
-      <li>
-        Nosotros <strong>nunca</strong> recibimos ni almacenamos el número completo de su
-        tarjeta de crédito. Esa información la procesa directamente nuestro proveedor de
-        pagos, Wompi, bajo su propia certificación de seguridad (PCI DSS).
-      </li>
+      <li><strong>Datos de tu cuenta</strong> (tu nombre, correo, perfil, pagos): Toolkap es el <strong>responsable</strong> del tratamiento.</li>
+      <li><strong>Datos que registras de terceros</strong> (tus clientes, colaboradores, proveedores): tu empresa es la responsable y Toolkap actúa como <strong>encargado</strong>, tratándolos solo para prestarte el Servicio y según tus instrucciones.</li>
+      <li>Contacto: <a href="mailto:toolkapcorp@gmail.com">toolkapcorp@gmail.com</a>.</li>
     </ul>
 
-    <h2>2. Cifrado de datos sensibles</h2>
+    <h2>2. Qué información tratamos</h2>
+    <h3>De tu cuenta</h3>
+    <ul>
+      <li>Nombre y correo (los que escribes al registrarte o los que entrega Google si inicias sesión con Google).</li>
+      <li>Contraseña: nunca la vemos; se guarda cifrada de forma irreversible.</li>
+      <li>Datos de perfil que decidas agregar: apellido, nombre visible, cargo, descripción, teléfono, estado, foto, portada y preferencias de apariencia (tema, color, fondo).</li>
+      <li>Empresa a la que perteneces, tu rol y tu estado dentro de ella.</li>
+    </ul>
+    <h3>De tu negocio (lo que tú registras)</h3>
+    <ul>
+      <li>Materiales, productos, fichas técnicas, procesos, precios, costos y proveedores.</li>
+      <li>Inventario de materiales y de productos terminados, con su historial de movimientos.</li>
+      <li>Compras, ventas y entregas, incluidos nombre, teléfono y cédula de tus clientes si decides registrarlos.</li>
+      <li>Finanzas, facturación (razón social, NIT, resolución DIAN si aplica) y nóminas de tus colaboradores.</li>
+      <li>Archivos de Excel que importas.</li>
+    </ul>
+    <h3>De pagos</h3>
     <p>
-      El teléfono y la cédula de sus clientes, si usted decide guardarlos, se cifran con el
-      algoritmo AES-256 antes de guardarse en la base de datos. Esto significa que, incluso si
-      alguien accediera directamente a la base de datos, esos campos se verían como texto
-      ilegible — solo nuestro sistema, con la llave de cifrado correcta, puede leerlos, y
-      únicamente para mostrárselos a usted dentro de su propia cuenta.
+      No recibimos ni guardamos tu número de tarjeta. El pago lo procesa directamente Wompi. Nosotros
+      guardamos la referencia, el plan, el período (mensual o anual), el valor y el estado del pago.
     </p>
-
-    <h2>3. Para qué usamos su información</h2>
+    <h3>Técnicos</h3>
     <ul>
-      <li>Prestarle el Servicio: guardar y mostrarle sus datos de negocio.</li>
-      <li>Procesar sus pagos de suscripción.</li>
-      <li>Comunicarnos con usted sobre su cuenta (confirmaciones, avisos de vencimiento).</li>
-      <li>Mejorar el Servicio (análisis agregado y anónimo de uso, nunca de contenido específico de su negocio).</li>
+      <li><strong>Historial de cambios:</strong> quién cambió qué y cuándo dentro de tu empresa.</li>
+      <li><strong>Seguridad:</strong> la dirección IP se usa para limitar intentos de inicio de sesión y bloquear ataques. Los intentos de acciones no permitidas por un rol quedan registrados en el historial.</li>
+      <li><strong>Errores técnicos:</strong> cuando algo falla registramos el mensaje del error y la pantalla o ruta, sin IP, sin cookies y quitando antes nombres, correos, teléfonos, documentos, precios y costos.</li>
+      <li><strong>Mediciones de uso:</strong> qué módulos se usan, cuántas veces y cuánto tardan. Se guardan con identificadores seudónimos (no se puede saber a qué empresa o persona corresponden sin una clave que solo tiene el sistema) y nunca incluyen nombres, precios ni montos.</li>
     </ul>
 
+    <h2>3. Para qué la usamos</h2>
+    <ul>
+      <li>Prestarte el Servicio: guardar, calcular y mostrarte la información de tu negocio.</li>
+      <li>Controlar el acceso de cada persona según su rol y mantener cada empresa separada.</li>
+      <li>Procesar tus pagos y avisarte sobre tu suscripción (confirmaciones, vencimientos, recuperación de contraseña).</li>
+      <li>Proteger el Servicio contra fraudes y ataques, y corregir errores.</li>
+      <li>Mejorar el Servicio con mediciones agregadas y seudónimas.</li>
+      <li>Medir nuestros propios anuncios (sección 5).</li>
+    </ul>
     <div class="destacado">
-      <strong>Lo que NO hacemos con su información:</strong>
-      <ul style="margin-bottom:0">
-        <li>No usamos los datos que usted ingresa para entrenar o alimentar modelos de inteligencia artificial.</li>
-        <li>No vendemos su información. La información de su negocio (ventas, clientes, inventario, precios) nunca se comparte con terceros para publicidad. Para medir nuestros propios anuncios solo compartimos con Meta los datos limitados descritos en la sección 4.</li>
-        <li>No accedemos al contenido de su negocio (ventas, clientes, precios) salvo cuando sea estrictamente necesario para brindarle soporte técnico, y solo con su conocimiento.</li>
+      <strong>Lo que no hacemos:</strong>
+      <ul>
+        <li>No vendemos tu información.</li>
+        <li>No usamos la información de tu negocio para entrenar modelos de inteligencia artificial, ni la compartimos con terceros para publicidad.</li>
+        <li>No entramos a la información de tu negocio salvo cuando sea estrictamente necesario para darte soporte técnico, y con tu conocimiento.</li>
       </ul>
     </div>
 
-    <h2>4. Con quién compartimos información</h2>
+    <h2>4. Importación con inteligencia artificial</h2>
     <p>
-      Solo con los proveedores de infraestructura necesarios para operar el Servicio, cada uno
-      bajo sus propias políticas de seguridad y privacidad:
+      Solo si usas "Importar con IA": Fincil envía a OpenAI los encabezados y hasta las primeras 20
+      filas del archivo para que proponga cómo leer sus columnas. El resto del archivo no sale de Fincil.
+      Según las condiciones de OpenAI para su API, esa información no se usa para entrenar sus modelos
+      y puede conservarse hasta 30 días para vigilar abusos. Si tu archivo incluye datos personales
+      (por ejemplo, teléfonos o cédulas), esas filas de muestra también se envían; si no quieres que
+      ocurra, quita esas columnas antes de subirlo o usa la importación con la plantilla de Fincil,
+      que no usa IA.
     </p>
+
+    <h2>5. Con quién compartimos información</h2>
+    <p>Solo con proveedores necesarios para operar el Servicio, cada uno bajo sus propias políticas:</p>
+    <div class="tabla-contenedor"><table class="tabla-legal"><thead><tr><th>Proveedor</th><th>Qué recibe</th><th>Para qué</th></tr></thead><tbody><tr><td>Supabase</td><td>Toda la información de la cuenta y del negocio</td><td>Base de datos, autenticación y almacenamiento de imágenes</td></tr><tr><td>Vercel</td><td>Las solicitudes a la aplicación</td><td>Alojamiento</td></tr><tr><td>Cloudflare</td><td>Las solicitudes, incluida la IP</td><td>Red de entrega y protección contra ataques</td></tr><tr><td>Wompi</td><td>Datos del pago que escribes en su formulario</td><td>Procesar pagos</td></tr><tr><td>Google</td><td>Lo necesario para iniciar sesión, si eliges Google</td><td>Autenticación</td></tr><tr><td>OpenAI</td><td>Encabezados y hasta 20 filas de muestra, solo al usar la IA</td><td>Leer archivos de Excel</td></tr><tr><td>Sentry</td><td>Mensajes de error sin datos personales ni del negocio</td><td>Corregir errores</td></tr><tr><td>Meta</td><td>Al registrarte o suscribirte: correo, nombre e identificador cifrados de forma irreversible (SHA-256), IP, navegador y, en suscripciones, plan y valor</td><td>Medir nuestros anuncios</td></tr><tr><td>Proveedor de correo</td><td>Tu correo y el contenido del mensaje</td><td>Enviar correos del sistema</td></tr></tbody></table></div>
+    <p>
+      Fuera de estos casos, solo entregamos información cuando una autoridad colombiana competente
+      lo exija conforme a la ley.
+    </p>
+
+    <h2>6. Transferencia internacional</h2>
+    <p>
+      Varios de estos proveedores guardan o procesan información fuera de Colombia, principalmente en
+      Estados Unidos. Al aceptar esta política autorizas esa transmisión, que se hace solo con los
+      proveedores de la tabla anterior, para las finalidades descritas y con medidas de seguridad
+      equivalentes o superiores a las exigidas en Colombia.
+    </p>
+
+    <h2>7. Cómo la protegemos</h2>
     <ul>
-      <li><strong>Supabase</strong> (alojamiento de base de datos y autenticación)</li>
-      <li><strong>Wompi</strong> (procesamiento de pagos)</li>
-      <li><strong>Meta Platforms</strong> (medición de nuestros anuncios en Facebook e Instagram): cuando usted se registra o se suscribe, enviamos su correo, nombre e identificador de usuario cifrados de forma irreversible (hash SHA-256), su IP, su tipo de navegador y, en suscripciones, el plan y el valor pagado. Nunca los datos de su negocio.</li>
-      <li><strong>Vercel</strong> (alojamiento de la aplicación)</li>
+      <li>Toda la comunicación viaja cifrada (HTTPS/TLS) y la base de datos está cifrada en reposo.</li>
+      <li>El teléfono y la cédula de tus clientes se cifran con AES-256 antes de guardarse; solo el sistema, con su llave, puede leerlos para mostrártelos.</li>
+      <li>Cada empresa está aislada también dentro de la base de datos (seguridad a nivel de fila): una empresa no puede leer ni cambiar la información de otra.</li>
+      <li>Permisos por rol, historial de cambios que no se puede borrar, límites de intentos de inicio de sesión y filtrado de tráfico.</li>
+      <li>Los registros técnicos quitan datos personales y del negocio antes de guardarse.</li>
     </ul>
     <p>
-      No compartimos su información con ningún otro tercero, salvo que la ley colombiana nos
-      obligue a hacerlo (por ejemplo, un requerimiento judicial válido).
+      Ningún sistema es infalible. Si ocurre un incidente que afecte tus datos personales, te
+      avisaremos y lo informaremos a la Superintendencia de Industria y Comercio como exige la ley.
     </p>
 
-    <h2>5. Sus derechos (Derechos ARCO)</h2>
-    <p>Como titular de sus datos, usted tiene derecho a:</p>
+    <h2>8. Cuánto tiempo la guardamos</h2>
     <ul>
-      <li><strong>Acceder</strong> a sus datos personales que tenemos almacenados.</li>
-      <li><strong>Rectificar</strong> datos incorrectos o desactualizados.</li>
-      <li><strong>Cancelar/eliminar</strong> sus datos cuando ya no sean necesarios, salvo obligación legal de conservarlos.</li>
-      <li><strong>Oponerse</strong> al tratamiento de sus datos en los casos previstos por la ley.</li>
-      <li>Solicitar prueba de la autorización otorgada para el tratamiento de sus datos.</li>
+      <li><strong>Cuenta y negocio:</strong> mientras la cuenta exista. Si dejas de pagar, la conservamos en solo lectura para que puedas volver o exportarla, hasta que pidas eliminarla.</li>
+      <li><strong>Pagos y facturas:</strong> el tiempo que exijan las normas contables y tributarias.</li>
+      <li><strong>Historial de cambios e historial de inventario:</strong> mientras exista la empresa, porque sirven como trazabilidad.</li>
+      <li><strong>Errores técnicos y mediciones de uso:</strong> por períodos limitados, solo los necesarios para corregir y mejorar el Servicio.</li>
+    </ul>
+
+    <h2>9. Tus derechos</h2>
+    <p>Como titular de tus datos puedes:</p>
+    <ul>
+      <li>Conocer, actualizar y rectificar tus datos (gran parte lo puedes hacer tú mismo desde "Mi perfil").</li>
+      <li>Pedir prueba de la autorización que nos diste.</li>
+      <li>Saber cómo hemos usado tus datos.</li>
+      <li>Revocar la autorización o pedir que eliminemos tus datos, cuando no exista un deber legal o contractual de conservarlos.</li>
+      <li>Presentar quejas ante la Superintendencia de Industria y Comercio, después de haber hecho tu solicitud con nosotros.</li>
     </ul>
     <p>
-      Para ejercer estos derechos, escriba a
-      <a href="mailto:toolkapcorp@gmail.com">toolkapcorp@gmail.com</a>. Responderemos su
-      solicitud dentro de los plazos que establece la ley colombiana (10 días hábiles para
-      consultas, 15 días hábiles para reclamos).
+      Escríbenos a <a href="mailto:toolkapcorp@gmail.com">toolkapcorp@gmail.com</a> con tu nombre, correo de la cuenta y lo que solicitas. Respondemos
+      consultas en máximo 10 días hábiles y reclamos en máximo 15 días hábiles, como dice la ley.
+    </p>
+    <p>
+      Si eres cliente o colaborador de un negocio que usa Fincil, dirige tu solicitud primero a ese
+      negocio, que es el responsable de tus datos. Si nos escribes a nosotros, le trasladaremos la solicitud.
     </p>
 
-    <h2>6. Retención de datos</h2>
+    <h2>10. Cookies y almacenamiento en tu navegador</h2>
     <p>
-      Conservamos su información mientras su cuenta esté activa. Si cancela su cuenta o deja
-      de pagar la suscripción, sus datos se conservan por un período razonable en caso de que
-      desee reactivar el servicio, después del cual pueden ser eliminados permanentemente a su
-      solicitud.
+      Usamos el almacenamiento de tu navegador para mantener tu sesión y tus preferencias, y el Pixel de
+      Meta solo en páginas públicas, registro y suscripción. El detalle está en la
+      <a href="./cookies.html">Política de Cookies</a>.
     </p>
 
-    <h2>7. Seguridad</h2>
+    <h2>11. Menores de edad</h2>
     <p>
-      Toda la comunicación con el Servicio viaja cifrada (HTTPS/TLS). Los datos en la base de
-      datos están protegidos con cifrado en reposo por parte de nuestro proveedor de
-      infraestructura, además del cifrado adicional que aplicamos nosotros mismos a los datos
-      sensibles descritos en la sección 2. El acceso a los datos de cada cuenta está aislado:
-      ningún usuario puede ver la información de otra cuenta.
+      Fincil está dirigido a personas mayores de edad que operan o representan un negocio. No
+      recolectamos a sabiendas datos de menores. Si registras datos de un colaborador menor de edad,
+      debes contar con la autorización de su representante legal.
     </p>
 
-    <h2>8. Cookies y almacenamiento local</h2>
+    <h2>12. Cambios a esta política</h2>
     <p>
-      Usamos el almacenamiento local de su navegador (localStorage) para mantener su sesión
-      iniciada. En las páginas públicas, de registro y de suscripción usamos además el Pixel
-      de Meta para medir la efectividad de nuestros anuncios; no se carga en las secciones
-      internas donde usted gestiona su negocio. Vea la
-      <a href="cookies.html">Política de Cookies</a> para más detalle.
+      Podemos actualizar esta política. Los cambios importantes los avisaremos dentro del sistema
+      antes de que entren en vigencia.
     </p>
 
-    <h2>9. Menores de edad</h2>
-    <p>
-      El Servicio está dirigido a personas mayores de edad que operan o representan un
-      negocio. No recolectamos intencionalmente información de menores de edad.
-    </p>
-
-    <h2>10. Cambios a esta política</h2>
-    <p>
-      Podemos actualizar esta política ocasionalmente. Los cambios importantes se notificarán
-      dentro del sistema antes de entrar en vigencia.
-    </p>
-
-    <h2>11. Contacto</h2>
-    <p>
-      Responsable del tratamiento: <strong>Toolkap</strong>.
-      Correo de contacto: <a href="mailto:toolkapcorp@gmail.com">toolkapcorp@gmail.com</a>.
+    <p class="otros-documentos">
+      Otros documentos: <a href="./terminos.html">Términos y Condiciones</a> ·
+      <a href="./privacidad.html">Política de Privacidad</a> ·
+      <a href="./cookies.html">Política de Cookies</a>
     </p>
   </main>
   <script src="js/tema.js"></script>
