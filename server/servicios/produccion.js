@@ -27,6 +27,7 @@ const supabase = require('../supabase/cliente');
 
 const log = require('../seguridad/log');
 const { usuarioActual } = require('../contexto');
+const { aplicarOperacion, movimientosDeMateriales, faltantesLegibles, unidadesDe, revertirOrigen } = require('./inventario/libro');
 // Procesos activos de un producto, en el orden de su ruta de
 // producción. Los procesos sin `orden` asignado quedan al final (por
 // fecha de creación) — es solo para que la lista se vea ordenada, NO
@@ -217,7 +218,7 @@ async function consumirWIPYGenerarNecesidad({ productoId, cantidadVendida, empre
 // ---- 2) Al registrar una entrega: descuenta material + avanza el WIP ----
 // delta = cuánto AUMENTÓ cantidad_entregada respecto a lo que ya tenía
 // (nunca se admite que baje — ver colaboradores.js).
-async function registrarProduccionProceso({ procesoId, productoId, delta, empresaId, encargoId, forzar }) {
+async function registrarProduccionProceso({ procesoId, productoId, delta, empresaId, encargoId, entregaId, forzar }) {
   if (delta <= 0) return { faltantes: [] };
 
   const ruta = await obtenerRutaProcesos(productoId, empresaId);
@@ -247,50 +248,49 @@ async function registrarProduccionProceso({ procesoId, productoId, delta, empres
     }
   }
 
-  // b) Materiales de ESTE proceso, multiplicados por delta.
+  // b) Materiales de ESTE proceso, multiplicados por delta: se descuentan
+  //    en la base (todo o nada). Si falta WIP y no se fuerza, no se toca nada.
   const requeridoPorMaterial = new Map();
   for (const fila of proceso.procesos_materiales || []) {
-    const requerido = Number(fila.cantidad) * delta;
-    requeridoPorMaterial.set(fila.material_id, { material: fila.materiales, requerido });
-    if (Number(fila.materiales.stock_actual) < requerido) {
-      faltantes.push({
-        tipo: 'material',
-        material: fila.materiales.nombre,
-        unidad: fila.materiales.unidad,
-        disponible: Number(fila.materiales.stock_actual),
-        requerido: Math.round(requerido * 10000) / 10000
-      });
-    }
+    requeridoPorMaterial.set(fila.material_id, { material: fila.materiales, requerido: Number(fila.cantidad) * delta });
   }
+  const movimientos = movimientosDeMateriales(requeridoPorMaterial, -1);
 
   if (faltantes.length > 0 && !forzar) {
+    // Se informa también lo que faltaría de material (sin mover nada)
+    for (const [, { material, requerido }] of requeridoPorMaterial) {
+      if (Number(material.stock_actual) < requerido) faltantes.push({
+        tipo: 'material', material: material.nombre, unidad: material.unidad,
+        disponible: Number(material.stock_actual), requerido: Math.round(requerido * 10000) / 10000
+      });
+    }
     return { faltantes };
   }
 
-  // Todo listo (o forzado) — se aplican los movimientos.
-  if (procesoAnterior) {
-    await ajustarWIP(productoId, procesoAnterior.id, empresaId, -consumoWipAnterior);
+  if (movimientos.length > 0) {
+    const operacion = await aplicarOperacion({
+      empresaId, tipo: 'entrega_proceso',
+      origenTabla: 'entregas_parciales', origenId: entregaId || null,
+      motivo: `Entrega de ${proceso.nombre}`,
+      clave: entregaId ? `entrega:${entregaId}` : null,
+      movimientos, permitirNegativo: !!forzar, detalleForzado: { confirmado: true, encargo_id: encargoId }
+    });
+    if (!operacion.ok) {
+      for (const f of faltantesLegibles(operacion.faltantes, unidadesDe(requeridoPorMaterial))) {
+        faltantes.push({ tipo: 'material', material: f.material, unidad: f.unidad, disponible: f.disponible, requerido: f.requerido });
+      }
+      return { faltantes };
+    }
+    if (operacion.forzada) {
+      for (const m of operacion.movimientos.filter(m => m.stock_nuevo < 0)) {
+        faltantes.push({ tipo: 'material', material: m.nombre, disponible: m.stock_anterior, requerido: -m.cantidad });
+      }
+    }
   }
 
-  for (const [materialId, { material, requerido }] of requeridoPorMaterial) {
-    const stockAnterior = Number(material.stock_actual);
-    const stockNuevo = Math.max(0, Math.round((stockAnterior - requerido) * 100) / 100);
-    const { error: eStock } = await supabase
-      .from('materiales')
-      .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-      .eq('id', materialId).eq('empresa_id', empresaId);
-    if (eStock) throw new Error(eStock.message);
-
-    const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-      empresa_id: empresaId, usuario_id: usuarioActual(),
-      material_id: materialId,
-      tipo: 'produccion',
-      cantidad: -requerido,
-      stock_anterior: stockAnterior,
-      stock_nuevo: stockNuevo,
-      referencia_id: encargoId
-    });
-    if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de producción:', eMov);
+  // Todo listo (o forzado) — se mueve el WIP.
+  if (procesoAnterior) {
+    await ajustarWIP(productoId, procesoAnterior.id, empresaId, -consumoWipAnterior);
   }
 
   await ajustarWIP(productoId, procesoId, empresaId, delta);
@@ -305,7 +305,7 @@ async function registrarProduccionProceso({ procesoId, productoId, delta, empres
 // Límite conocido: usa la receta ACTUAL del proceso, no la que tenía en
 // el momento de esa entrega — misma convención que ya se usa en la
 // reversión de stock de Ventas y Compras.
-async function revertirProduccionProceso({ procesoId, productoId, delta, empresaId, encargoId }) {
+async function revertirProduccionProceso({ procesoId, productoId, delta, empresaId, encargoId, entregaId, motivo }) {
   if (delta <= 0) return;
 
   const ruta = await obtenerRutaProcesos(productoId, empresaId);
@@ -313,26 +313,23 @@ async function revertirProduccionProceso({ procesoId, productoId, delta, empresa
   const proceso = indice >= 0 ? ruta[indice] : null;
   if (!proceso) return; // el proceso ya no existe en la ruta activa — no hay con qué revertir con precisión
 
-  for (const fila of proceso.procesos_materiales || []) {
-    const cantidad = Number(fila.cantidad) * delta;
-    const stockAnterior = Number(fila.materiales.stock_actual);
-    const stockNuevo = Math.round((stockAnterior + cantidad) * 100) / 100;
-    const { error: eStock } = await supabase
-      .from('materiales')
-      .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-      .eq('id', fila.material_id).eq('empresa_id', empresaId);
-    if (eStock) throw new Error(eStock.message);
-
-    const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-      empresa_id: empresaId, usuario_id: usuarioActual(),
-      material_id: fila.material_id,
-      tipo: 'ajuste',
-      cantidad,
-      stock_anterior: stockAnterior,
-      stock_nuevo: stockNuevo,
-      referencia_id: encargoId
-    });
-    if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de reversión:', eMov);
+  // Material: se devuelve EXACTO lo que esa entrega descontó (historial).
+  // Entregas viejas sin operación: se usa la receta actual, como antes.
+  const texto = motivo || `Entrega de ${proceso.nombre} eliminada`;
+  const r = entregaId
+    ? await revertirOrigen({ empresaId, origenTabla: 'entregas_parciales', origenId: entregaId, motivo: texto, permitirNegativo: true })
+    : { encontradas: 0 };
+  if (r.encontradas === 0) {
+    const mapa = new Map();
+    for (const fila of proceso.procesos_materiales || [])
+      mapa.set(fila.material_id, { material: fila.materiales, requerido: Number(fila.cantidad) * delta });
+    const movimientos = movimientosDeMateriales(mapa, +1);
+    if (movimientos.length > 0) {
+      await aplicarOperacion({
+        empresaId, tipo: 'reversion', origenTabla: 'entregas_parciales', origenId: entregaId || null,
+        motivo: texto, clave: entregaId ? `entrega-eliminada:${entregaId}` : null, movimientos
+      });
+    }
   }
 
   const procesoAnterior = procesoAnteriorDe(ruta, indice);

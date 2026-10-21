@@ -12,6 +12,7 @@
 //   - consumirWIPYGenerarNecesidad      → productos con Procesos activos
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { aplicarOperacion } = require('../inventario/nucleo');
 const log = require('../../seguridad/log');
 const { usuarioActual } = require('../../contexto');
 const { leerHoja } = require('../excel/lector');
@@ -255,25 +256,25 @@ async function importarVentas(empresaId, filas) {
         }
       }
 
+      // Ventas históricas: si no alcanza, se descuenta solo lo que hay
+      // (el historial registra lo que de verdad salió) y se reporta.
       const materialesInsuficientes = [];
-      for (const [materialId, { nombre, requerido }] of requeridoPorMaterial) {
-        const { data: material, error: eMat } = await supabase
-          .from('materiales').select('stock_actual').eq('id', materialId).eq('empresa_id', empresaId).single();
-        if (eMat || !material) continue; // material borrado entre analizar e importar: se ignora esta línea, no rompe la venta
-        const stockAnterior = Number(material.stock_actual);
-        if (stockAnterior < requerido) materialesInsuficientes.push(nombre);
-        const stockNuevo = Math.max(0, Math.round((stockAnterior - requerido) * 100) / 100);
-
-        const { error: eStock } = await supabase
-          .from('materiales').update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-          .eq('id', materialId).eq('empresa_id', empresaId);
-        if (eStock) throw new Error(eStock.message);
-
-        const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-          empresa_id: empresaId, usuario_id: usuarioActual(), material_id: materialId, tipo: 'venta',
-          cantidad: -requerido, stock_anterior: stockAnterior, stock_nuevo: stockNuevo, referencia_id: venta.id
+      let movimientos = [];
+      for (const [materialId, { requerido }] of requeridoPorMaterial) {
+        const cantidad = -Math.round(requerido * 10000) / 10000;
+        if (cantidad) movimientos.push({ material_id: materialId, cantidad });
+      }
+      for (let intento = 0; intento < 2 && movimientos.length > 0; intento++) {
+        const operacion = await aplicarOperacion({
+          empresaId, tipo: 'importacion', origenTabla: 'ventas', origenId: venta.id,
+          motivo: `Venta ${fila.codigo} importada desde Excel`, clave: `venta-importada:${venta.id}`, movimientos
         });
-        if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de importación:', eMov);
+        if (operacion.ok) break;
+        const faltaPorId = new Map(operacion.faltantes.map((f) => [f.material_id, f]));
+        for (const f of operacion.faltantes) materialesInsuficientes.push(f.nombre);
+        movimientos = movimientos
+          .map((m) => faltaPorId.has(m.material_id) ? { ...m, cantidad: -Math.max(0, Number(faltaPorId.get(m.material_id).disponible)) } : m)
+          .filter((m) => m.cantidad < 0);
       }
       if (materialesInsuficientes.length > 0) {
         resultado.ventas_con_stock_insuficiente.push({ codigo_venta: fila.codigo, materiales: materialesInsuficientes });

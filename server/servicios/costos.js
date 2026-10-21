@@ -245,7 +245,7 @@ async function obtenerFichasEfectivasParaProductos(productoIds, empresaId) {
   if (idsFicha.length > 0) {
     const { data, error } = await supabase
       .from('productos_materiales')
-      .select('producto_id, material_id, cantidad, materiales(id, nombre, unidad, stock_actual)')
+      .select('producto_id, material_id, cantidad, materiales(id, nombre, unidad, stock_actual, costo_unitario)')
       .in('producto_id', idsFicha);
     if (error) throw new Error(error.message);
     filas.push(...(data || []));
@@ -265,7 +265,7 @@ async function obtenerFichasEfectivasParaProductos(productoIds, empresaId) {
     if (procesoIds.length > 0) {
       const { data: matsProcesos, error: eMatsP } = await supabase
         .from('procesos_materiales')
-        .select('proceso_id, material_id, cantidad, materiales(id, nombre, unidad, stock_actual)')
+        .select('proceso_id, material_id, cantidad, materiales(id, nombre, unidad, stock_actual, costo_unitario)')
         .in('proceso_id', procesoIds);
       if (eMatsP) throw new Error(eMatsP.message);
 

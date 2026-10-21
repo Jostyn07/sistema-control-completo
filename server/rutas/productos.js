@@ -1,366 +1,229 @@
 // ============================================================
-// MÓDULO — PRODUCTOS / FICHAS TÉCNICAS  (/api/productos)
+// INVENTARIO DE PRODUCTOS TERMINADOS (/api/inventario/productos)
+// server/rutas/inventario-productos.js — Fase 3
 //
-// Un producto se costea de una de dos formas (ver servicios/costos.js):
-//   - "por ficha técnica" (usa_costeo_por_procesos = false o null): el
-//     usuario llena productos_materiales a mano — el modo de siempre.
-//   - "por procesos" (usa_costeo_por_procesos = true): los materiales
-//     salen solos de sumar los procesos_materiales de cada proceso de
-//     este producto. En este modo, productos_materiales ya NO se edita
-//     desde aquí — se ignora cualquier `materiales` que llegue en el
-//     body de PUT.
+//  GET  /                       productos con su stock, mínimo y estado
+//  PUT  /:id/config             controla_stock, stock_minimo, politica_descuento, recordar_decision
+//  POST /:id/ingreso            { cantidad, motivo?, clave? }   entra stock (sin tocar materiales)
+//  POST /:id/compra-reventa     { cantidad, costo_unitario, proveedor, clave? }
+//  POST /:id/salida             { cantidad, motivo, forzar?, clave? }   (inventario.editar)
+//  POST /:id/ajuste             { cantidad_nueva, motivo, clave? }      (inventario.editar)
+//  GET  /:id/movimientos        últimos 100 movimientos del producto
+//
+// Todo movimiento pasa por el núcleo (migración 008). Los costos los
+// oculta ocultarCostos a quien no tenga costos.ver.
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
-const { calcularCostoProducto, obtenerCostoMinutoManoObra, recalcularProductoDesdeSusProcesos } = require('../servicios/costos');
+const { supabaseAdminBase } = require('../supabase/cliente');
+const requierePermiso = require('../middleware/permissions');
+const libro = require('../servicios/inventario/libro');
+const { redondear } = require('../servicios/inventario/nucleo');
 const router = express.Router();
 
-function validarProducto(datos) {
-  const errores = [];
-  if (!datos.nombre || !datos.nombre.trim()) errores.push('El nombre es obligatorio');
-  if (datos.precio_venta == null || isNaN(datos.precio_venta) || Number(datos.precio_venta) < 0)
-    errores.push('El precio de venta debe ser un número mayor o igual a 0');
-  // Los materiales ya NO son obligatorios al crear: un producto puede
-  // arrancar vacío y llenarse luego desde Procesos (modo "por procesos").
-  if (datos.materiales != null && !Array.isArray(datos.materiales))
-    errores.push('La lista de materiales no es válida');
-  else if (Array.isArray(datos.materiales)) {
-    for (const m of datos.materiales) {
-      if (!m.material_id) { errores.push('Cada fila de material debe indicar cuál material es'); break; }
-      if (m.cantidad == null || isNaN(m.cantidad) || Number(m.cantidad) <= 0) {
-        errores.push('La cantidad de cada material debe ser mayor a 0'); break;
-      }
-    }
+const POLITICAS = ['preguntar', 'automatico', 'no_descontar'];
+
+function estadoStock(stock, minimo, controla) {
+  if (!controla) return 'sin_control';
+  if (stock <= 0) return 'rojo';
+  if (minimo > 0 && stock <= minimo) return 'amarillo';
+  return 'verde';
+}
+
+async function productoDeEmpresa(id, empresaId) {
+  const { data } = await supabase.from('productos')
+    .select('id, nombre, costo_calculado, precio_venta, activo')
+    .eq('id', id).eq('empresa_id', empresaId).maybeSingle();
+  return data;
+}
+
+function cantidadPositiva(valor) {
+  const n = Number(valor);
+  return Number.isFinite(n) && n > 0 ? redondear(n) : null;
+}
+
+// Costo promedio de lo que ENTRÓ (valor al costo de ingreso, no el actual)
+async function costoPromedioDeIngresos(empresaId) {
+  const { data, error } = await supabase.from('inventario_movimientos')
+    .select('producto_id, cantidad, costo_unitario')
+    .eq('empresa_id', empresaId).not('producto_id', 'is', null).gt('cantidad', 0)
+    .not('costo_unitario', 'is', null);
+  if (error) throw new Error(error.message);
+  const acumulado = new Map();
+  for (const m of data || []) {
+    const a = acumulado.get(m.producto_id) || { unidades: 0, valor: 0 };
+    a.unidades += Number(m.cantidad);
+    a.valor += Number(m.cantidad) * Number(m.costo_unitario);
+    acumulado.set(m.producto_id, a);
   }
-  return errores;
+  const promedio = new Map();
+  for (const [id, a] of acumulado) if (a.unidades > 0) promedio.set(id, a.valor / a.unidades);
+  return promedio;
 }
 
-function conMargen(producto) {
-  const costo = Number(producto.costo_calculado);
-  const precio = Number(producto.precio_venta);
-  const margenValor = Math.round((precio - costo) * 100) / 100;
-  const margenPorcentaje = precio > 0 ? Math.round((margenValor / precio) * 1000) / 10 : 0;
-  return { ...producto, margen_valor: margenValor, margen_porcentaje: margenPorcentaje };
-}
-
-// Lista agregada de materiales (sumados por material) desde los
-// procesos activos de un producto — es lo que se muestra de solo
-// lectura cuando usa_costeo_por_procesos = true.
-async function materialesAgregadosDesdeProcesos(productoId, empresaId) {
-  const { data: procesos, error: eProc } = await supabase
-    .from('procesos').select('id, repeticiones_por_unidad').eq('producto_id', productoId).eq('empresa_id', empresaId).eq('activo', true);
-  if (eProc) throw new Error(eProc.message);
-  if ((procesos || []).length === 0) return [];
-  const repeticionesPorProceso = new Map(procesos.map(p => [p.id, Number(p.repeticiones_por_unidad || 1)]));
-
-  const { data: filas, error: eMat } = await supabase
-    .from('procesos_materiales')
-    .select('proceso_id, material_id, cantidad, materiales(id, nombre, unidad, costo_unitario)')
-    .in('proceso_id', [...repeticionesPorProceso.keys()]);
-  if (eMat) throw new Error(eMat.message);
-
-  // Cada material se multiplica por las repeticiones del proceso al que
-  // pertenece antes de sumarlo — un proceso que se repite 8 veces por
-  // unidad (ej: "pétalo" en una flor) gasta 8 veces lo que gasta UNA
-  // ejecución, aunque en procesos_materiales solo quede guardado el
-  // gasto de una sola vez.
-  const porMaterial = new Map();
-  for (const f of filas || []) {
-    const repeticiones = repeticionesPorProceso.get(f.proceso_id) || 1;
-    const cantidadReal = Number(f.cantidad) * repeticiones;
-    const actual = porMaterial.get(f.material_id) || { material_id: f.material_id, nombre: f.materiales.nombre, unidad: f.materiales.unidad, costo_unitario: Number(f.materiales.costo_unitario), cantidad: 0 };
-    actual.cantidad += cantidadReal;
-    porMaterial.set(f.material_id, actual);
-  }
-  return [...porMaterial.values()].map(m => ({
-    ...m,
-    cantidad: Math.round(m.cantidad * 10000) / 10000,
-    subtotal: Math.round(m.cantidad * m.costo_unitario * 100) / 100
-  }));
-}
-
-// GET /api/productos
+// GET /api/inventario/productos
 router.get('/', async (req, res, next) => {
   try {
-    const { data, error } = await supabase
-      .from('productos')
-      .select('*, categorias_productos(id, nombre)')
-      .eq('empresa_id', req.empresa.id)
-      .eq('activo', true)
-      .order('nombre');
-    if (error) throw new Error(error.message);
-
-    const { data: procesos, error: eProc } = await supabase
-      .from('procesos').select('producto_id').eq('empresa_id', req.empresa.id).eq('activo', true);
-    if (eProc) throw new Error(eProc.message);
-    const idsConProcesos = new Set((procesos || []).map(p => p.producto_id));
-
-    res.json(data.map(p => ({ ...conMargen(p), tiene_procesos: idsConProcesos.has(p.id) })));
+    const [{ data: productos, error: eP }, { data: configs, error: eC }, promedios] = await Promise.all([
+      supabase.from('productos').select('id, nombre, costo_calculado, precio_venta, activo, categorias_productos(nombre)')
+        .eq('empresa_id', req.empresa.id).order('nombre'),
+      supabase.from('inventario_productos').select('*').eq('empresa_id', req.empresa.id),
+      costoPromedioDeIngresos(req.empresa.id)
+    ]);
+    if (eP) throw new Error(eP.message);
+    if (eC) throw new Error(eC.message);
+    const porId = new Map((configs || []).map(c => [c.producto_id, c]));
+    res.json((productos || []).map(p => {
+      const c = porId.get(p.id) || {};
+      const stock = Number(c.stock_actual || 0);
+      const minimo = Number(c.stock_minimo || 0);
+      const controla = !!c.controla_stock;
+      const costoUnidad = promedios.has(p.id) ? promedios.get(p.id) : Number(p.costo_calculado || 0);
+      return {
+        producto_id: p.id,
+        nombre: p.nombre,
+        categoria: p.categorias_productos ? p.categorias_productos.nombre : null,
+        activo: p.activo,
+        controla_stock: controla,
+        stock_actual: stock,
+        stock_minimo: minimo,
+        politica_descuento: c.politica_descuento || 'preguntar',
+        recordar_decision: !!c.recordar_decision,
+        estado: estadoStock(stock, minimo, controla),
+        precio_venta: Number(p.precio_venta || 0),
+        costo_unitario_promedio: Math.round(costoUnidad * 100) / 100,
+        valor_inventario: Math.round(Math.max(0, stock) * costoUnidad)
+      };
+    }));
   } catch (err) { next(err); }
 });
 
-// GET /api/productos/conflictos-materiales — productos con procesos
-// cuyo modo de costeo aún no está resuelto (tienen materiales propios
-// en la ficha técnica Y también procesos con sus propios materiales,
-// y el sistema no puede decidir solo cuál lista es la correcta).
-router.get('/conflictos-materiales', async (req, res, next) => {
+// PUT /api/inventario/productos/:id/config
+router.put('/:id/config', async (req, res, next) => {
   try {
-    const { data: productos, error } = await supabase
-      .from('productos')
-      .select('id, nombre')
-      .eq('empresa_id', req.empresa.id)
-      .eq('activo', true)
-      .is('usa_costeo_por_procesos', null);
-    if (error) throw new Error(error.message);
-
-    const conflictos = [];
-    for (const producto of productos || []) {
-      const { data: propios, error: eProp } = await supabase
-        .from('productos_materiales')
-        .select('cantidad, materiales(id, nombre, unidad, costo_unitario)')
-        .eq('producto_id', producto.id);
-      if (eProp) throw new Error(eProp.message);
-      if (!propios || propios.length === 0) continue; // sin materiales propios: no hay conflicto, se resuelve solo
-
-      const desdeProcesos = await materialesAgregadosDesdeProcesos(producto.id, req.empresa.id);
-      if (desdeProcesos.length === 0) continue; // el producto tiene procesos pero ninguno tiene materiales aún
-
-      conflictos.push({
-        producto_id: producto.id,
-        nombre: producto.nombre,
-        materiales_ficha_tecnica: propios.map(p => ({
-          material_id: p.materiales.id, nombre: p.materiales.nombre, unidad: p.materiales.unidad,
-          cantidad: Number(p.cantidad), subtotal: Math.round(Number(p.cantidad) * Number(p.materiales.costo_unitario) * 100) / 100
-        })),
-        materiales_desde_procesos: desdeProcesos
-      });
-    }
-    res.json(conflictos);
-  } catch (err) { next(err); }
-});
-
-// PUT /api/productos/:id/costeo-materiales — cuerpo: { usar_procesos: boolean }
-// Resuelve manualmente cuál lista de materiales manda para este producto.
-router.put('/:id/costeo-materiales', async (req, res, next) => {
-  try {
-    if (typeof req.body.usar_procesos !== 'boolean')
-      return res.status(400).json({ error: '"usar_procesos" debe ser true o false' });
-
-    const { data: producto, error: eGet } = await supabase
-      .from('productos').select('id').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
-    if (eGet || !producto) return res.status(404).json({ error: 'Producto no encontrado' });
-
-    const { error } = await supabase
-      .from('productos')
-      .update({ usa_costeo_por_procesos: req.body.usar_procesos, actualizado_en: new Date().toISOString() })
-      .eq('id', req.params.id).eq('empresa_id', req.empresa.id);
-    if (error) throw new Error(error.message);
-
-    const ficha = await recalcularProductoDesdeSusProcesos(req.params.id, req.empresa.id);
-    res.json(ficha);
-  } catch (err) { next(err); }
-});
-
-// POST /api/productos
-router.post('/', async (req, res, next) => {
-  try {
-    const errores = validarProducto(req.body);
-    if (errores.length) return res.status(400).json({ error: errores.join('. ') });
-
-    // Los minutos de fabricación arrancan en 0: un producto recién
-    // creado todavía no tiene procesos.
-    const minutosFabricacion = req.body.minutos_fabricacion != null && !isNaN(req.body.minutos_fabricacion)
-      ? Number(req.body.minutos_fabricacion) : 0;
-
-    const costoCalculado = await calcularCostoProducto({
-      materiales: req.body.materiales || [],
-      minutosFabricacion,
-      empresaId: req.empresa.id
-    });
-
-    const { data: producto, error: eProd } = await supabase
-      .from('productos')
-      .insert({
-        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
-        nombre: req.body.nombre.trim(),
-        foto_url: req.body.foto_url || null,
-        categoria_id: req.body.categoria_id || null,
-        precio_venta: Number(req.body.precio_venta),
-        minutos_fabricacion: minutosFabricacion,
-        costo_calculado: costoCalculado
-      })
-      .select('*, categorias_productos(id, nombre)').single();
-    if (eProd) throw new Error(eProd.message);
-
-    if (req.body.materiales && req.body.materiales.length > 0) {
-      const filasMateriales = req.body.materiales.map(m => ({
-        producto_id: producto.id,
-        material_id: m.material_id,
-        cantidad: Number(m.cantidad)
-      }));
-      const { error: eRel } = await supabase.from('productos_materiales').insert(filasMateriales);
-      if (eRel) throw new Error(eRel.message);
-    }
-
-    res.status(201).json(conMargen(producto));
-  } catch (err) { next(err); }
-});
-
-// PUT /api/productos/:id
-// Los minutos de fabricación solo se editan a mano aquí cuando el
-// producto NO tiene procesos — si los tiene, se derivan solos de ellos
-// (pestaña Procesos) y lo que llegue en el body se ignora.
-router.put('/:id', async (req, res, next) => {
-  try {
-    const errores = validarProducto(req.body);
-    if (errores.length) return res.status(400).json({ error: errores.join('. ') });
-
-    const { data: actual, error: eActual } = await supabase
-      .from('productos').select('minutos_fabricacion, usa_costeo_por_procesos').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
-    if (eActual || !actual) return res.status(404).json({ error: 'Producto no encontrado' });
-
-    const { count: countProcesos, error: eCountProc } = await supabase
-      .from('procesos').select('id', { count: 'exact', head: true })
-      .eq('producto_id', req.params.id).eq('empresa_id', req.empresa.id).eq('activo', true);
-    if (eCountProc) throw new Error(eCountProc.message);
-    const tieneProcesos = countProcesos > 0;
-
-    const minutosFabricacion = tieneProcesos
-      ? Number(actual.minutos_fabricacion) // se deriva de los procesos, no se toca aquí
-      : (req.body.minutos_fabricacion != null && !isNaN(req.body.minutos_fabricacion)
-          ? Number(req.body.minutos_fabricacion) : Number(actual.minutos_fabricacion));
-
-    // En modo "por procesos" la ficha técnica de materiales es de solo
-    // lectura: se ignora lo que venga en el body y no se toca la tabla.
-    const editaMaterialesAqui = actual.usa_costeo_por_procesos !== true;
-
-    const costoCalculado = editaMaterialesAqui
-      ? await calcularCostoProducto({
-          materiales: req.body.materiales || [],
-          minutosFabricacion,
-          empresaId: req.empresa.id
-        })
-      : null; // se recalcula abajo con recalcularProductoDesdeSusProcesos
-
-    const cambios = {
-      nombre: req.body.nombre.trim(),
-      foto_url: req.body.foto_url || null,
-      categoria_id: req.body.categoria_id || null,
-      precio_venta: Number(req.body.precio_venta),
-      minutos_fabricacion: minutosFabricacion,
-      actualizado_en: new Date().toISOString()
-    };
-    if (costoCalculado != null) cambios.costo_calculado = costoCalculado;
-
-    const { data: producto, error: eProd } = await supabase
-      .from('productos')
-      .update(cambios)
-      .eq('id', req.params.id)
-      .eq('empresa_id', req.empresa.id)
-      .select('*, categorias_productos(id, nombre)').single();
-    if (eProd) throw new Error(eProd.message);
+    const producto = await productoDeEmpresa(req.params.id, req.empresa.id);
     if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
-
-    if (editaMaterialesAqui) {
-      const { error: eDel } = await supabase.from('productos_materiales').delete().eq('producto_id', req.params.id);
-      if (eDel) throw new Error(eDel.message);
-
-      if (req.body.materiales && req.body.materiales.length > 0) {
-        const filasMateriales = req.body.materiales.map(m => ({
-          producto_id: req.params.id,
-          material_id: m.material_id,
-          cantidad: Number(m.cantidad)
-        }));
-        const { error: eRel } = await supabase.from('productos_materiales').insert(filasMateriales);
-        if (eRel) throw new Error(eRel.message);
-      }
-    } else {
-      // El precio pudo cambiar el margen aunque el costo no cambió aquí;
-      // y por seguridad, sincroniza el costo con lo que digan los procesos.
-      const ficha = await recalcularProductoDesdeSusProcesos(req.params.id, req.empresa.id);
-      producto.costo_calculado = ficha.costo_calculado;
-      producto.minutos_fabricacion = ficha.minutos_fabricacion;
+    const b = req.body || {};
+    const cambios = { producto_id: producto.id, empresa_id: req.empresa.id, actualizado_en: new Date().toISOString(), actualizado_por: req.usuarioId };
+    if (b.controla_stock !== undefined) cambios.controla_stock = !!b.controla_stock;
+    if (b.stock_minimo !== undefined) {
+      const m = Number(b.stock_minimo);
+      if (!Number.isFinite(m) || m < 0) return res.status(400).json({ error: 'El stock mínimo debe ser 0 o más' });
+      cambios.stock_minimo = m;
     }
-
-    res.json(conMargen(producto));
-  } catch (err) { next(err); }
-});
-
-// DELETE /api/productos/:id
-router.delete('/:id', async (req, res, next) => {
-  try {
-    const { data: producto, error: eGet } = await supabase
-      .from('productos').select('id').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
-    if (eGet || !producto) return res.status(404).json({ error: 'Producto no encontrado' });
-
-    const { count, error: eVentas } = await supabase
-      .from('ventas_items')
-      .select('id', { count: 'exact', head: true })
-      .eq('producto_id', req.params.id);
-    if (eVentas) throw new Error(eVentas.message);
-
-    if (count > 0) {
-      const { error } = await supabase
-        .from('productos')
-        .update({ activo: false, actualizado_en: new Date().toISOString() })
-        .eq('id', req.params.id)
-        .eq('empresa_id', req.empresa.id);
-      if (error) throw new Error(error.message);
-      return res.json({
-        eliminado: false,
-        desactivado: true,
-        mensaje: `Este producto tiene ${count} venta(s) registradas, así que se desactivó en vez de borrarse (para no perder el historial).`
-      });
+    if (b.politica_descuento !== undefined) {
+      if (!POLITICAS.includes(b.politica_descuento)) return res.status(400).json({ error: 'Política no válida' });
+      cambios.politica_descuento = b.politica_descuento;
     }
+    if (b.recordar_decision !== undefined) cambios.recordar_decision = !!b.recordar_decision;
 
-    const { error: eDelRel } = await supabase.from('productos_materiales').delete().eq('producto_id', req.params.id);
-    if (eDelRel) throw new Error(eDelRel.message);
-    const { error } = await supabase.from('productos').delete().eq('id', req.params.id).eq('empresa_id', req.empresa.id);
+    // stock_actual NUNCA se escribe aquí: solo el núcleo lo mueve
+    const { data, error } = await supabaseAdminBase.from('inventario_productos')
+      .upsert(cambios, { onConflict: 'producto_id' })
+      .select('producto_id, controla_stock, stock_actual, stock_minimo, politica_descuento, recordar_decision').single();
     if (error) throw new Error(error.message);
-    res.json({ eliminado: true, desactivado: false });
+    res.json(data);
   } catch (err) { next(err); }
 });
 
-// GET /api/productos/:id/costo — desglose de costos para mostrar en pantalla
-router.get('/:id/costo', async (req, res, next) => {
-  try {
-    const { data: producto, error: eProd } = await supabase
-      .from('productos').select('*').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
-    if (eProd || !producto) return res.status(404).json({ error: 'Producto no encontrado' });
-
-    const materiales = producto.usa_costeo_por_procesos
-      ? await materialesAgregadosDesdeProcesos(req.params.id, req.empresa.id)
-      : (await (async () => {
-          const { data: filas, error: eRel } = await supabase
-            .from('productos_materiales')
-            .select('cantidad, materiales(id, nombre, unidad, costo_unitario)')
-            .eq('producto_id', req.params.id);
-          if (eRel) throw new Error(eRel.message);
-          return filas.map(f => ({
-            material_id: f.materiales.id,
-            nombre: f.materiales.nombre,
-            unidad: f.materiales.unidad,
-            cantidad: Number(f.cantidad),
-            costo_unitario: Number(f.materiales.costo_unitario),
-            subtotal: Math.round(Number(f.cantidad) * Number(f.materiales.costo_unitario) * 100) / 100
-          }));
-        })());
-    const costoMateriales = Math.round(materiales.reduce((s, m) => s + m.subtotal, 0) * 100) / 100;
-
-    const costoMinuto = await obtenerCostoMinutoManoObra(req.empresa.id);
-    const costoManoObra = Math.round(Number(producto.minutos_fabricacion) * costoMinuto * 100) / 100;
-
-    res.json({
-      producto_id: producto.id,
-      nombre: producto.nombre,
-      usa_costeo_por_procesos: !!producto.usa_costeo_por_procesos,
-      materiales,
-      costo_materiales: costoMateriales,
-      costo_mano_obra: costoManoObra,
-      costo_total: Math.round((costoMateriales + costoManoObra) * 100) / 100,
-      precio_venta: Number(producto.precio_venta)
+async function mover(req, res, { tipo, movimiento, motivo, forzar, prefijoClave }) {
+  const operacion = await libro.aplicarOperacion({
+    empresaId: req.empresa.id, usuarioId: req.usuarioId,
+    tipo, origenTabla: 'productos', origenId: req.params.id, motivo,
+    clave: libro.claveDe(req, prefijoClave),
+    movimientos: [{ producto_id: req.params.id, ...movimiento }],
+    permitirNegativo: !!forzar, detalleForzado: { confirmado: true }
+  });
+  if (!operacion.ok) {
+    const [f] = libro.faltantesLegibles(operacion.faltantes);
+    return res.status(409).json({
+      error: `No hay suficiente stock: hay ${f.disponible} y se necesitan ${f.requerido}`,
+      faltantes: [f], puede_forzar: true
     });
+  }
+  if (operacion.sinCambios) return res.json({ sin_cambios: true });
+  // Mover stock de un producto lo pone bajo control de stock
+  await supabaseAdminBase.from('inventario_productos').update({ controla_stock: true })
+    .eq('producto_id', req.params.id).eq('empresa_id', req.empresa.id).eq('controla_stock', false);
+  const m = (operacion.movimientos || [])[0] || {};
+  res.status(201).json({ operacion_id: operacion.operacionId, repetida: operacion.repetida, forzada: operacion.forzada,
+    stock_anterior: m.stock_anterior, stock_nuevo: m.stock_nuevo });
+}
+
+// POST /api/inventario/productos/:id/ingreso
+router.post('/:id/ingreso', async (req, res, next) => {
+  try {
+    const producto = await productoDeEmpresa(req.params.id, req.empresa.id);
+    if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
+    const cantidad = cantidadPositiva(req.body.cantidad);
+    if (!cantidad) return res.status(400).json({ error: 'La cantidad debe ser mayor a 0' });
+    await mover(req, res, {
+      tipo: 'ingreso_producto', prefijoClave: 'ingreso',
+      motivo: (req.body.motivo || '').trim() || 'Ingreso de producto terminado',
+      // Valor del inventario: costo de la ficha EN ESTE MOMENTO
+      movimiento: { cantidad, costo_unitario: Number(producto.costo_calculado || 0) }
+    });
+  } catch (err) { next(err); }
+});
+
+// POST /api/inventario/productos/:id/compra-reventa
+router.post('/:id/compra-reventa', async (req, res, next) => {
+  try {
+    const producto = await productoDeEmpresa(req.params.id, req.empresa.id);
+    if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
+    const cantidad = cantidadPositiva(req.body.cantidad);
+    if (!cantidad) return res.status(400).json({ error: 'La cantidad debe ser mayor a 0' });
+    const costo = Number(req.body.costo_unitario);
+    if (!Number.isFinite(costo) || costo < 0) return res.status(400).json({ error: 'El costo unitario debe ser 0 o más' });
+    const proveedor = (req.body.proveedor || '').trim();
+    if (!proveedor) return res.status(400).json({ error: 'El proveedor es obligatorio' });
+    await mover(req, res, {
+      tipo: 'compra_reventa', prefijoClave: 'reventa',
+      motivo: `Compra para reventa a ${proveedor.slice(0, 120)}`,
+      movimiento: { cantidad, costo_unitario: costo }
+    });
+  } catch (err) { next(err); }
+});
+
+// POST /api/inventario/productos/:id/salida
+router.post('/:id/salida', requierePermiso('inventario', 'editar'), async (req, res, next) => {
+  try {
+    const producto = await productoDeEmpresa(req.params.id, req.empresa.id);
+    if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
+    const cantidad = cantidadPositiva(req.body.cantidad);
+    if (!cantidad) return res.status(400).json({ error: 'La cantidad debe ser mayor a 0' });
+    const motivo = (req.body.motivo || '').trim();
+    if (!motivo) return res.status(400).json({ error: 'El motivo es obligatorio' });
+    await mover(req, res, { tipo: 'salida_producto', prefijoClave: 'salida', motivo, forzar: req.body.forzar,
+      movimiento: { cantidad: -cantidad } });
+  } catch (err) { next(err); }
+});
+
+// POST /api/inventario/productos/:id/ajuste
+router.post('/:id/ajuste', requierePermiso('inventario', 'editar'), async (req, res, next) => {
+  try {
+    const producto = await productoDeEmpresa(req.params.id, req.empresa.id);
+    if (!producto) return res.status(404).json({ error: 'Producto no encontrado' });
+    const objetivo = Number(req.body.cantidad_nueva);
+    if (!Number.isFinite(objetivo) || objetivo < 0) return res.status(400).json({ error: 'La cantidad contada debe ser 0 o más' });
+    const motivo = (req.body.motivo || '').trim();
+    if (!motivo) return res.status(400).json({ error: 'El motivo es obligatorio' });
+    await mover(req, res, { tipo: 'ajuste', prefijoClave: 'ajuste-producto', motivo,
+      movimiento: { stock_objetivo: objetivo, costo_unitario: Number(producto.costo_calculado || 0) } });
+  } catch (err) { next(err); }
+});
+
+// GET /api/inventario/productos/:id/movimientos
+router.get('/:id/movimientos', async (req, res, next) => {
+  try {
+    const { data, error } = await supabase.from('inventario_movimientos')
+      .select('id, fecha, tipo, origen, cantidad, stock_anterior, stock_nuevo, motivo, costo_unitario, operacion_id, usuario_id')
+      .eq('empresa_id', req.empresa.id).eq('producto_id', req.params.id)
+      .order('fecha', { ascending: false }).limit(100);
+    if (error) throw new Error(error.message);
+    res.json(data || []);
   } catch (err) { next(err); }
 });
 
 module.exports = router;
+module.exports._interno = { estadoStock };

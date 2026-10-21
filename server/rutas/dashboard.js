@@ -102,7 +102,7 @@ router.get('/inventario', async (req, res, next) => {
     // Compras (rojo/amarillo/verde). Agotado es un caso particular de rojo
     // (stock en 0) que ese servicio no separa — se distingue aquí, sin
     // tocar su lógica, para no arriesgar los otros dos módulos que la usan.
-    const agotados = materiales.filter(m => m.stock_actual === 0);
+    const agotados = materiales.filter(m => m.stock_actual <= 0);
     const stockBajo = materiales.filter(m => m.estado === 'rojo' && m.stock_actual > 0);
 
     res.json({

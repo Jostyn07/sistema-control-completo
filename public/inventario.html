@@ -54,6 +54,12 @@
       </div>
     </div>
 
+    <div class="tabs-modulo" id="pestanasInventario">
+      <button type="button" class="tabs-modulo__item tabs-modulo__item--activo" data-vista="materiales" onclick="cambiarVistaInventario('materiales')">Materiales</button>
+      <button type="button" class="tabs-modulo__item" data-vista="productos" onclick="cambiarVistaInventario('productos')">Productos terminados</button>
+    </div>
+
+    <div id="vistaMateriales">
     <div class="kpi-grid" id="kpisInventario"></div>
 
     <!-- 1. Vista por material (semáforo) -->
@@ -146,6 +152,118 @@
       </div>
     </section>
 
+    </div><!-- /vistaMateriales -->
+
+    <!-- Productos terminados (Fase 3) -->
+    <div id="vistaProductos" hidden>
+      <div class="kpi-grid" id="kpisProductos"></div>
+      <section class="tarjeta seccion">
+        <div class="tarjeta__encabezado-fila">
+          <h2>Productos terminados</h2>
+        </div>
+        <div class="barra-herramientas-tabla" style="justify-content:space-between;">
+          <label class="barra-herramientas-tabla__buscador" style="min-width:260px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="buscadorProductosStock" placeholder="Buscar producto…" oninput="pintarProductosStock()">
+          </label>
+          <label class="campo" style="margin:0">
+            <span class="campo__etiqueta">Mostrar</span>
+            <select id="filtroControlProductos" onchange="pintarProductosStock()">
+              <option value="controlados">Con control de stock</option>
+              <option value="todos">Todos los productos</option>
+            </select>
+          </label>
+        </div>
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Estado</th>
+              <th>Producto</th>
+              <th>Stock</th>
+              <th>Mínimo</th>
+              <th>Valor</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpoProductosStock">
+            <tr><td colspan="6" class="tabla__vacio">Cargando…</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <!-- Movimiento de producto: ingreso / compra para reventa / salida / ajuste -->
+    <div class="modal" id="modalMovProducto" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2 id="tituloMovProducto">Ingresar unidades</h2>
+        <input type="hidden" id="campoMovProductoId">
+        <input type="hidden" id="campoMovTipo">
+        <p class="texto-secundario" id="textoMovStock"></p>
+        <label class="campo">
+          <span class="campo__etiqueta" id="etiquetaMovCantidad">Cantidad *</span>
+          <input type="number" id="campoMovCantidad" min="0" step="1">
+        </label>
+        <label class="campo" id="bloqueMovCosto" hidden>
+          <span class="campo__etiqueta">Costo por unidad *</span>
+          <input type="number" id="campoMovCosto" min="0" step="1">
+        </label>
+        <label class="campo" id="bloqueMovProveedor" hidden>
+          <span class="campo__etiqueta">Proveedor *</span>
+          <input type="text" id="campoMovProveedor">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta" id="etiquetaMovMotivo">Motivo</span>
+          <input type="text" id="campoMovMotivo">
+        </label>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarMovProducto()">Cancelar</button>
+          <button type="button" class="boton boton--primario" id="botonMovProducto" onclick="confirmarMovProducto()">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Configuración de stock del producto -->
+    <div class="modal" id="modalConfigProducto" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2 id="tituloConfigProducto">Inventario del producto</h2>
+        <input type="hidden" id="campoConfigProductoId">
+        <label class="campo" style="flex-direction:row;align-items:center;gap:8px;">
+          <input type="checkbox" id="campoConfigControla">
+          <span class="campo__etiqueta">Controlar stock de este producto</span>
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Stock mínimo</span>
+          <input type="number" id="campoConfigMinimo" min="0" step="1">
+        </label>
+        <label class="campo">
+          <span class="campo__etiqueta">Al ingresar unidades, los materiales…</span>
+          <select id="campoConfigPolitica">
+            <option value="preguntar">Preguntar cada vez</option>
+            <option value="automatico">Descontar siempre</option>
+            <option value="no_descontar">No descontar</option>
+          </select>
+        </label>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarConfigProducto()">Cancelar</button>
+          <button type="button" class="boton boton--primario" onclick="guardarConfigProducto()">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historial de un producto -->
+    <div class="modal" id="modalHistorialProducto" hidden>
+      <div class="modal__contenido tarjeta" style="max-width:820px;">
+        <h2 id="tituloHistorialProducto">Movimientos</h2>
+        <table class="tabla">
+          <thead><tr><th>Fecha</th><th>Origen</th><th>Cantidad</th><th>Antes → después</th><th>Motivo</th></tr></thead>
+          <tbody id="cuerpoHistorialProducto"></tbody>
+        </table>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="document.getElementById('modalHistorialProducto').hidden = true">Cerrar</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 4. Ajuste manual de inventario -->
     <div class="modal" id="modalAjuste" hidden>
       <div class="modal__contenido tarjeta">
@@ -177,6 +295,7 @@
   <script src="js/recorrido.js"></script>
   <script src="js/recorrido-progresivo.js"></script>
   <script src="js/inventario.js"></script>
+  <script src="js/inventario-productos.js"></script>
   <script>
     if (exigirSesion()) { mostrarUsuarioActual(); iniciarRecorridoProgresivoSiPrimeraVez('inventario'); }
   </script>

@@ -20,6 +20,7 @@
 // coincidencia, se crea uno nuevo y se le asigna un código.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { aplicarOperacion } = require('../inventario/nucleo');
 const { usuarioActual } = require('../../contexto');
 const { leerFilas } = require('../excel/lector');
 const { COLUMNAS } = require('../excel/definiciones/materiales');
@@ -181,12 +182,20 @@ async function importarMateriales(empresaId, filas, modo = 'crear_y_actualizar')
         costo_unitario: aNumero(datos.costo_unitario),
         proveedor: aTextoLimpio(datos.proveedor),
         tiempo_entrega_dias: aNumero(datos.tiempo_entrega_dias) ?? 1,
-        stock_actual: aNumero(datos.stock_actual) ?? 0,
+        stock_actual: 0,
         stock_seguridad: aNumero(datos.stock_seguridad) ?? 0,
         activo: aBooleanoSiNo(datos.activo) ?? true
       };
-      const { error } = await supabase.from('materiales').insert(nuevo);
+      const { data: creado, error } = await supabase.from('materiales').insert(nuevo).select('id').single();
       if (error) throw new Error(`Fila ${fila.numero_fila}: ${error.message}`);
+      const stockInicial = aNumero(datos.stock_actual) ?? 0;
+      if (stockInicial > 0) {
+        await aplicarOperacion({
+          empresaId, tipo: 'importacion', origenTabla: 'materiales', origenId: creado.id,
+          motivo: 'Stock inicial (importación Excel)', clave: `stock-inicial:${creado.id}`,
+          movimientos: [{ material_id: creado.id, cantidad: stockInicial, costo_unitario: nuevo.costo_unitario }]
+        });
+      }
       resultado.creados++;
     } else if (fila.accion === 'actualizar') {
       const costoNuevo = aNumero(datos.costo_unitario);

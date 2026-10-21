@@ -13,6 +13,8 @@
 // Ninguna fila puede dejar el stock en negativo.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { randomUUID } = require('crypto');
+const { aplicarOperacion } = require('../inventario/nucleo');
 const log = require('../../seguridad/log');
 const { usuarioActual } = require('../../contexto');
 const { leerFilas } = require('../excel/lector');
@@ -126,41 +128,26 @@ async function importarInventario(empresaId, filas) {
     // Se relee el stock actual justo antes de aplicar cada fila (en vez
     // de confiar en el saldo proyectado del análisis) por si pasó tiempo
     // entre analizar y confirmar la importación.
-    const { data: material, error: eGet } = await supabase
-      .from('materiales').select('id, stock_actual').eq('id', fila.material_id).eq('empresa_id', empresaId).single();
-    if (eGet || !material) throw new Error(`Fila ${fila.numero_fila}: el material ya no existe`);
+    // Todo o nada por fila, en la base. Nunca deja negativo.
+    const ajusteId = randomUUID();
+    const motivo = `[${fila.tipo}] ${aTextoLimpio(fila.datos.motivo)}`;
+    const operacion = await aplicarOperacion({
+      empresaId, tipo: 'importacion', origenTabla: 'inventario_ajustes', origenId: ajusteId, motivo,
+      movimientos: [{ material_id: fila.material_id, cantidad: fila.delta }]
+    }).catch((err) => { throw new Error(`Fila ${fila.numero_fila}: ${err.message}`); });
+    if (!operacion.ok) throw new Error(`Fila ${fila.numero_fila}: dejaría el stock en negativo, no se importó`);
+    const mov = operacion.movimientos[0];
 
-    const stockAnterior = Number(material.stock_actual);
-    const stockNuevo = Math.round((stockAnterior + fila.delta) * 10000) / 10000;
-    if (stockNuevo < 0) throw new Error(`Fila ${fila.numero_fila}: dejaría el stock en negativo, no se importó`);
-
-    const { data: ajuste, error: eAjuste } = await supabase.from('inventario_ajustes').insert({
+    const { error: eAjuste } = await supabase.from('inventario_ajustes').insert({
+      id: ajusteId,
       empresa_id: empresaId, usuario_id: usuarioActual(),
       material_id: fila.material_id,
-      stock_anterior: stockAnterior,
-      stock_nuevo: stockNuevo,
-      motivo: `[${fila.tipo}] ${aTextoLimpio(fila.datos.motivo)}`,
+      stock_anterior: mov.stock_anterior,
+      stock_nuevo: mov.stock_nuevo,
+      motivo,
       usuario: 'Importación Excel'
-    }).select().single();
-    if (eAjuste) throw new Error(`Fila ${fila.numero_fila}: ${eAjuste.message}`);
-
-    const { error: eUpd } = await supabase
-      .from('materiales').update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-      .eq('id', fila.material_id).eq('empresa_id', empresaId);
-    if (eUpd) throw new Error(`Fila ${fila.numero_fila}: ${eUpd.message}`);
-
-    // Bitácora — igual que en el ajuste manual: si falla, el movimiento ya
-    // se aplicó igual, solo queda sin registrar en el historial de gráficas.
-    const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-      empresa_id: empresaId, usuario_id: usuarioActual(),
-      material_id: fila.material_id,
-      tipo: 'ajuste',
-      cantidad: fila.delta,
-      stock_anterior: stockAnterior,
-      stock_nuevo: stockNuevo,
-      referencia_id: ajuste.id
     });
-    if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de importación:', eMov);
+    if (eAjuste) log.error('[inventario_ajustes] No se pudo guardar la copia de la importación:', eAjuste);
 
     resultado.aplicados++;
   }

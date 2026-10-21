@@ -155,19 +155,23 @@ function cerrarEliminarCompra() {
   document.getElementById('modalEliminarCompra').hidden = true;
 }
 
-async function confirmarEliminarCompra() {
+async function confirmarEliminarCompra(forzar = false) {
   const compraId = document.getElementById('campoEliminarCompraId').value;
   const motivo = document.getElementById('campoMotivoEliminarCompra').value;
   if (!motivo.trim()) { mostrarAviso('El motivo es obligatorio', 'error'); return; }
 
   try {
-    const resultado = await API.eliminar(`/api/compras/${compraId}`, { motivo });
+    const resultado = await API.eliminar(`/api/compras/${compraId}`, { motivo, forzar });
     mostrarAviso(resultado.stock_revertido ? 'Compra eliminada y el stock se corrigió' : 'Compra eliminada');
     cerrarEliminarCompra();
     cargarPendientesCompra();
     cargarEnCamino();
     cargarHistorialCompras();
   } catch (err) {
+    if (!forzar && err.message.includes('dejaría el material en negativo')) {
+      if (confirm(`${err.message}.\n\n¿Eliminarla de todas formas? El material quedará en negativo hasta que lo ajustes.`)) confirmarEliminarCompra(true);
+      return;
+    }
     mostrarAviso(err.message, 'error');
   }
 }

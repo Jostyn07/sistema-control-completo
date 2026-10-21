@@ -8,13 +8,19 @@
 //                      por producto y etapa) — de solo lectura, se
 //                      llena sola cuando se registran entregas en Nóminas
 // - POST /ajuste       ajuste manual tras un conteo físico (motivo obligatorio)
+// - /productos/*       stock de productos terminados (ver inventario-productos.js)
 // ============================================================
 const express = require('express');
 const log = require('../seguridad/log');
 const supabase = require('../supabase/cliente');
 const servicioInventario = require('../servicios/inventario');
 const { obtenerWIPParaInventario } = require('../servicios/produccion');
+const { randomUUID } = require('crypto');
+const libro = require('../servicios/inventario/libro');
 const router = express.Router();
+
+// Productos terminados (Fase 3)
+router.use('/productos', require('./inventario-productos'));
 
 // GET /api/inventario/materiales
 router.get('/materiales', async (req, res, next) => {
@@ -96,41 +102,34 @@ router.post('/ajuste', async (req, res, next) => {
       return res.status(400).json({ error: 'El motivo del ajuste es obligatorio (para trazabilidad)' });
 
     const { data: material, error: eGet } = await supabase
-      .from('materiales').select('id, stock_actual').eq('id', material_id).eq('empresa_id', req.empresa.id).single();
+      .from('materiales').select('id, costo_unitario').eq('id', material_id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !material) return res.status(404).json({ error: 'Material no encontrado' });
 
-    const { data: ajusteCreado, error: eAjuste } = await supabase.from('inventario_ajustes').insert({
+    // El valor exacto se fija en la base con la fila bloqueada: si entre
+    // tanto entró una venta, la diferencia se calcula sobre el stock real.
+    const ajusteId = randomUUID();
+    const operacion = await libro.aplicarOperacion({
+      empresaId: req.empresa.id, usuarioId: req.usuarioId,
+      tipo: 'ajuste', origenTabla: 'inventario_ajustes', origenId: ajusteId,
+      motivo: motivo.trim(), clave: libro.claveDe(req, 'ajuste'),
+      movimientos: [{ material_id, stock_objetivo: Number(cantidad_nueva), costo_unitario: Number(material.costo_unitario) }]
+    });
+    if (operacion.sinCambios) return res.json({ ajustado: false, sin_cambios: true, stock_nuevo: Number(cantidad_nueva) });
+    const mov = (operacion.movimientos || [])[0];
+    if (!mov) return res.json({ ajustado: true, repetido: true });
+
+    const { error: eAjuste } = await supabase.from('inventario_ajustes').insert({
+      id: ajusteId,
       empresa_id: req.empresa.id, usuario_id: req.usuarioId,
       material_id,
-      stock_anterior: material.stock_actual,
-      stock_nuevo: Number(cantidad_nueva),
+      stock_anterior: mov.stock_anterior,
+      stock_nuevo: mov.stock_nuevo,
       motivo: motivo.trim(),
       usuario: req.usuarioEmail || null
-    }).select().single();
-    if (eAjuste) throw new Error(eAjuste.message);
-
-    const { data: actualizado, error: eUpd } = await supabase
-      .from('materiales')
-      .update({ stock_actual: Number(cantidad_nueva), actualizado_en: new Date().toISOString() })
-      .eq('id', material_id)
-      .eq('empresa_id', req.empresa.id)
-      .select().single();
-    if (eUpd) throw new Error(eUpd.message);
-
-    // Bitácora (Fase 2) — misma regla que venta/compra: si falla, el
-    // ajuste ya se aplicó igual, solo queda sin registrar en el historial.
-    const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-      empresa_id: req.empresa.id, usuario_id: req.usuarioId,
-      material_id,
-      tipo: 'ajuste',
-      cantidad: Math.round((Number(cantidad_nueva) - Number(material.stock_actual)) * 100) / 100,
-      stock_anterior: Number(material.stock_actual),
-      stock_nuevo: Number(cantidad_nueva),
-      referencia_id: ajusteCreado.id
     });
-    if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de ajuste:', eMov);
+    if (eAjuste) log.error('[inventario_ajustes] No se pudo guardar la copia del ajuste:', eAjuste);
 
-    res.json({ ajustado: true, stock_anterior: Number(material.stock_actual), stock_nuevo: Number(actualizado.stock_actual) });
+    res.json({ ajustado: true, stock_anterior: mov.stock_anterior, stock_nuevo: mov.stock_nuevo });
   } catch (err) { next(err); }
 });
 

@@ -22,6 +22,7 @@ const { obtenerCostoMinutoManoObra, obtenerFichasEfectivasParaProductos } = requ
 const { consumirWIPYGenerarNecesidad } = require('../servicios/produccion');
 const { registrarEntrega, eliminarEntrega, obtenerHistorial } = require('../servicios/entregas');
 const { randomUUID } = require('crypto');
+const libro = require('../servicios/inventario/libro');
 const router = express.Router();
 
 const ESTADOS_VALIDOS = ['pendiente', 'en_produccion', 'listo', 'entregado'];
@@ -101,6 +102,42 @@ router.get('/categorias-por-producto', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// La venta creada por una operación de inventario (para reintentos)
+async function ventaDeOperacion(operacionId, empresaId) {
+  const { data: op } = await supabase.from('inventario_operaciones')
+    .select('origen_id').eq('id', operacionId).eq('empresa_id', empresaId).maybeSingle();
+  if (!op || !op.origen_id) return null;
+  for (let intento = 0; intento < 4; intento++) {
+    const { data } = await supabase.from('ventas').select('*').eq('id', op.origen_id).eq('empresa_id', empresaId).maybeSingle();
+    if (data) return data;
+    await new Promise(r => setTimeout(r, 500));
+  }
+  return null;
+}
+
+// Si algo falla después de mover stock, se devuelve exacto desde el libro
+async function deshacerOperacion(operacion, req, motivo) {
+  if (!operacion || !operacion.ok || !operacion.operacionId) return;
+  try {
+    const { revertirOperacion } = require('../servicios/inventario/nucleo');
+    await revertirOperacion({ empresaId: req.empresa.id, usuarioId: req.usuarioId,
+      operacionId: operacion.operacionId, motivo, permitirNegativo: true });
+  } catch (err) { log.error('[inventario] No se pudo deshacer la operación', operacion.operacionId, err); }
+}
+
+// Consumo de material por item, con la ficha efectiva
+function requeridoPorMaterialDe(listaItems, fichas) {
+  const mapa = new Map();
+  for (const item of listaItems) {
+    for (const f of (fichas || []).filter(f => f.producto_id === item.producto_id)) {
+      const previo = mapa.get(f.material_id) || { material: f.materiales, requerido: 0 };
+      previo.requerido += Number(f.cantidad) * Number(item.cantidad);
+      mapa.set(f.material_id, previo);
+    }
+  }
+  return mapa;
+}
+
 // POST /api/ventas
 router.post('/', async (req, res, next) => {
   try {
@@ -155,24 +192,38 @@ router.post('/', async (req, res, next) => {
       }
     }
 
-    const faltantes = [];
-    for (const { material, requerido } of requeridoPorMaterial.values()) {
-      if (Number(material.stock_actual) < requerido) {
-        faltantes.push({
-          material: material.nombre,
-          unidad: material.unidad,
-          stock_actual: Number(material.stock_actual),
-          requerido: Math.round(requerido * 100) / 100
+    // El stock se mueve en la base, todo o nada. Si falta material y no
+    // se confirma, no se crea nada. La venta se guarda con el id de la
+    // operación ya hecha (origen = ventas/ventaId).
+    const ventaId = randomUUID();
+    const clave = libro.claveDe(req, 'venta');
+    const movimientos = libro.movimientosDeMateriales(requeridoPorMaterial, -1);
+    let faltantes = [];
+    let operacion = null;
+    if (movimientos.length > 0) {
+      operacion = await libro.aplicarOperacion({
+        empresaId: req.empresa.id, usuarioId: req.usuarioId,
+        tipo: 'venta', origenTabla: 'ventas', origenId: ventaId, clave,
+        movimientos, permitirNegativo: !!forzar,
+        detalleForzado: { confirmado: true }
+      });
+      if (!operacion.ok) {
+        return res.status(409).json({
+          error: 'No hay material suficiente para esta venta',
+          faltantes: libro.faltantesLegibles(operacion.faltantes, libro.unidadesDe(requeridoPorMaterial)),
+          puede_forzar: true
         });
       }
-    }
-    if (faltantes.length > 0 && !forzar) {
-      return res.status(409).json({
-        error: 'No hay material suficiente para esta venta',
-        faltantes,
-        puede_forzar: true,
-        mensaje: 'Puedes forzar el registro (por ejemplo, si el conteo del sistema está desactualizado) y luego corregir con un ajuste de inventario.'
-      });
+      if (operacion.repetida) {
+        // Doble clic / reintento: la venta ya existe (o se está guardando)
+        const existente = await ventaDeOperacion(operacion.operacionId, req.empresa.id);
+        if (existente) return res.status(200).json({ ...existente, repetida: true, facturable: true });
+        return res.status(409).json({ error: 'Esta venta ya se está registrando. Revisa el historial antes de intentarlo de nuevo.' });
+      }
+      if (operacion.forzada) {
+        faltantes = (operacion.movimientos || []).filter(m => m.stock_nuevo < 0)
+          .map(m => ({ material: m.nombre, stock_actual: m.stock_anterior, requerido: -m.cantidad }));
+      }
     }
 
     let total = 0, costoTotal = 0;
@@ -198,6 +249,7 @@ router.post('/', async (req, res, next) => {
     const { data: venta, error: eVenta } = await supabase
       .from('ventas')
       .insert({
+        id: ventaId,
         empresa_id: req.empresa.id, usuario_id: req.usuarioId,
         cliente: (cliente || '').trim() || null,
         cliente_telefono_cifrado: cifrar(cliente_telefono),
@@ -206,36 +258,18 @@ router.post('/', async (req, res, next) => {
         total, costo_total: costoTotal, estado: 'pendiente'
       })
       .select().single();
-    if (eVenta) throw new Error(eVenta.message);
+    if (eVenta) {
+      await deshacerOperacion(operacion, req, 'No se pudo guardar la venta');
+      throw new Error(eVenta.message);
+    }
 
     const { error: eItems } = await supabase
       .from('ventas_items')
       .insert(filasItems.map(f => ({ ...f, venta_id: venta.id })));
-    if (eItems) throw new Error(eItems.message);
-
-    for (const [materialId, { material, requerido }] of requeridoPorMaterial) {
-      const stockAnterior = Number(material.stock_actual);
-      const nuevoStock = Math.max(0, Math.round((stockAnterior - requerido) * 100) / 100);
-      const { error: eStock } = await supabase
-        .from('materiales')
-        .update({ stock_actual: nuevoStock, actualizado_en: new Date().toISOString() })
-        .eq('id', materialId)
-        .eq('empresa_id', req.empresa.id);
-      if (eStock) throw new Error(eStock.message);
-
-      // Bitácora (Fase 2 del plan de dashboard) — si esto falla, no se
-      // revierte la venta ni el stock: la bitácora es "buena, no
-      // perfecta", como quedó documentado en el plan.
-      const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
-        material_id: materialId,
-        tipo: 'venta',
-        cantidad: -requerido,
-        stock_anterior: stockAnterior,
-        stock_nuevo: nuevoStock,
-        referencia_id: venta.id
-      });
-      if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de venta:', eMov);
+    if (eItems) {
+      await supabase.from('ventas').delete().eq('id', venta.id).eq('empresa_id', req.empresa.id);
+      await deshacerOperacion(operacion, req, 'No se pudieron guardar los productos de la venta');
+      throw new Error(eItems.message);
     }
 
     // Productos CON procesos: se toma de WIP terminado lo que haya, y
@@ -459,47 +493,41 @@ router.put('/:id', async (req, res, next) => {
 
     const fichas = idsUnion.length ? await obtenerFichasEfectivasParaProductos(idsUnion, req.empresa.id) : [];
 
-    function requeridoPorMaterialDe(listaItems) {
-      const mapa = new Map();
-      for (const item of listaItems) {
-        const filasDelProducto = (fichas || []).filter(f => f.producto_id === item.producto_id);
-        for (const f of filasDelProducto) {
-          const previo = mapa.get(f.material_id) || { material: f.materiales, requerido: 0 };
-          previo.requerido += Number(f.cantidad) * Number(item.cantidad);
-          mapa.set(f.material_id, previo);
-        }
-      }
-      return mapa;
+    // Lo ya descontado sale del HISTORIAL de esta venta (no de la ficha
+    // actual). Ventas viejas sin historial: se usa la ficha, como antes.
+    const requeridoNuevo = requeridoPorMaterialDe(items, fichas);
+    const registrado = await libro.saldoRegistrado(req.empresa.id, req.params.id);
+    const actualPorMaterial = new Map(registrado.materiales); // negativo = consumido
+    if (!registrado.hayRegistro) {
+      for (const [id, { requerido }] of requeridoPorMaterialDe(ventaActual.ventas_items || [], fichas))
+        actualPorMaterial.set(id, -requerido);
+    }
+    const ajuste = new Map(); // material_id -> { material, requerido } (requerido > 0 = consume más)
+    for (const id of new Set([...actualPorMaterial.keys(), ...requeridoNuevo.keys()])) {
+      const objetivo = -(requeridoNuevo.get(id)?.requerido || 0);
+      const diferencia = objetivo - (actualPorMaterial.get(id) || 0); // negativo = sale más
+      if (Math.abs(diferencia) < 0.00005) continue;
+      ajuste.set(id, { material: requeridoNuevo.get(id)?.material, requerido: -diferencia });
     }
 
-    const requeridoViejo = requeridoPorMaterialDe(ventaActual.ventas_items || []);
-    const requeridoNuevo = requeridoPorMaterialDe(items);
-
-    const idsMaterialUnion = new Set([...requeridoViejo.keys(), ...requeridoNuevo.keys()]);
-    const faltantes = [];
-    const netoPorMaterial = new Map(); // material_id -> { material, neto } (neto > 0 = consume más)
-    for (const materialId of idsMaterialUnion) {
-      const material = (requeridoNuevo.get(materialId) || requeridoViejo.get(materialId)).material;
-      const antes = requeridoViejo.get(materialId)?.requerido || 0;
-      const despues = requeridoNuevo.get(materialId)?.requerido || 0;
-      const neto = despues - antes; // positivo = necesita más material del que ya tenía reservado
-      netoPorMaterial.set(materialId, { material, neto });
-      if (neto > 0 && Number(material.stock_actual) < neto) {
-        faltantes.push({
-          material: material.nombre,
-          unidad: material.unidad,
-          stock_actual: Number(material.stock_actual),
-          requerido: Math.round(neto * 100) / 100
+    let faltantes = [];
+    const movimientos = libro.movimientosDeMateriales(ajuste, -1);
+    if (movimientos.length > 0) {
+      const operacion = await libro.aplicarOperacion({
+        empresaId: req.empresa.id, usuarioId: req.usuarioId,
+        tipo: 'venta_edicion', origenTabla: 'ventas', origenId: req.params.id,
+        motivo: `Venta editada (${ventaActual.cliente || 'sin cliente'})`,
+        clave: libro.claveDe(req, 'venta-edicion'),
+        movimientos, permitirNegativo: !!forzar, detalleForzado: { confirmado: true }
+      });
+      if (!operacion.ok) {
+        return res.status(409).json({
+          error: 'No hay material suficiente para estos cambios',
+          faltantes: libro.faltantesLegibles(operacion.faltantes, libro.unidadesDe(requeridoNuevo)),
+          puede_forzar: true
         });
       }
-    }
-    if (faltantes.length > 0 && !forzar) {
-      return res.status(409).json({
-        error: 'No hay material suficiente para estos cambios',
-        faltantes,
-        puede_forzar: true,
-        mensaje: 'Puedes forzar el guardado y luego corregir con un ajuste de inventario.'
-      });
+      if (operacion.forzada) faltantes = operacion.movimientos.filter(m => m.stock_nuevo < 0);
     }
 
     let total = 0, costoTotal = 0;
@@ -519,37 +547,6 @@ router.put('/:id', async (req, res, next) => {
     });
     total = Math.round(total * 100) / 100;
     costoTotal = Math.round(costoTotal * 100) / 100;
-
-    // Aplica el neto de inventario primero (si algo falla acá, todavía no
-    // se tocaron ni los items ni el total de la venta).
-    for (const [materialId, { material, neto }] of netoPorMaterial) {
-      if (neto === 0) continue;
-      const stockAnterior = Number(material.stock_actual);
-      const stockNuevo = Math.max(0, Math.round((stockAnterior - neto) * 100) / 100);
-      const { error: eStock } = await supabase
-        .from('materiales')
-        .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-        .eq('id', materialId).eq('empresa_id', req.empresa.id);
-      if (eStock) throw new Error(eStock.message);
-
-      await supabase.from('inventario_ajustes').insert({
-        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
-        material_id: materialId,
-        stock_anterior: stockAnterior,
-        stock_nuevo: stockNuevo,
-        motivo: `Venta editada (${ventaActual.cliente || 'sin cliente'}): productos/cantidades actualizados`,
-        usuario: req.usuarioEmail || null
-      });
-      await supabase.from('inventario_movimientos').insert({
-        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
-        material_id: materialId,
-        tipo: 'ajuste',
-        cantidad: -neto,
-        stock_anterior: stockAnterior,
-        stock_nuevo: stockNuevo,
-        referencia_id: req.params.id
-      });
-    }
 
     const { error: eDelItems } = await supabase
       .from('ventas_items').delete().eq('venta_id', req.params.id);
@@ -577,13 +574,11 @@ router.put('/:id', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// DELETE /api/ventas/:id — cuerpo: { motivo }
-// Revierte el stock que la venta había consumido (recalculado con la
-// ficha técnica actual de cada producto — misma limitación que ya
-// existe hoy en Compras) y registra el reverso en inventario_ajustes
-// e inventario_movimientos. Bloqueada si la venta ya está facturada:
-// borrar una venta con factura generada es un problema legal, no solo
-// de inventario.
+// DELETE /api/ventas/:id — cuerpo: { motivo, forzar? }
+// Devuelve el stock EXACTO que el historial dice que la venta movió
+// (aunque la ficha haya cambiado), en una sola operación. Bloqueada si
+// la venta tiene factura: borrar una venta facturada es un problema
+// legal, no solo de inventario.
 router.delete('/:id', async (req, res, next) => {
   try {
     const { motivo } = req.body;
@@ -626,51 +621,39 @@ router.delete('/:id', async (req, res, next) => {
     if (eProcActivos) throw new Error(eProcActivos.message);
     const idsConProcesos = new Set((procesosActivos || []).map(p => p.producto_id));
 
-    const itemsSinProcesos = (venta.ventas_items || []).filter(i => !idsConProcesos.has(i.producto_id));
-    const fichas = await obtenerFichasEfectivasParaProductos(itemsSinProcesos.map(i => i.producto_id), req.empresa.id);
-
-    const requeridoPorMaterial = new Map();
-    for (const item of itemsSinProcesos) {
-      const filasDelProducto = (fichas || []).filter(f => f.producto_id === item.producto_id);
-      for (const f of filasDelProducto) {
-        const previo = requeridoPorMaterial.get(f.material_id) || { stockActual: Number(f.materiales.stock_actual), requerido: 0 };
-        previo.requerido += Number(f.cantidad) * Number(item.cantidad);
-        requeridoPorMaterial.set(f.material_id, previo);
-      }
+    // Se devuelve EXACTO lo que el historial dice que esta venta movió.
+    // Ventas viejas sin historial: se recalcula con la ficha, como antes.
+    const registrado = await libro.saldoRegistrado(req.empresa.id, venta.id);
+    const movimientos = [];
+    for (const [id, saldo] of registrado.materiales) if (saldo) movimientos.push({ material_id: id, cantidad: -saldo });
+    for (const [id, saldo] of registrado.productos) if (saldo) movimientos.push({ producto_id: id, cantidad: -saldo });
+    if (!registrado.hayRegistro) {
+      const itemsSinProcesos = (venta.ventas_items || []).filter(i => !idsConProcesos.has(i.producto_id));
+      const fichas = itemsSinProcesos.length ? await obtenerFichasEfectivasParaProductos(itemsSinProcesos.map(i => i.producto_id), req.empresa.id) : [];
+      movimientos.push(...libro.movimientosDeMateriales(requeridoPorMaterialDe(itemsSinProcesos, fichas), +1));
     }
 
-    for (const [materialId, { stockActual, requerido }] of requeridoPorMaterial) {
-      const stockNuevo = Math.round((stockActual + requerido) * 100) / 100;
-      const { error: eStock } = await supabase
-        .from('materiales')
-        .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-        .eq('id', materialId).eq('empresa_id', req.empresa.id);
-      if (eStock) throw new Error(eStock.message);
-
-      await supabase.from('inventario_ajustes').insert({
-        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
-        material_id: materialId,
-        stock_anterior: stockActual,
-        stock_nuevo: stockNuevo,
+    if (movimientos.length > 0) {
+      const operacion = await libro.aplicarOperacion({
+        empresaId: req.empresa.id, usuarioId: req.usuarioId,
+        tipo: 'venta_eliminacion', origenTabla: 'ventas', origenId: venta.id,
         motivo: `Venta eliminada (${venta.cliente || 'sin cliente'}): ${motivo.trim()}`,
-        usuario: req.usuarioEmail || null
+        clave: `venta-eliminacion:${venta.id}`,
+        movimientos, permitirNegativo: !!req.body.forzar, detalleForzado: { confirmado: true }
       });
-      await supabase.from('inventario_movimientos').insert({
-        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
-        material_id: materialId,
-        tipo: 'ajuste',
-        cantidad: requerido,
-        stock_anterior: stockActual,
-        stock_nuevo: stockNuevo,
-        referencia_id: venta.id
-      });
+      if (!operacion.ok) {
+        return res.status(409).json({
+          error: 'Eliminar esta venta dejaría stock en negativo',
+          faltantes: libro.faltantesLegibles(operacion.faltantes), puede_forzar: true
+        });
+      }
     }
 
     const { error: eDel } = await supabase
       .from('ventas').delete().eq('id', req.params.id).eq('empresa_id', req.empresa.id);
     if (eDel) throw new Error(eDel.message);
 
-    res.json({ eliminada: true, stock_revertido: requeridoPorMaterial.size > 0 });
+    res.json({ eliminada: true, stock_revertido: movimientos.length > 0 });
   } catch (err) { next(err); }
 });
 

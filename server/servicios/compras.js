@@ -10,7 +10,7 @@
 // ============================================================
 const supabase = require('../supabase/cliente');
 
-const log = require('../seguridad/log');
+const { aplicarOperacion } = require('./inventario/nucleo');
 const { usuarioActual } = require('../contexto');
 // Fecha estimada de llegada = hoy + días de entrega del material
 function calcularFechaEstimada(tiempoEntregaDias) {
@@ -58,31 +58,26 @@ async function recibirCompra(compraId, empresaId) {
     return actual;
   }
 
-  const { data: material, error: eMat } = await supabase
-    .from('materiales').select('stock_actual').eq('id', reclamada.material_id).eq('empresa_id', empresaId).single();
-  if (eMat || !material) throw new Error('El material de esta compra ya no existe');
+  const { data: material } = await supabase
+    .from('materiales').select('costo_unitario').eq('id', reclamada.material_id).eq('empresa_id', empresaId).maybeSingle();
+  if (!material) throw new Error('El material de esta compra ya no existe');
 
-  const stockAnterior = Number(material.stock_actual);
-  const nuevoStock = Math.round((stockAnterior + Number(reclamada.cantidad)) * 100) / 100;
-  const { error: eStock } = await supabase
-    .from('materiales')
-    .update({ stock_actual: nuevoStock, actualizado_en: new Date().toISOString() })
-    .eq('id', reclamada.material_id)
-    .eq('empresa_id', empresaId);
-  if (eStock) throw new Error(eStock.message);
-
-  // Bitácora (Fase 2) — misma regla: si falla, no se revierte la
-  // recepción de la compra, solo queda sin registrar en el historial.
-  const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-    empresa_id: empresaId, usuario_id: usuarioActual(),
-    material_id: reclamada.material_id,
-    tipo: 'compra',
-    cantidad: Number(reclamada.cantidad),
-    stock_anterior: stockAnterior,
-    stock_nuevo: nuevoStock,
-    referencia_id: reclamada.id
-  });
-  if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de compra:', eMov);
+  // Clave por compra: aunque dos peticiones lleguen juntas, solo suma una vez
+  try {
+    const operacion = await aplicarOperacion({
+      empresaId, usuarioId: usuarioActual() || reclamada.usuario_id,
+      tipo: 'compra', origenTabla: 'compras', origenId: reclamada.id,
+      clave: `compra-recibida:${reclamada.id}`,
+      movimientos: [{ material_id: reclamada.material_id, cantidad: Number(reclamada.cantidad),
+                      costo_unitario: Number(reclamada.precio_unitario ?? material.costo_unitario) }]
+    });
+    if (!operacion.ok) throw new Error('No se pudo sumar la compra al inventario');
+  } catch (err) {
+    // No quedó sumada: la compra vuelve a "pendiente" para reintentarse
+    await supabase.from('compras').update({ estado: 'pendiente', fecha_llegada: null })
+      .eq('id', reclamada.id).eq('empresa_id', empresaId);
+    throw err;
+  }
 
   return reclamada;
 }

@@ -15,6 +15,7 @@
 //     se cargó aparte por Materiales o por Inventario).
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { aplicarOperacion } = require('../inventario/nucleo');
 const log = require('../../seguridad/log');
 const { usuarioActual } = require('../../contexto');
 const { leerFilas } = require('../excel/lector');
@@ -133,23 +134,12 @@ async function importarCompras(empresaId, filas, { afectarInventario = true } = 
     if (esRecibida) {
       resultado.registradas_recibidas++;
       if (afectarInventario) {
-        const stockAnterior = Number(material.stock_actual);
-        const stockNuevo = Math.round((stockAnterior + cantidad) * 100) / 100;
-        const { error: eStock } = await supabase
-          .from('materiales').update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-          .eq('id', fila.material_id).eq('empresa_id', empresaId);
-        if (eStock) throw new Error(`Fila ${fila.numero_fila}: ${eStock.message}`);
-
-        const { error: eMov } = await supabase.from('inventario_movimientos').insert({
-          empresa_id: empresaId, usuario_id: usuarioActual(),
-          material_id: fila.material_id,
-          tipo: 'compra',
-          cantidad,
-          stock_anterior: stockAnterior,
-          stock_nuevo: stockNuevo,
-          referencia_id: compra.id
+        const operacion = await aplicarOperacion({
+          empresaId, tipo: 'importacion', origenTabla: 'compras', origenId: compra.id,
+          motivo: 'Compra importada desde Excel', clave: `compra-recibida:${compra.id}`,
+          movimientos: [{ material_id: fila.material_id, cantidad, costo_unitario: Number(precioUnitario) }]
         });
-        if (eMov) log.error('[inventario_movimientos] No se pudo registrar el movimiento de importación:', eMov);
+        if (!operacion.ok) throw new Error(`Fila ${fila.numero_fila}: no se pudo sumar al inventario`);
       }
     } else {
       resultado.registradas_pendientes++;

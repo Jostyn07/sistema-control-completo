@@ -13,6 +13,7 @@ const express = require('express');
 const supabase = require('../supabase/cliente');
 const { recalcularProductosQueUsanMaterial } = require('../servicios/costos');
 const { procesarComprasVencidas } = require('../servicios/compras');
+const { aplicarOperacion } = require('../servicios/inventario/nucleo');
 const router = express.Router();
 
 // Campos obligatorios y sus validaciones básicas
@@ -56,11 +57,23 @@ router.post('/', async (req, res, next) => {
       costo_unitario: Number(req.body.costo_unitario),
       proveedor: req.body.proveedor.trim(),
       tiempo_entrega_dias: Number(req.body.tiempo_entrega_dias || 1),
-      stock_actual: Number(req.body.stock_actual || 0),
+      stock_actual: 0,
       stock_seguridad: Number(req.body.stock_seguridad || 0)
     };
     const { data, error } = await supabase.from('materiales').insert(nuevo).select().single();
     if (error) throw new Error(error.message);
+
+    // El stock inicial entra por el historial, para que el libro cuadre desde el día 1
+    const stockInicial = Number(req.body.stock_actual || 0);
+    if (stockInicial > 0) {
+      const operacion = await aplicarOperacion({
+        empresaId: req.empresa.id, usuarioId: req.usuarioId, tipo: 'ajuste',
+        origenTabla: 'materiales', origenId: data.id, motivo: 'Stock inicial',
+        clave: `stock-inicial:${data.id}`,
+        movimientos: [{ material_id: data.id, cantidad: stockInicial, costo_unitario: nuevo.costo_unitario }]
+      });
+      data.stock_actual = operacion.movimientos[0]?.stock_nuevo ?? stockInicial;
+    }
     res.status(201).json(data);
   } catch (err) { next(err); }
 });

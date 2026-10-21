@@ -96,6 +96,7 @@ async function abrirNuevaVenta() {
 }
 
 function cerrarNuevaVenta() {
+  claveVentaActual = null;
   document.getElementById('modalVenta').hidden = true;
 }
 
@@ -217,6 +218,12 @@ function calcularTotalVenta(items) {
   return (items || []).reduce((s, i) => s + i.precio * i.cantidad, 0);
 }
 
+// Una clave por venta en edición: doble clic o reintento no la duplican
+let claveVentaActual = null;
+function nuevaClave() {
+  return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g, '');
+}
+
 async function registrarVenta(forzar = false) {
   if (itemsVentaEnEdicion.length === 0) {
     mostrarAviso('Agrega al menos un producto a la venta', 'error');
@@ -228,7 +235,8 @@ async function registrarVenta(forzar = false) {
     cliente_cedula: document.getElementById('campoClienteCedula').value,
     fecha_entrega: document.getElementById('campoFechaEntrega').value || null,
     items: itemsVentaEnEdicion.map(i => ({ producto_id: i.producto_id, cantidad: i.cantidad, categoria: i.categoria || null })),
-    forzar
+    forzar,
+    clave: (claveVentaActual = claveVentaActual || nuevaClave())
   };
 
   try {
@@ -446,17 +454,21 @@ async function guardarEdicionVenta() {
   }
 }
 
-async function eliminarVenta(id, nombreCliente) {
-  const motivo = prompt(`Vas a eliminar la venta de "${nombreCliente}". El stock consumido se devuelve automáticamente.\n\nEscribe el motivo:`);
+async function eliminarVenta(id, nombreCliente, motivoPrevio = null) {
+  const motivo = motivoPrevio ?? prompt(`Vas a eliminar la venta de "${nombreCliente}". El stock consumido se devuelve automáticamente.\n\nEscribe el motivo:`);
   if (motivo === null) return; // canceló
   if (!motivo.trim()) { mostrarAviso('Necesitas escribir un motivo', 'error'); return; }
 
   try {
-    await API.eliminar(`/api/ventas/${id}`, { motivo });
+    await API.eliminar(`/api/ventas/${id}`, { motivo, forzar: motivoPrevio !== null });
     mostrarAviso('Venta eliminada y stock revertido');
     cargarPedidos();
     cargarHistorialVentas();
   } catch (err) {
+    if (motivoPrevio === null && err.message.includes('dejaría stock en negativo')) {
+      if (confirm(`${err.message}.\n\n¿Eliminarla de todas formas?`)) eliminarVenta(id, nombreCliente, motivo);
+      return;
+    }
     mostrarAviso(err.message, 'error');
   }
 }

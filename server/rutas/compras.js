@@ -13,6 +13,7 @@ const express = require('express');
 const supabase = require('../supabase/cliente');
 const servicioInventario = require('../servicios/inventario');
 const { calcularFechaEstimada, recibirCompra, procesarComprasVencidas } = require('../servicios/compras');
+const libro = require('../servicios/inventario/libro');
 const router = express.Router();
 
 // GET /api/compras/pendientes
@@ -182,31 +183,31 @@ router.delete('/:id', async (req, res, next) => {
       .from('compras').select('*').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !compra) return res.status(404).json({ error: 'Compra no encontrada' });
 
+    // Si ya sumó stock, se devuelve desde el historial de esa compra.
+    // Compras viejas (antes del historial por operación): se resta su cantidad.
     let stockRevertido = false;
     if (compra.estado === 'recibida') {
-      const { data: material, error: eMat } = await supabase
-        .from('materiales').select('stock_actual, unidad').eq('id', compra.material_id).eq('empresa_id', req.empresa.id).single();
-      if (eMat || !material) throw new Error('El material de esta compra ya no existe');
-
-      const stockAnterior = Number(material.stock_actual);
-      const stockNuevo = Math.max(0, Math.round((stockAnterior - Number(compra.cantidad)) * 100) / 100);
-
-      const { error: eStock } = await supabase
-        .from('materiales')
-        .update({ stock_actual: stockNuevo, actualizado_en: new Date().toISOString() })
-        .eq('id', compra.material_id)
-        .eq('empresa_id', req.empresa.id);
-      if (eStock) throw new Error(eStock.message);
-
-      const { error: eAjuste } = await supabase.from('inventario_ajustes').insert({
-        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
-        material_id: compra.material_id,
-        stock_anterior: stockAnterior,
-        stock_nuevo: stockNuevo,
-        motivo: `Compra eliminada (${compra.cantidad} ${material.unidad} de ${compra.proveedor}): ${motivo.trim()}`,
-        usuario: req.usuarioEmail || null
+      const motivoTexto = `Compra eliminada (${compra.cantidad} de ${compra.proveedor}): ${motivo.trim()}`;
+      const r = await libro.revertirOrigen({
+        empresaId: req.empresa.id, usuarioId: req.usuarioId,
+        origenTabla: 'compras', origenId: compra.id, motivo: motivoTexto, permitirNegativo: !!req.body.forzar
       });
-      if (eAjuste) throw new Error(eAjuste.message);
+      let resultado = r;
+      if (r.encontradas === 0) {
+        resultado = await libro.aplicarOperacion({
+          empresaId: req.empresa.id, usuarioId: req.usuarioId,
+          tipo: 'ajuste', origenTabla: 'compras', origenId: compra.id, motivo: motivoTexto,
+          clave: `compra-eliminada:${compra.id}`,
+          movimientos: [{ material_id: compra.material_id, cantidad: -Number(compra.cantidad) }],
+          permitirNegativo: !!req.body.forzar, detalleForzado: { confirmado: true }
+        });
+      }
+      if (!resultado.ok) {
+        return res.status(409).json({
+          error: 'Eliminar esta compra dejaría el material en negativo (ya se usó parte de lo comprado)',
+          faltantes: libro.faltantesLegibles(resultado.faltantes), puede_forzar: true
+        });
+      }
       stockRevertido = true;
     }
 

@@ -13,6 +13,7 @@
 const supabase = require('../supabase/cliente');
 const { usuarioActual } = require('../contexto');
 const { registrarProduccionProceso, revertirProduccionProceso } = require('./produccion');
+const { randomUUID } = require('crypto');
 
 // `ventas_items` no tiene su propia columna usuario_id (el dueño es
 // `ventas`, la tabla padre) — para ese tipo se verifica la propiedad
@@ -74,12 +75,16 @@ async function registrarEntrega({ tipo, referenciaId, cantidad, fecha, empresaId
     );
   }
 
+  const entregaId = randomUUID();
+  let procesoDeEntrega = null;
   if (tipo === 'proceso_colaborador') {
     const { data: proceso, error: eProc } = await supabase
       .from('procesos').select('producto_id').eq('id', referencia.proceso_id).single();
     if (eProc) throw new Error(eProc.message);
+    procesoDeEntrega = proceso;
 
     const resultado = await registrarProduccionProceso({
+      entregaId,
       procesoId: referencia.proceso_id,
       productoId: proceso.producto_id,
       delta: cantidadNum,
@@ -94,9 +99,18 @@ async function registrarEntrega({ tipo, referenciaId, cantidad, fecha, empresaId
 
   const { data: entrega, error: eIns } = await supabase
     .from('entregas_parciales')
-    .insert({ empresa_id: empresaId, usuario_id: usuarioActual(), tipo, referencia_id: referenciaId, cantidad: cantidadNum, fecha, grupo_id: grupoId || null })
+    .insert({ id: entregaId, empresa_id: empresaId, usuario_id: usuarioActual(), tipo, referencia_id: referenciaId, cantidad: cantidadNum, fecha, grupo_id: grupoId || null })
     .select().single();
-  if (eIns) throw new Error(eIns.message);
+  if (eIns) {
+    // No quedó la entrega: se devuelve lo que se movió (material y WIP)
+    if (procesoDeEntrega) {
+      await revertirProduccionProceso({
+        procesoId: referencia.proceso_id, productoId: procesoDeEntrega.producto_id, delta: cantidadNum,
+        empresaId, encargoId: referencia.id, entregaId, motivo: 'No se pudo guardar la entrega'
+      }).catch(() => {});
+    }
+    throw new Error(eIns.message);
+  }
 
   const nuevoTotal = Math.round((yaEntregado + cantidadNum) * 10000) / 10000;
   const cambios = { cantidad_entregada: nuevoTotal };
@@ -137,7 +151,8 @@ async function eliminarEntrega(entregaId, empresaId) {
       productoId: proceso.producto_id,
       delta: Number(entrega.cantidad),
       empresaId,
-      encargoId: referencia.id
+      encargoId: referencia.id,
+      entregaId: entrega.id
     });
   }
 
