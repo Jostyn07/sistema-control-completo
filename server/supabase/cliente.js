@@ -30,6 +30,21 @@ const RLS_ACTIVO = process.env.SUPABASE_RLS_ACTIVO === 'true';
 
 const OPCIONES_SERVIDOR = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
 
+// "JWT issued at future": el token (de un usuario recién logueado, o el
+// que Supabase genera a partir de la llave secreta sb_secret_…) trae una
+// hora de emisión unos milisegundos ADELANTE del reloj de la base de
+// datos. Es un desfase de relojes del lado de Supabase y se resuelve
+// solo al reintentar. Se reintenta UNA vez, tras una pausa corta.
+const ESPERA_RELOJ_MS = 800;
+async function fetchConReintentoDeReloj(input, init) {
+  const respuesta = await fetch(input, init);
+  if (respuesta.status !== 401) return respuesta;
+  const texto = await respuesta.clone().text().catch(() => '');
+  if (!/issued at future/i.test(texto)) return respuesta;
+  await new Promise(r => setTimeout(r, ESPERA_RELOJ_MS));
+  return fetch(input, init);
+}
+
 let supabaseAdmin;
 
 if (url && llaveServicio) {
@@ -39,7 +54,7 @@ if (url && llaveServicio) {
   // Authorization que ya viene en los encabezados globales).
   supabaseAdmin = createClient(url, llaveServicio, {
     ...OPCIONES_SERVIDOR,
-    global: { headers: { Authorization: `Bearer ${llaveServicio}` } }
+    global: { headers: { Authorization: `Bearer ${llaveServicio}` }, fetch: fetchConReintentoDeReloj }
   });
 } else {
   console.warn('[AVISO] Faltan SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en el .env — las rutas de API fallarán hasta configurarlas.');
@@ -59,7 +74,7 @@ if (RLS_ACTIVO && !llaveAnonima) {
 function crearClienteUsuario(tokenAcceso) {
   return createClient(url, llaveAnonima, {
     ...OPCIONES_SERVIDOR,
-    global: { headers: { Authorization: `Bearer ${tokenAcceso}` } }
+    global: { headers: { Authorization: `Bearer ${tokenAcceso}` }, fetch: fetchConReintentoDeReloj }
   });
 }
 
@@ -68,7 +83,7 @@ function crearClienteUsuario(tokenAcceso) {
 function crearClienteServicioConActor(usuarioId) {
   return createClient(url, llaveServicio, {
     ...OPCIONES_SERVIDOR,
-    global: { headers: { 'x-fincil-usuario': usuarioId, Authorization: `Bearer ${llaveServicio}` } }
+    global: { headers: { 'x-fincil-usuario': usuarioId, Authorization: `Bearer ${llaveServicio}` }, fetch: fetchConReintentoDeReloj }
   });
 }
 
@@ -93,7 +108,8 @@ const EXTRAS = {
   supabaseAdminBase: supabaseAdmin,
   crearClienteUsuario,
   crearClienteServicioConActor,
-  RLS_ACTIVO
+  RLS_ACTIVO,
+  _fetchConReintentoDeReloj: fetchConReintentoDeReloj
 };
 
 const supabase = new Proxy({}, {
