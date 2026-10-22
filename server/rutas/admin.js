@@ -107,4 +107,17 @@ router.get('/telemetria', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/admin/uso?dias=30&min_empresas=1
+// Panel de facilidad de uso: qué se usa, activación, retención,
+// fricción (ventanas sin guardar, errores) y encuestas. Agregado.
+router.get('/uso', async (req, res, next) => {
+  try {
+    const dias = Math.min(Math.max(parseInt(req.query.dias, 10) || 30, 1), 400);
+    const minEmpresas = Math.min(Math.max(parseInt(req.query.min_empresas, 10) || 1, 1), 100);
+    const { data, error } = await supabase.rpc('telemetria_panel', { p_dias: dias, p_min_empresas: minEmpresas });
+    if (error) throw new Error(error.message);
+    res.json(data);
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

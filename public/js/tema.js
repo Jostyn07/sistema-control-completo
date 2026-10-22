@@ -372,6 +372,208 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.querySelector('.navegacion')) Telemetria.enviar('pantalla.abierta', { pantalla: Telemetria.pantallaActual() });
 });
 
+// ============================================================
+// Medición de uso (facilidad de uso): ventanas que se abren y se
+// cierran con o sin guardar, búsquedas y ayuda. Solo identificadores
+// del código (id de la ventana), conteos y tiempos: nunca lo escrito.
+// ============================================================
+(function medirUso() {
+  if (!document.querySelector('.navegacion')) return;
+  const pantalla = () => Telemetria.pantallaActual();
+  const abiertas = new Map(); // id → momento de apertura
+  const CLAVE_CANCELADOS = 'uso_formularios_cancelados';
+
+  function cancelacionesDe(id) {
+    try { return (JSON.parse(sessionStorage.getItem(CLAVE_CANCELADOS) || '{}')[id]) || 0; } catch (_) { return 0; }
+  }
+  function sumarCancelacion(id) {
+    try {
+      const mapa = JSON.parse(sessionStorage.getItem(CLAVE_CANCELADOS) || '{}');
+      mapa[id] = (mapa[id] || 0) + 1;
+      sessionStorage.setItem(CLAVE_CANCELADOS, JSON.stringify(mapa));
+      return mapa[id];
+    } catch (_) { return 0; }
+  }
+
+  function revisar(modal) {
+    const id = modal.id;
+    if (!id || modal.dataset.sinMedicion !== undefined) return;
+    const visible = !modal.hidden;
+    if (visible && !abiertas.has(id)) {
+      abiertas.set(id, Date.now());
+      Telemetria.enviar('formulario.abierto', { pantalla: pantalla(), formulario: id });
+    } else if (!visible && abiertas.has(id)) {
+      const inicio = abiertas.get(id);
+      abiertas.delete(id);
+      const guardado = (typeof API !== 'undefined' && API.ultimaEscrituraOk >= inicio);
+      Telemetria.enviar('formulario.cerrado', {
+        pantalla: pantalla(), formulario: id, guardado, segundos: Math.round((Date.now() - inicio) / 1000)
+      });
+      if (!guardado && sumarCancelacion(id) === 3) Encuestas.preguntarPorFormulario(id);
+    }
+  }
+
+  const observador = new MutationObserver((cambios) => {
+    for (const c of cambios) {
+      if (c.type === 'attributes' && c.target.classList && c.target.classList.contains('modal')) revisar(c.target);
+    }
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.modal[id]').forEach(revisar);
+    observador.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
+  });
+
+  // Búsquedas: cuántos resultados quedaron (no lo que se escribió)
+  let reloj = null;
+  document.addEventListener('input', (ev) => {
+    const campo = ev.target;
+    if (!campo.closest || !campo.closest('.barra-herramientas-tabla__buscador')) return;
+    clearTimeout(reloj);
+    reloj = setTimeout(() => {
+      if ((campo.value || '').trim().length < 2) return;
+      const seccion = campo.closest('section, .tarjeta, main') || document;
+      const filas = [...seccion.querySelectorAll('tbody tr')].filter(f => !f.querySelector('.tabla__vacio') && f.offsetParent !== null).length;
+      const tarjetas = filas ? 0 : seccion.querySelectorAll('.tarjeta-producto, .tarjetas-productos > *').length;
+      Telemetria.enviar('busqueda.usada', { pantalla: pantalla(), resultados: filas || tarjetas });
+    }, 1500);
+  });
+
+  // "¿Cómo funciona?"
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof window.abrirAyudaContextual === 'function') {
+      const original = window.abrirAyudaContextual;
+      window.abrirAyudaContextual = function (...args) {
+        Telemetria.enviar('ayuda.abierta', { pantalla: pantalla() });
+        return original.apply(this, args);
+      };
+    }
+  });
+})();
+
+// ============================================================
+// Encuestas cortas en el momento justo. Una tarjeta pequeña abajo a
+// la derecha, que se puede cerrar. El servidor decide si toca
+// (facilidad: a partir de 7 días de uso, una sola vez).
+// ============================================================
+const Encuestas = {
+  _abierta: false,
+
+  _tarjeta(contenido) {
+    if (this._abierta) return null;
+    this._abierta = true;
+    const t = document.createElement('div');
+    t.className = 'encuesta-flotante';
+    t.setAttribute('role', 'dialog');
+    t.innerHTML = `<button type="button" class="encuesta-flotante__cerrar" aria-label="Cerrar">×</button>${contenido}`;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('encuesta-flotante--visible'));
+    return t;
+  },
+
+  _cerrar(t) {
+    t.classList.remove('encuesta-flotante--visible');
+    setTimeout(() => t.remove(), 250);
+    this._abierta = false;
+  },
+
+  _guardar(cuerpo) {
+    return API.enviar('/api/encuestas', cuerpo).catch(() => {});
+  },
+
+  async revisarPendiente() {
+    try {
+      const hoy = new Date().toISOString().slice(0, 10);
+      if (localStorage.getItem('encuesta_revisada') === hoy) return;
+      localStorage.setItem('encuesta_revisada', hoy);
+      const r = await API.obtener('/api/encuestas/pendiente');
+      if (!r || r.encuesta !== 'facilidad') return;
+      // No interrumpe: espera a que no haya ventanas ni recorridos abiertos
+      const ocupado = () => document.querySelector('.modal:not([hidden]), .recorrido-tarjeta, .recorrido-capa');
+      let intentos = 0;
+      const intentar = () => {
+        if (!ocupado()) return this.preguntarFacilidad();
+        if (++intentos < 20) setTimeout(intentar, 15000);
+      };
+      intentar();
+    } catch (_) { /* nunca molesta si falla */ }
+  },
+
+  preguntarFacilidad() {
+    const t = this._tarjeta(`
+      <p class="encuesta-flotante__pregunta">¿Qué tan fácil es usar Fincil?</p>
+      <div class="encuesta-flotante__escala">
+        ${[1, 2, 3, 4, 5].map(n => `<button type="button" data-puntaje="${n}">${n}</button>`).join('')}
+      </div>
+      <div class="encuesta-flotante__extremos"><span>Muy difícil</span><span>Muy fácil</span></div>
+      <div class="encuesta-flotante__detalle" hidden>
+        <textarea maxlength="500" rows="3" placeholder="¿Qué mejorarías?"></textarea>
+        <button type="button" class="boton boton--primario boton--pequeno" data-enviar>Enviar</button>
+      </div>`);
+    if (!t) return;
+    Telemetria.enviar('encuesta.mostrada', { pantalla: Telemetria.pantallaActual(), encuesta: 'facilidad' });
+    let puntaje = null;
+    t.querySelector('.encuesta-flotante__cerrar').onclick = () => {
+      this._guardar({ encuesta: 'facilidad', estado: puntaje ? 'respondida' : 'omitida', puntaje, contexto: Telemetria.pantallaActual() });
+      this._cerrar(t);
+    };
+    t.querySelectorAll('[data-puntaje]').forEach(b => b.onclick = () => {
+      puntaje = Number(b.dataset.puntaje);
+      t.querySelectorAll('[data-puntaje]').forEach(x => x.classList.toggle('activo', x === b));
+      t.querySelector('.encuesta-flotante__detalle').hidden = false;
+    });
+    t.querySelector('[data-enviar]').onclick = () => {
+      this._guardar({ encuesta: 'facilidad', estado: 'respondida', puntaje, contexto: Telemetria.pantallaActual(),
+        comentario: t.querySelector('textarea').value });
+      t.innerHTML = '<p class="encuesta-flotante__pregunta">¡Gracias!</p>';
+      setTimeout(() => this._cerrar(t), 1500);
+    };
+  },
+
+  preguntarPorFormulario(formulario) {
+    try { if (localStorage.getItem('encuesta_formulario_' + formulario)) return; localStorage.setItem('encuesta_formulario_' + formulario, '1'); } catch (_) {}
+    const motivos = [
+      ['no_entendi', 'No entendí qué llenar'],
+      ['me_falta_dato', 'Me faltaba un dato'],
+      ['error_al_guardar', 'Me salió un error'],
+      ['solo_mirando', 'Solo estaba mirando'],
+      ['otro', 'Otro']
+    ];
+    const t = this._tarjeta(`
+      <p class="encuesta-flotante__pregunta">¿Algo no quedó claro?</p>
+      <div class="encuesta-flotante__opciones">
+        ${motivos.map(([v, txt]) => `<button type="button" data-motivo="${v}">${txt}</button>`).join('')}
+      </div>
+      <div class="encuesta-flotante__detalle" hidden>
+        <textarea maxlength="500" rows="3" placeholder="Cuéntanos (opcional)"></textarea>
+        <button type="button" class="boton boton--primario boton--pequeno" data-enviar>Enviar</button>
+      </div>`);
+    if (!t) return;
+    Telemetria.enviar('encuesta.mostrada', { pantalla: Telemetria.pantallaActual(), encuesta: 'formulario' });
+    let motivo = null;
+    const contexto = `${Telemetria.pantallaActual()}:${formulario}`;
+    t.querySelector('.encuesta-flotante__cerrar').onclick = () => {
+      this._guardar({ encuesta: 'formulario', estado: motivo ? 'respondida' : 'omitida', motivo, contexto });
+      this._cerrar(t);
+    };
+    t.querySelectorAll('[data-motivo]').forEach(b => b.onclick = () => {
+      motivo = b.dataset.motivo;
+      t.querySelectorAll('[data-motivo]').forEach(x => x.classList.toggle('activo', x === b));
+      t.querySelector('.encuesta-flotante__detalle').hidden = false;
+    });
+    t.querySelector('[data-enviar]').onclick = () => {
+      this._guardar({ encuesta: 'formulario', estado: 'respondida', motivo, contexto, comentario: t.querySelector('textarea').value });
+      t.innerHTML = '<p class="encuesta-flotante__pregunta">¡Gracias! Lo vamos a revisar.</p>';
+      setTimeout(() => this._cerrar(t), 1800);
+    };
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.querySelector('.navegacion') && localStorage.getItem('token_sesion')) {
+    setTimeout(() => Encuestas.revisarPendiente(), 20000);
+  }
+});
+
 
 // ============================================================
 // Errores del navegador (Fase 9): se reportan al servidor, que los

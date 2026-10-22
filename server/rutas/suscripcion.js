@@ -222,6 +222,14 @@ router.post('/cancelar', async (req, res, next) => {
       .eq('empresa_id', req.empresa.id);
     if (error) throw new Error(error.message);
 
+    // Motivo de la cancelación (opcional; nunca impide cancelar)
+    if (req.body && (req.body.motivo || req.body.comentario)) {
+      try {
+        const { guardarRespuesta } = require('./encuestas');
+        await guardarRespuesta(req, 'cancelacion', { motivo: req.body.motivo, comentario: req.body.comentario });
+      } catch (_) { /* la cancelación ya quedó hecha */ }
+    }
+
     res.json({ cancelada: true, fecha_vencimiento: actual.fecha_vencimiento });
   } catch (err) { next(err); }
 });

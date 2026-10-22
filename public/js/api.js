@@ -8,6 +8,7 @@
 // se manda al login. Así nadie ve su sesión "cerrarse sola".
 // ============================================================
 const API = {
+  ultimaEscrituraOk: 0,
   _renovacionEnCurso: null, // si ya hay una renovación en camino, todas las demás peticiones esperan ESA misma, en vez de intentar cada una la suya
 
   _encabezados() {
@@ -94,6 +95,9 @@ const API = {
       localStorage.removeItem('empresa_activa');
       return this._peticion(ruta, { ...opciones, headers: this._encabezados() }, true);
     }
+
+    // Marca la última escritura exitosa (la usa la medición de formularios)
+    if (respuesta.ok && opciones.method && opciones.method !== 'GET') API.ultimaEscrituraOk = Date.now();
 
     if (!respuesta.ok) {
       const error = new Error(datos.error || `Error ${respuesta.status}`);

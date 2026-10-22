@@ -76,6 +76,8 @@ app.use('/api', ocultarCostos);
 app.use('/api/empresas', require('./rutas/empresas'));
 // Mi perfil: espacio personal de cada usuario (no depende de permisos ni de la suscripción)
 app.use('/api/perfil', require('./rutas/perfil'));
+// Encuestas cortas de facilidad de uso (también en solo lectura)
+app.use('/api/encuestas', require('./rutas/encuestas'));
 
 // ---- Suscripción va ANTES del bloqueo por vencimiento: aunque la
 // cuenta esté vencida, la persona siempre debe poder pagar/renovar.

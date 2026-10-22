@@ -637,3 +637,38 @@ a.barra-superior__usuario { text-decoration: none; color: inherit; }
 .ia-mapeo table { margin-top: 10px; }
 .ia-mapeo__hoja { text-align: left; background: var(--t-bg); }
 .ia-mapeo__falta td { color: var(--t-peligro); font-weight: 600; }
+
+/* ---- Encuestas cortas (uso) ---- */
+.encuesta-flotante { position: fixed; right: 20px; bottom: 20px; z-index: 1200; width: min(340px, calc(100vw - 32px));
+  background: var(--t-tarjeta-bg); color: var(--t-ink); border: 1px solid var(--t-borde); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(18, 59, 104, .18); padding: 18px 18px 16px; opacity: 0; transform: translateY(12px);
+  transition: opacity .32s cubic-bezier(0.22, 1, 0.36, 1), transform .32s cubic-bezier(0.22, 1, 0.36, 1); }
+.encuesta-flotante--visible { opacity: 1; transform: none; }
+.encuesta-flotante__cerrar { position: absolute; top: 8px; right: 10px; border: 0; background: none; font-size: 20px; line-height: 1; cursor: pointer; color: var(--t-ink-suave); }
+.encuesta-flotante__pregunta { margin: 0 24px 12px 0; font-weight: 700; }
+.encuesta-flotante__escala { display: flex; gap: 6px; }
+.encuesta-flotante__escala button { flex: 1; height: 38px; border-radius: 8px; border: 1px solid var(--t-borde); background: transparent; color: inherit; font-weight: 700; cursor: pointer; }
+.encuesta-flotante__extremos { display: flex; justify-content: space-between; font-size: 12px; color: var(--t-ink-suave); margin-top: 6px; }
+.encuesta-flotante__opciones { display: flex; flex-direction: column; gap: 6px; }
+.encuesta-flotante__opciones button { text-align: left; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--t-borde); background: transparent; color: inherit; cursor: pointer; }
+.encuesta-flotante button.activo { border-color: var(--t-accent); background: color-mix(in srgb, var(--t-accent) 12%, transparent); }
+.encuesta-flotante__detalle { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.encuesta-flotante__detalle textarea { width: 100%; resize: vertical; border-radius: 8px; border: 1px solid var(--t-borde); padding: 8px 10px; background: transparent; color: inherit; font: inherit; }
+.encuesta-flotante__detalle .boton { align-self: flex-end; }
+
+/* ---- Panel de uso (admin) ---- */
+.uso-columnas { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
+.uso-barras { display: flex; flex-direction: column; gap: 8px; }
+.uso-barra { display: grid; grid-template-columns: minmax(110px, 38%) 1fr auto; align-items: center; gap: 10px; font-size: 14px; }
+.uso-barra__pista { height: 10px; background: var(--t-borde); border-radius: 999px; overflow: hidden; }
+.uso-barra__relleno { display: block; height: 100%; background: var(--t-accent); border-radius: 999px; }
+.uso-barra__valor { font-weight: 700; white-space: nowrap; }
+.uso-embudo { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 8px; }
+.uso-embudo__paso { border: 1px solid var(--t-borde); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 2px; }
+.uso-embudo__valor { font-size: 26px; font-weight: 800; }
+.uso-embudo__etiqueta { color: var(--t-ink-suave); font-size: 13px; }
+.uso-embudo__pct { color: var(--t-accent); font-weight: 700; font-size: 13px; }
+.uso-comentarios { display: flex; flex-direction: column; gap: 10px; }
+.uso-comentario { border-left: 3px solid var(--t-accent); padding: 6px 12px; }
+.uso-comentario p { margin: 4px 0 0; }
+#seccionUso h3 { margin-top: 28px; }

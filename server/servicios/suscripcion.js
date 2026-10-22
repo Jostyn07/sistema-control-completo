@@ -127,6 +127,10 @@ async function activarSuscripcion({ empresaId, usuarioId, planId, periodo }) {
       actualizado_en: ahora.toISOString()
     }, { onConflict: 'empresa_id' });
   if (error) throw new Error(error.message);
+  try {
+    const { construirEvento, enviar } = require('./telemetria');
+    enviar([construirEvento('suscripcion.pagada', { empresaId, usuarioId, resultado: 'ok', propiedades: { periodo: normalizarPeriodo(periodo) } })]);
+  } catch (_) { /* la medición nunca afecta el pago */ }
   return vencimiento;
 }
 

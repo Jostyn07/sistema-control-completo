@@ -36,12 +36,18 @@ const EVENTOS = {
   'equipo.miembro_agregado': { props: {} },
   'suscripcion.pago_iniciado': { props: {} },
   'suscripcion.cancelada':  { props: {} },
+  'suscripcion.pagada':     { props: { periodo: ['mensual', 'anual'] } },
 
   // Desde el navegador (POST /api/telemetria/eventos)
   'pantalla.abierta':       { props: { pantalla: PANTALLAS }, navegador: true },
   'recorrido.completado':   { props: { pantalla: PANTALLAS }, navegador: true },
-  'recorrido.omitido':      { props: { pantalla: PANTALLAS }, navegador: true },
-  'busqueda.usada':         { props: { resultados: 'numero' }, navegador: true },
+  'recorrido.omitido':      { props: { pantalla: PANTALLAS, paso: 'numero', pasos: 'numero' }, navegador: true },
+  'busqueda.usada':         { props: { pantalla: PANTALLAS, resultados: 'numero' }, navegador: true },
+  // Uso de formularios (ventanas): se abren, se guardan o se cierran sin guardar
+  'formulario.abierto':     { props: { pantalla: PANTALLAS, formulario: 'identificador' }, navegador: true },
+  'formulario.cerrado':     { props: { pantalla: PANTALLAS, formulario: 'identificador', guardado: 'booleano', segundos: 'numero' }, navegador: true },
+  'ayuda.abierta':          { props: { pantalla: PANTALLAS }, navegador: true },
+  'encuesta.mostrada':      { props: { pantalla: PANTALLAS, encuesta: ['facilidad', 'formulario'] }, navegador: true },
   'error.pantalla':         { props: { pantalla: PANTALLAS }, navegador: true }
 };
 
@@ -69,6 +75,7 @@ const EVENTOS_DE_RUTA = {
   'POST /api/suscripcion/cancelar': 'suscripcion.cancelada'
 };
 
+const IDENTIFICADOR = /^[a-z][A-Za-z0-9]{2,40}$/;
 const RUTA_PATRON = /^\/api\/[a-z-]+(\/(:[a-zA-Z]+|[a-z-]+))*\/?$/;
 
 // Deja solo propiedades del catálogo con valores válidos; lo demás se descarta
@@ -82,6 +89,8 @@ function filtrarPropiedades(nombre, propiedades) {
     if (tipo === 'numero' && Number.isFinite(Number(v))) limpio[clave] = Math.max(0, Math.min(Math.round(Number(v)), 1e6));
     else if (tipo === 'booleano' && typeof v === 'boolean') limpio[clave] = v;
     else if (tipo === 'ruta' && typeof v === 'string' && RUTA_PATRON.test(v) && v.length <= 80) limpio[clave] = v;
+    // Identificadores del código (ej. id de una ventana "modalVenta"), nunca texto escrito
+    else if (tipo === 'identificador' && typeof v === 'string' && IDENTIFICADOR.test(v)) limpio[clave] = v;
     else if (Array.isArray(tipo) && tipo.includes(v)) limpio[clave] = v;
   }
   return limpio;

@@ -77,14 +77,67 @@ async function cargarEstadoActual() {
   }
 }
 
-async function cancelarSuscripcion() {
-  if (!confirm('¿Cancelar tu suscripción? Conservas el acceso hasta la fecha ya pagada; después no se renovará.')) return;
+const MOTIVOS_CANCELACION = [
+  ['muy_caro', 'Es muy caro para mí'],
+  ['dificil_de_usar', 'Es difícil de usar'],
+  ['falta_funcion', 'Le falta algo que necesito'],
+  ['no_lo_uso', 'No lo estoy usando'],
+  ['otro_sistema', 'Me cambio a otro sistema'],
+  ['cierre_negocio', 'Cerré o pausé el negocio'],
+  ['otro', 'Otro motivo']
+];
+
+function cancelarSuscripcion() {
+  let modal = document.getElementById('modalCancelarSuscripcion');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'modalCancelarSuscripcion';
+    modal.dataset.sinMedicion = '';
+    modal.hidden = true;
+    modal.innerHTML = `
+      <div class="modal__contenido tarjeta">
+        <h2>¿Por qué cancelas?</h2>
+        <div id="opcionesCancelacion">
+          ${MOTIVOS_CANCELACION.map(([v, txt]) => `
+            <label style="display:flex;align-items:center;gap:8px;margin:8px 0;cursor:pointer;">
+              <input type="radio" name="motivoCancelacion" value="${v}" style="width:auto;margin:0;"> ${txt}
+            </label>`).join('')}
+        </div>
+        <label class="campo">
+          <span class="campo__etiqueta">¿Qué podríamos mejorar?</span>
+          <textarea id="comentarioCancelacion" rows="3" maxlength="500"></textarea>
+        </label>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="document.getElementById('modalCancelarSuscripcion').hidden = true">Volver</button>
+          <button type="button" class="boton boton--primario" id="botonConfirmarCancelacion">Cancelar suscripción</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.querySelector('#botonConfirmarCancelacion').onclick = confirmarCancelacion;
+  }
+  modal.querySelectorAll('input[name="motivoCancelacion"]').forEach(r => { r.checked = false; });
+  modal.querySelector('#comentarioCancelacion').value = '';
+  modal.hidden = false;
+}
+
+async function confirmarCancelacion() {
+  const elegido = document.querySelector('input[name="motivoCancelacion"]:checked');
+  if (!elegido) { mostrarAviso('Elige un motivo', 'error'); return; }
+  const boton = document.getElementById('botonConfirmarCancelacion');
+  boton.disabled = true;
   try {
-    await API.enviar('/api/suscripcion/cancelar', {});
+    await API.enviar('/api/suscripcion/cancelar', {
+      motivo: elegido.value,
+      comentario: document.getElementById('comentarioCancelacion').value.trim()
+    });
+    document.getElementById('modalCancelarSuscripcion').hidden = true;
     mostrarAviso('Suscripción cancelada. Conservas el acceso hasta la fecha ya pagada.');
     cargarEstadoActual();
   } catch (err) {
     mostrarAviso(err.message, 'error');
+  } finally {
+    boton.disabled = false;
   }
 }
 

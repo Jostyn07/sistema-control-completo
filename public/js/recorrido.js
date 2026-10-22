@@ -108,6 +108,10 @@ function iniciarRecorrido(pasos, opciones = {}) {
 
   function terminar(saltado) {
     destruirElementosRecorrido();
+    if (typeof Telemetria !== 'undefined') {
+      Telemetria.enviar(saltado ? 'recorrido.omitido' : 'recorrido.completado',
+        { pantalla: Telemetria.pantallaActual(), paso: indice + 1, pasos: pasos.length });
+    }
     window.removeEventListener('resize', mostrarPaso);
     if (opciones.alTerminar) opciones.alTerminar({ saltado });
   }
