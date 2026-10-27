@@ -111,6 +111,9 @@ function iniciar() {
       maxBreadcrumbs: 30,
       beforeSend: limpiarEvento,
       beforeSendTransaction: limpiarTransaccion,
+      // Sin esto, Sentry 11 envía las trazas "en vivo" e IGNORA
+      // beforeSendTransaction: las rutas saldrían sin limpiar.
+      traceLifecycle: 'static',
       beforeBreadcrumb: limpiarMigaja
     });
     activo = true;
@@ -164,8 +167,29 @@ async function capturarErrorNavegador({ mensaje, pantalla, tipo }, req) {
   } catch (_) { /* nunca afecta la respuesta */ }
 }
 
+// Errores internos que no llegan al manejador de la API (procesos en
+// segundo plano, reversiones que fallan, webhooks…). Los manda log.error.
+const recientes = new Map(); // evita inundar Sentry con el mismo error
+function capturarErrorInterno(etiqueta, texto) {
+  if (!activo) return;
+  try {
+    const clave = `${etiqueta}|${String(texto).slice(0, 80)}`;
+    const ahora = Date.now();
+    if ((recientes.get(clave) || 0) > ahora - 60000) return;
+    recientes.set(clave, ahora);
+    if (recientes.size > 200) recientes.clear();
+    Sentry.withScope((scope) => {
+      scope.setLevel('error');
+      scope.setTag('origen', 'interno');
+      scope.setTag('etiqueta', sanitizarTexto(String(etiqueta)).slice(0, 60));
+      Sentry.captureMessage(`${etiqueta} ${sanitizarTexto(String(texto || ''))}`.slice(0, 500));
+    });
+    if (process.env.VERCEL) Sentry.flush(1500).catch(() => {});
+  } catch (_) { /* nunca afecta nada */ }
+}
+
 module.exports = {
-  iniciar, capturarErrorApi, capturarErrorNavegador,
+  iniciar, capturarErrorApi, capturarErrorNavegador, capturarErrorInterno,
   limpiarEvento, limpiarTransaccion, limpiarMigaja, limpiarUrl,
   estaActivo: () => activo
 };

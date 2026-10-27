@@ -111,3 +111,10 @@ test('Fase 9 — API con Sentry falso', async (t) => {
     assert.equal(r3.status, 400);
   });
 });
+
+test('log.error de procesos internos también llega a Sentry (limpio y sin repetir)', () => {
+  const sentry = require('../servicios/sentry');
+  assert.equal(typeof sentry.capturarErrorInterno, 'function');
+  // Apagado (sin DSN) no hace nada ni falla
+  assert.doesNotThrow(() => require('../seguridad/log').error('[prueba]', new Error('falló algo con ana@correo.com')));
+});

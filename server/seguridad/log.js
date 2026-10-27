@@ -17,7 +17,15 @@ function formatear(nivel, etiqueta, detalle, contexto) {
 }
 
 module.exports = {
-  error: (etiqueta, detalle, contexto) => console.error(formatear('ERROR', etiqueta, detalle, contexto)),
+  error: (etiqueta, detalle, contexto) => {
+    const linea = formatear('ERROR', etiqueta, detalle, contexto);
+    console.error(linea);
+    // Los errores de la API ya los reporta el manejador (solo los 5xx);
+    // el resto de errores internos también va a Sentry, ya limpio.
+    if (etiqueta !== '[API]') {
+      try { require('../servicios/sentry').capturarErrorInterno(etiqueta, linea.slice(`[ERROR] ${etiqueta} `.length)); } catch (_) { /* nunca falla */ }
+    }
+  },
   warn:  (etiqueta, detalle, contexto) => console.warn(formatear('AVISO', etiqueta, detalle, contexto)),
   info:  (etiqueta, detalle, contexto) => console.log(formatear('INFO', etiqueta, detalle, contexto))
 };
