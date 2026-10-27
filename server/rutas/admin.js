@@ -114,9 +114,12 @@ router.get('/uso', async (req, res, next) => {
   try {
     const dias = Math.min(Math.max(parseInt(req.query.dias, 10) || 30, 1), 400);
     const minEmpresas = Math.min(Math.max(parseInt(req.query.min_empresas, 10) || 1, 1), 100);
-    const { data, error } = await supabase.rpc('telemetria_panel', { p_dias: dias, p_min_empresas: minEmpresas });
+    const { estaActiva, seudonimo } = require('../servicios/telemetria');
+    // Por defecto no se cuenta la empresa del administrador (sus pruebas)
+    const excluir = req.query.incluir_mia === '1' ? null : seudonimo(req.empresa && req.empresa.id);
+    const { data, error } = await supabase.rpc('telemetria_panel', { p_dias: dias, p_min_empresas: minEmpresas, p_excluir: excluir });
     if (error) throw new Error(error.message);
-    res.json(data);
+    res.json({ ...data, telemetria_activa: estaActiva() });
   } catch (err) { next(err); }
 });
 

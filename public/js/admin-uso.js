@@ -25,6 +25,54 @@ const NOMBRES_MOTIVO = {
   falta_funcion: 'Le falta una función', no_lo_uso: 'No lo usa', otro_sistema: 'Otro sistema', cierre_negocio: 'Cerró el negocio'
 };
 
+const PANTALLAS_PRINCIPALES = ['materiales', 'productos', 'inventario', 'compras', 'ventas', 'finanzas', 'facturacion', 'nomina'];
+const MUESTRA_MINIMA = 5; // menos que esto no alcanza para concluir
+
+// Reglas que convierten los números en tareas concretas
+function recomendaciones(d) {
+  const lista = [];
+  const nombre = (p) => NOMBRES_PANTALLA[p] || p;
+  const totalEmpresas = (d.totales && d.totales.empresas_activas) || 0;
+
+  for (const p of d.por_pantalla || []) {
+    if (p.errores_sistema > 0) lista.push({ nivel: 'alta', texto: `${nombre(p.pantalla)}: ${num(p.errores_sistema)} fallas del sistema. Revisa los errores en Sentry y corrígelos primero.` });
+    if (p.ventanas >= MUESTRA_MINIMA && pct(p.ventanas_sin_guardar, p.ventanas) >= 40)
+      lista.push({ nivel: 'alta', texto: `${nombre(p.pantalla)}: ${pct(p.ventanas_sin_guardar, p.ventanas)} % de las ventanas se cierran sin guardar. Revisa qué datos piden y si se entiende qué llenar.` });
+    if (p.solicitudes >= MUESTRA_MINIMA * 4 && pct(p.errores_usuario, p.solicitudes) >= 10)
+      lista.push({ nivel: 'media', texto: `${nombre(p.pantalla)}: ${pct(p.errores_usuario, p.solicitudes)} % de las acciones terminan en un aviso de error (datos faltantes o inválidos). Mira "Errores que ve la gente".` });
+    if (p.p95_ms >= 2000) lista.push({ nivel: 'media', texto: `${nombre(p.pantalla)} está lenta: algunas acciones tardan ${(p.p95_ms / 1000).toFixed(1)} s o más.` });
+    if (p.busquedas >= MUESTRA_MINIMA && pct(p.busquedas_vacias, p.busquedas) >= 30)
+      lista.push({ nivel: 'media', texto: `${nombre(p.pantalla)}: ${pct(p.busquedas_vacias, p.busquedas)} % de las búsquedas no encuentran nada. Puede que busquen por otro dato (código, teléfono, categoría).` });
+    if (p.vistas >= MUESTRA_MINIMA * 4 && pct(p.ayuda, p.vistas) >= 10)
+      lista.push({ nivel: 'media', texto: `${nombre(p.pantalla)}: muchos abren "¿Cómo funciona?" (${pct(p.ayuda, p.vistas)} % de las visitas). La pantalla no se entiende sola.` });
+    if (p.recorridos_omitidos >= MUESTRA_MINIMA)
+      lista.push({ nivel: 'baja', texto: `${nombre(p.pantalla)}: ${num(p.recorridos_omitidos)} personas omitieron el recorrido de ayuda. Acórtalo o muéstralo solo cuando lo pidan.` });
+  }
+
+  if (totalEmpresas >= MUESTRA_MINIMA) {
+    const usadas = new Map((d.por_pantalla || []).map(p => [p.pantalla, p.empresas]));
+    const poco = PANTALLAS_PRINCIPALES.map(p => [p, pct(usadas.get(p) || 0, totalEmpresas)]).filter(([, v]) => v < 20);
+    if (poco.length) lista.push({ nivel: 'baja', texto: `Pantallas que casi nadie usa: ${poco.map(([p, v]) => `${nombre(p)} (${v} %)`).join(', ')}. ¿No las encuentran, no las entienden o no las necesitan?` });
+  }
+
+  const e = d.embudo || {};
+  if (e.nuevas >= MUESTRA_MINIMA) {
+    const pasos = [['crear su primer material', e.nuevas, e.con_material], ['crear su primer producto', e.con_material, e.con_producto],
+                   ['registrar su primera venta', e.con_producto, e.con_venta], ['pagar', e.con_venta, e.pagaron]];
+    const peor = pasos.filter(([, a]) => a > 0).sort((x, y) => (y[1] - y[2]) / y[1] - (x[1] - x[2]) / x[1])[0];
+    if (peor) lista.push({ nivel: 'alta', texto: `El mayor abandono de empresas nuevas está en ${peor[0]}: de ${num(peor[1])} pasan ${num(peor[2])}. Ahí está la mejora con más impacto.` });
+  }
+
+  const fac = (d.encuestas && d.encuestas.facilidad) || {};
+  if (fac.respuestas >= MUESTRA_MINIMA && fac.promedio < 3.5)
+    lista.push({ nivel: 'alta', texto: `La facilidad de uso está en ${fac.promedio}/5. Lee los comentarios recientes.` });
+  const motivoTop = ((d.encuestas && d.encuestas.motivos) || []).filter(m => m.encuesta === 'cancelacion').sort((a, b) => b.veces - a.veces)[0];
+  if (motivoTop) lista.push({ nivel: 'media', texto: `Motivo de cancelación más frecuente: ${NOMBRES_MOTIVO[motivoTop.motivo] || motivoTop.motivo} (${num(motivoTop.veces)}).` });
+
+  const orden = { alta: 0, media: 1, baja: 2 };
+  return lista.sort((a, b) => orden[a.nivel] - orden[b.nivel]);
+}
+
 const nombreFormulario = (id) => (id || '').replace(/^modal/, '').replace(/([a-z])([A-Z])/g, '$1 $2') || id;
 const pct = (a, b) => b > 0 ? Math.round((a / b) * 100) : 0;
 const num = (n) => Number(n || 0).toLocaleString('es-CO');
@@ -58,11 +106,30 @@ function pintarUso(d) {
   const motivos = (d.encuestas && d.encuestas.motivos) || [];
   const busq = d.busquedas || {};
 
-  document.getElementById('panelUso').innerHTML = `
+  const aviso = d.telemetria_activa === false
+    ? '<div class="uso-aviso">La medición está apagada: falta la variable TELEMETRIA_SAL en Vercel (mínimo 16 caracteres).</div>' : '';
+  document.getElementById('panelUso').innerHTML = aviso + `
     <div class="kpi-grid">
       ${[['Empresas activas', t.empresas_activas], ['Personas activas', t.usuarios_activos], ['Pantallas vistas', t.pantallas_vistas], ['Acciones', t.acciones]]
         .map(([k, v]) => `<div class="kpi-tarjeta"><span class="kpi-tarjeta__etiqueta">${k}</span><span class="kpi-tarjeta__valor">${num(v)}</span></div>`).join('')}
     </div>
+
+    <h3>Qué mejorar</h3>
+    ${(() => {
+      const recs = recomendaciones(d);
+      if (!recs.length) return `<p class="tabla__vacio">${(t.empresas_activas || 0) < MUESTRA_MINIMA ? 'Todavía hay pocos datos para sacar conclusiones.' : 'No hay alertas en este período.'}</p>`;
+      return `<div class="uso-recs">${recs.map(r => `<div class="uso-rec uso-rec--${r.nivel}"><span class="uso-rec__nivel">${r.nivel === 'alta' ? 'Prioridad alta' : r.nivel === 'media' ? 'Prioridad media' : 'Revisar'}</span>${escaparHtml(r.texto)}</div>`).join('')}</div>`;
+    })()}
+
+    <h3>Diagnóstico por pantalla</h3>
+    ${tablaSimple(['Pantalla', 'Visitas', 'Empresas', 'Ventanas sin guardar', 'Búsquedas sin resultado', '¿Cómo funciona?', 'Errores de datos', 'Fallas', 'Lentitud (p95)'],
+      (d.por_pantalla || []).map(p => [
+        `<strong>${escaparHtml(NOMBRES_PANTALLA[p.pantalla] || p.pantalla)}</strong>`, num(p.vistas), num(p.empresas),
+        p.ventanas ? `${pct(p.ventanas_sin_guardar, p.ventanas)} % <span class="texto-secundario">(${num(p.ventanas)})</span>` : '—',
+        p.busquedas ? `${pct(p.busquedas_vacias, p.busquedas)} % <span class="texto-secundario">(${num(p.busquedas)})</span>` : '—',
+        num(p.ayuda), num(p.errores_usuario),
+        p.errores_sistema ? `<strong style="color:var(--t-peligro)">${num(p.errores_sistema)}</strong>` : '0',
+        p.p95_ms != null ? `${(p.p95_ms / 1000).toFixed(1)} s` : '—']))}
 
     <h3>Activación de empresas nuevas</h3>
     <div class="uso-embudo">
@@ -148,7 +215,8 @@ function pintarUso(d) {
 async function cargarUso() {
   const panel = document.getElementById('panelUso');
   try {
-    pintarUso(await API.obtener(`/api/admin/uso?dias=${diasUso}`));
+    const incluir = document.getElementById('incluirMiEmpresa');
+    pintarUso(await API.obtener(`/api/admin/uso?dias=${diasUso}${incluir && incluir.checked ? '&incluir_mia=1' : ''}`));
   } catch (err) {
     panel.innerHTML = `<p class="tabla__vacio">No se pudo cargar: ${escaparHtml(err.message)}</p>`;
   }
@@ -164,5 +232,7 @@ function iniciarPanelUso() {
     selector.querySelectorAll('button').forEach(x => x.classList.toggle('boton--activo', x === b));
     cargarUso();
   });
+  const incluir = document.getElementById('incluirMiEmpresa');
+  if (incluir) incluir.addEventListener('change', cargarUso);
   cargarUso();
 }

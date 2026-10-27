@@ -672,3 +672,10 @@ a.barra-superior__usuario { text-decoration: none; color: inherit; }
 .uso-comentario { border-left: 3px solid var(--t-accent); padding: 6px 12px; }
 .uso-comentario p { margin: 4px 0 0; }
 #seccionUso h3 { margin-top: 28px; }
+.uso-aviso { border: 1px solid var(--t-peligro); background: var(--t-peligro-fondo); color: var(--t-peligro); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-weight: 600; }
+.uso-recs { display: flex; flex-direction: column; gap: 8px; }
+.uso-rec { border: 1px solid var(--t-borde); border-left-width: 4px; border-radius: 10px; padding: 10px 14px; }
+.uso-rec--alta { border-left-color: var(--t-peligro); }
+.uso-rec--media { border-left-color: var(--t-advertencia); }
+.uso-rec--baja { border-left-color: var(--t-accent); }
+.uso-rec__nivel { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--t-ink-suave); margin-bottom: 2px; }

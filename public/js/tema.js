@@ -369,7 +369,10 @@ const Telemetria = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (document.querySelector('.navegacion')) Telemetria.enviar('pantalla.abierta', { pantalla: Telemetria.pantallaActual() });
+  // El panel de administrador no se mide (no es uso de clientes)
+  if (document.querySelector('.navegacion') && Telemetria.pantallaActual() !== 'admin') {
+    Telemetria.enviar('pantalla.abierta', { pantalla: Telemetria.pantallaActual() });
+  }
 });
 
 // ============================================================
