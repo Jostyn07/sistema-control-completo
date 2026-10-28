@@ -28,13 +28,41 @@ const { enviarEventoMeta } = require('../servicios/meta-capi');
 const router = express.Router();
 
 // POST /api/auth/registro
+// Mide por qué se rechaza un registro (sin datos de la persona)
+function medirRegistro(nombre, motivo) {
+  try {
+    const { construirEvento, enviar } = require('../servicios/telemetria');
+    enviar([construirEvento(nombre, { resultado: motivo ? 'error_cliente' : 'ok', propiedades: motivo ? { motivo } : {} })]);
+  } catch (_) { /* la medición nunca afecta el registro */ }
+}
+function rechazarRegistro(res, motivo, mensaje) {
+  medirRegistro('registro.rechazado', motivo);
+  return res.status(400).json({ error: mensaje, motivo });
+}
+
+// Traduce los errores de Supabase Auth (vienen en inglés)
+function motivoDeErrorAuth(error) {
+  const codigo = String(error.code || '').toLowerCase();
+  const texto = String(error.message || '').toLowerCase();
+  if (codigo === 'email_exists' || codigo === 'user_already_exists' || /already (been )?registered|already exists/.test(texto))
+    return ['correo_existente', 'Ya existe una cuenta con ese correo. Inicia sesión o usa "¿Olvidaste tu contraseña?"'];
+  if (codigo === 'weak_password' || /password/.test(texto))
+    return ['contrasena_debil', 'La contraseña es muy débil. Usa al menos 8 caracteres combinando letras y números.'];
+  if (codigo === 'email_address_invalid' || /email/.test(texto))
+    return ['correo_invalido', 'Revisa el correo: no parece una dirección válida.'];
+  return ['otro', 'No pudimos crear la cuenta. Intenta de nuevo en un momento.'];
+}
+
+const CORREO_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
 router.post('/registro', async (req, res, next) => {
   try {
-    const { nombre, correo, contrasena } = req.body;
-    if (!nombre || !nombre.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
-    if (!correo || !correo.trim()) return res.status(400).json({ error: 'El correo es obligatorio' });
-    if (!contrasena || contrasena.length < 6)
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    const { nombre, correo, contrasena } = req.body || {};
+    if (!nombre || !String(nombre).trim()) return rechazarRegistro(res, 'falta_nombre', 'Escribe tu nombre');
+    if (!correo || !String(correo).trim()) return rechazarRegistro(res, 'falta_correo', 'Escribe tu correo');
+    if (!CORREO_VALIDO.test(String(correo).trim())) return rechazarRegistro(res, 'correo_invalido', 'Revisa el correo: no parece una dirección válida.');
+    if (!contrasena || String(contrasena).length < 6)
+      return rechazarRegistro(res, 'contrasena_corta', 'La contraseña debe tener al menos 6 caracteres');
 
     const { data, error } = await supabase.auth.admin.createUser({
       email: correo.trim().toLowerCase(),
@@ -43,11 +71,11 @@ router.post('/registro', async (req, res, next) => {
       user_metadata: { nombre: nombre.trim() }
     });
     if (error) {
-      const mensaje = error.message.includes('already registered')
-        ? 'Ya existe una cuenta con ese correo'
-        : error.message;
-      return res.status(400).json({ error: mensaje });
+      const [motivo, mensaje] = motivoDeErrorAuth(error);
+      if (motivo === 'otro') log.warn('[registro] Supabase rechazó el registro', error);
+      return rechazarRegistro(res, motivo, mensaje);
     }
+    medirRegistro('registro.completado');
 
     // Arranca con 7 días de prueba gratis, sin necesidad de pagar nada.
     // Si esto falla, no bloquea el registro — el usuario queda creado
@@ -203,3 +231,4 @@ router.post('/restablecer-contrasena', async (req, res, next) => {
 });
 
 module.exports = router;
+module.exports._interno = { motivoDeErrorAuth, CORREO_VALIDO };

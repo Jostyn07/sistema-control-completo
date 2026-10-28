@@ -37,6 +37,10 @@ const EVENTOS = {
   'suscripcion.pago_iniciado': { props: {} },
   'suscripcion.cancelada':  { props: {} },
   'suscripcion.pagada':     { props: { periodo: ['mensual', 'anual'] } },
+  // Registro (antes de tener empresa): por qué se rechaza un intento
+  'registro.completado':    { props: {} },
+  'registro.rechazado':     { props: { motivo: ['falta_nombre', 'falta_correo', 'correo_invalido', 'contrasena_corta',
+                                                'contrasena_debil', 'correo_existente', 'otro'] } },
 
   // Desde el navegador (POST /api/telemetria/eventos)
   'pantalla.abierta':       { props: { pantalla: PANTALLAS }, navegador: true },

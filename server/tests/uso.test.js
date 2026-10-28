@@ -29,3 +29,12 @@ test('motivos y contextos cerrados', () => {
   assert.equal(_interno.normalizar({ motivo: 'muy_caro' }, 'cancelacion').fila.motivo, 'muy_caro');
   assert.ok(_interno.normalizar({ motivo: 'no_entendi' }, 'cancelacion').error);
 });
+
+test('registro: errores de Supabase traducidos y motivo medido', () => {
+  const { _interno: auth } = require('../rutas/auth');
+  assert.equal(auth.motivoDeErrorAuth({ code: 'email_exists', message: 'A user with this email address has already been registered' })[0], 'correo_existente');
+  assert.equal(auth.motivoDeErrorAuth({ message: 'Password should be at least 8 characters' })[0], 'contrasena_debil');
+  assert.equal(auth.motivoDeErrorAuth({ message: 'Unable to validate email address: invalid format' })[0], 'correo_invalido');
+  assert.ok(!auth.CORREO_VALIDO.test('ana@correo'));
+  assert.deepEqual(filtrarPropiedades('registro.rechazado', { motivo: 'contrasena_corta', correo: 'x@y.co' }), { motivo: 'contrasena_corta' });
+});

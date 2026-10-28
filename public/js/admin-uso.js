@@ -55,6 +55,13 @@ function recomendaciones(d) {
     if (poco.length) lista.push({ nivel: 'baja', texto: `Pantallas que casi nadie usa: ${poco.map(([p, v]) => `${nombre(p)} (${v} %)`).join(', ')}. ¿No las encuentran, no las entienden o no las necesitan?` });
   }
 
+  const reg = d.registro || {};
+  const intentos = (reg.completados || 0) + (reg.rechazados || 0);
+  if (intentos >= MUESTRA_MINIMA && pct(reg.rechazados, intentos) >= 25) {
+    const top = (reg.motivos || [])[0];
+    lista.push({ nivel: 'alta', texto: `${pct(reg.rechazados, intentos)} % de los intentos de registro fallan${top ? `, sobre todo por "${NOMBRES_RECHAZO[top.motivo] || top.motivo}"` : ''}. Revisa el formulario de registro.` });
+  }
+
   const e = d.embudo || {};
   if (e.nuevas >= MUESTRA_MINIMA) {
     const pasos = [['crear su primer material', e.nuevas, e.con_material], ['crear su primer producto', e.con_material, e.con_producto],
@@ -72,6 +79,11 @@ function recomendaciones(d) {
   const orden = { alta: 0, media: 1, baja: 2 };
   return lista.sort((a, b) => orden[a.nivel] - orden[b.nivel]);
 }
+
+const NOMBRES_RECHAZO = {
+  falta_nombre: 'Sin nombre', falta_correo: 'Sin correo', correo_invalido: 'Correo inválido',
+  contrasena_corta: 'Contraseña muy corta', contrasena_debil: 'Contraseña débil', correo_existente: 'Correo ya registrado', otro: 'Otro error'
+};
 
 const nombreFormulario = (id) => (id || '').replace(/^modal/, '').replace(/([a-z])([A-Z])/g, '$1 $2') || id;
 const pct = (a, b) => b > 0 ? Math.round((a / b) * 100) : 0;
@@ -130,6 +142,15 @@ function pintarUso(d) {
         num(p.ayuda), num(p.errores_usuario),
         p.errores_sistema ? `<strong style="color:var(--t-peligro)">${num(p.errores_sistema)}</strong>` : '0',
         p.p95_ms != null ? `${(p.p95_ms / 1000).toFixed(1)} s` : '—']))}
+
+    <h3>Registro</h3>
+    ${(() => {
+      const reg = d.registro || {};
+      const intentos = (reg.completados || 0) + (reg.rechazados || 0);
+      if (!intentos) return '<p class="tabla__vacio">Sin intentos de registro en este período</p>';
+      return `<p>${num(intentos)} intentos · <strong>${num(reg.completados)}</strong> cuentas creadas · ${num(reg.rechazados)} rechazados</p>` +
+        barras(reg.motivos || [], { etiqueta: f => NOMBRES_RECHAZO[f.motivo] || f.motivo, valor: f => f.veces });
+    })()}
 
     <h3>Activación de empresas nuevas</h3>
     <div class="uso-embudo">

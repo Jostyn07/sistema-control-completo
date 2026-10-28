@@ -1,0 +1,26 @@
+# robots.txt — fincil.cloud
+User-agent: *
+Allow: /
+Allow: /landing/
+Disallow: /api/
+Disallow: /admin.html
+Disallow: /index.html
+Disallow: /materiales.html
+Disallow: /productos.html
+Disallow: /procesos.html
+Disallow: /inventario.html
+Disallow: /compras.html
+Disallow: /ventas.html
+Disallow: /finanzas.html
+Disallow: /facturacion.html
+Disallow: /nomina.html
+Disallow: /importar-exportar.html
+Disallow: /historial.html
+Disallow: /perfil.html
+Disallow: /suscripcion.html
+Disallow: /suscripcion-gracias.html
+Disallow: /agregar-metodo-pago.html
+Disallow: /auth-callback.html
+Disallow: /restablecer-contrasena.html
+
+Sitemap: https://www.fincil.cloud/sitemap.xml

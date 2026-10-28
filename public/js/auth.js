@@ -92,6 +92,20 @@ function alternarModo(evento) {
   document.getElementById('enlaceAlternar').textContent = modoRegistro ? 'Inicia sesión' : 'Crear una';
 }
 
+async function iniciarSesionConCorreo(correo, contrasena) {
+  const resultado = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ correo, contrasena })
+  });
+  const datos = await resultado.json();
+  if (!resultado.ok) throw new Error(datos.error || 'No se pudo iniciar sesión');
+  localStorage.setItem('token_sesion', datos.token);
+  localStorage.setItem('refresh_token_sesion', datos.refresh_token);
+  localStorage.setItem('usuario_sesion', JSON.stringify(datos.usuario));
+  await redirigirTrasLogin();
+}
+
 async function enviarFormulario() {
   const correo = document.getElementById('campoCorreo').value.trim();
   const contrasena = document.getElementById('campoContrasena').value;
@@ -109,27 +123,23 @@ async function enviarFormulario() {
         mostrarAviso('Debes aceptar los Términos y la Política de Privacidad para continuar', 'error');
         return;
       }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) { mostrarAviso('Revisa el correo: no parece una dirección válida', 'error'); return; }
+      if (contrasena.length < 6) { mostrarAviso('La contraseña debe tener al menos 6 caracteres', 'error'); return; }
       const registro = await API.enviar('/api/auth/registro', { nombre, correo, contrasena });
       // Pixel de Meta: mismo eventID que envía el servidor (API de
       // Conversiones), así el registro se cuenta una sola vez.
       if (window.rastrearMeta && registro && registro.usuario_id) {
         rastrearMeta('CompleteRegistration', { status: 'trial' }, { eventID: 'reg_' + registro.usuario_id });
       }
-      mostrarAviso('Cuenta creada, ahora inicia sesión');
-      alternarModo();
+      // Entra de una vez: sin volver a escribir correo y contraseña
+      try {
+        await iniciarSesionConCorreo(correo, contrasena);
+      } catch (_) {
+        mostrarAviso('Cuenta creada, ahora inicia sesión');
+        alternarModo();
+      }
     } else {
-      const resultado = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ correo, contrasena })
-      });
-      const datos = await resultado.json();
-      if (!resultado.ok) throw new Error(datos.error || 'No se pudo iniciar sesión');
-
-      localStorage.setItem('token_sesion', datos.token);
-      localStorage.setItem('refresh_token_sesion', datos.refresh_token);
-      localStorage.setItem('usuario_sesion', JSON.stringify(datos.usuario));
-      await redirigirTrasLogin();
+      await iniciarSesionConCorreo(correo, contrasena);
     }
   } catch (err) {
     mostrarAviso(err.message, 'error');
