@@ -19,7 +19,7 @@ function formatearFecha(fecha) {
 }
 
 const ETIQUETA_ESTADO_SUSCRIPCION = {
-  prueba: 'Prueba', activa: 'Activa', cancelada: 'Cancelada', vencida: 'Vencida', pendiente_pago: 'Pendiente de pago'
+  prueba: 'Prueba', activa: 'Activa', pagada: 'Pagada', cortesia: 'Cortesía', cancelada: 'Cancelada', vencida: 'Vencida', pendiente_pago: 'Pendiente de pago'
 };
 
 function inicializarSelectorPeriodoAdmin() {
@@ -54,12 +54,19 @@ async function cargarMetricas() {
         <span class="indicador__valor">${formatearPesos(r.mrr)}</span>
       </div>
       <div class="indicador tarjeta">
-        <span class="campo__etiqueta">Usuarios activos</span>
-        <span class="indicador__valor">${r.usuarios_activos}</span>
-        <span class="texto-secundario">incluye pruebas gratuitas</span>
+        <span class="campo__etiqueta">Clientes que pagan</span>
+        <span class="indicador__valor">${r.clientes_pagos}</span>
       </div>
       <div class="indicador tarjeta">
-        <span class="campo__etiqueta">Nuevos clientes</span>
+        <span class="campo__etiqueta">Cortesía</span>
+        <span class="indicador__valor">${r.cortesia}</span>
+      </div>
+      <div class="indicador tarjeta">
+        <span class="campo__etiqueta">En prueba</span>
+        <span class="indicador__valor">${r.pruebas_gratuitas}</span>
+      </div>
+      <div class="indicador tarjeta">
+        <span class="campo__etiqueta">Registros nuevos</span>
         <span class="indicador__valor">${r.nuevos_clientes}</span>
       </div>
       <div class="indicador tarjeta">
@@ -68,10 +75,9 @@ async function cargarMetricas() {
       </div>`;
 
     resumenPlan.innerHTML = r.por_plan.length
-      ? `<table class="tabla"><thead><tr><th>Plan</th><th>Clientes</th></tr></thead><tbody>
-          ${r.por_plan.map(p => `<tr><td>${escaparHtml(p.nombre)}</td><td>${p.cantidad}</td></tr>`).join('')}
-         </tbody></table>
-         <p class="texto-secundario" style="margin-top:8px">${r.pruebas_gratuitas} de esos están en prueba gratuita ahora mismo.</p>`
+      ? `<table class="tabla"><thead><tr><th>Plan</th><th>Pagan</th><th>Cortesía</th><th>Prueba</th><th>Total</th></tr></thead><tbody>
+          ${r.por_plan.map(p => `<tr><td>${escaparHtml(p.nombre)}</td><td>${p.pagada}</td><td>${p.cortesia}</td><td>${p.prueba}</td><td>${p.cantidad}</td></tr>`).join('')}
+         </tbody></table>`
       : '<p class="tabla__vacio">Sin suscripciones registradas.</p>';
   } catch (err) {
     panel.innerHTML = `<p class="tabla__vacio">No se pudieron cargar las métricas: ${escaparHtml(err.message)}</p>`;

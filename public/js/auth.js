@@ -106,7 +106,17 @@ async function iniciarSesionConCorreo(correo, contrasena) {
   await redirigirTrasLogin();
 }
 
+let enviandoFormulario = false;
 async function enviarFormulario() {
+  if (enviandoFormulario) return; // evita doble clic
+  const boton = document.getElementById('botonPrincipal');
+  enviandoFormulario = true;
+  if (boton) boton.disabled = true;
+  try { await procesarFormulario(); }
+  finally { enviandoFormulario = false; if (boton) boton.disabled = false; }
+}
+
+async function procesarFormulario() {
   const correo = document.getElementById('campoCorreo').value.trim();
   const contrasena = document.getElementById('campoContrasena').value;
 

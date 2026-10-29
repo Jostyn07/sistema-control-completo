@@ -17,6 +17,11 @@ const SAL = process.env.TELEMETRIA_SAL || '';
 const ACTIVA = SAL.length >= 16 && process.env.TELEMETRIA_ACTIVA !== 'false';
 let avisado = false;
 
+// En Vercel la función se congela apenas sale la respuesta: sin
+// waitUntil, el envío que queda en curso se pierde.
+let mantenerViva = () => {};
+try { mantenerViva = require('@vercel/functions').waitUntil; } catch (_) { /* fuera de Vercel */ }
+
 function seudonimo(id) {
   if (!id) return null;
   return crypto.createHmac('sha256', SAL).update(String(id)).digest('hex').slice(0, 16);
@@ -38,21 +43,25 @@ function construirEvento(nombre, { empresaId, usuarioId, rol, modulo, resultado,
   };
 }
 
+// Devuelve una promesa que nunca falla (se puede esperar o no)
 function enviar(eventos) {
   if (!ACTIVA) {
     if (!avisado) { log.info('[telemetria] Apagada: falta TELEMETRIA_SAL (mínimo 16 caracteres)'); avisado = true; }
-    return;
+    return Promise.resolve();
   }
   const lote = (eventos || []).filter(Boolean).slice(0, 50);
-  if (!lote.length) return;
+  if (!lote.length) return Promise.resolve();
   try {
     // Se requiere aquí para usar siempre el cliente base de service_role
     const { supabaseAdminBase } = require('../../supabase/cliente');
-    Promise.resolve(supabaseAdminBase.rpc('telemetria_registrar', { p_eventos: lote }))
+    const envio = Promise.resolve(supabaseAdminBase.rpc('telemetria_registrar', { p_eventos: lote }))
       .then(r => { if (r && r.error) log.warn('[telemetria] No se pudo registrar', r.error); })
       .catch(err => log.warn('[telemetria] No se pudo registrar', err));
+    try { mantenerViva(envio); } catch (_) { /* sin contexto de Vercel */ }
+    return envio;
   } catch (err) {
     log.warn('[telemetria] No se pudo registrar', err);
+    return Promise.resolve();
   }
 }
 

@@ -679,3 +679,22 @@ a.barra-superior__usuario { text-decoration: none; color: inherit; }
 .uso-rec--media { border-left-color: var(--t-advertencia); }
 .uso-rec--baja { border-left-color: var(--t-accent); }
 .uso-rec__nivel { display: block; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--t-ink-suave); margin-bottom: 2px; }
+
+/* Panel de administrador: 6 indicadores en 2 filas de 3 */
+#panelMetricasAdmin { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 640px) { #panelMetricasAdmin { grid-template-columns: 1fr; } }
+
+/* Primeros pasos (Inicio) */
+.pp { padding: 20px 24px; }
+.pp__cabeza { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pp__titulo { margin: 0; font-size: 1.1rem; }
+.pp__avance { color: var(--t-ink-suave); font-weight: 600; margin-right: auto; }
+.pp__barra { height: 6px; border-radius: 99px; background: var(--t-borde); margin: 14px 0; overflow: hidden; }
+.pp__barra span { display: block; height: 100%; background: var(--t-accent); border-radius: inherit; transition: width .3s; }
+.pp__lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.pp__hito { display: flex; align-items: center; gap: 10px; }
+.pp__hito a { color: var(--t-accent); font-weight: 600; text-decoration: none; }
+.pp__hito a:hover { text-decoration: underline; }
+.pp__marca { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid var(--t-borde); display: grid; place-items: center; font-size: .8rem; color: #fff; }
+.pp__hito--hecho .pp__marca { background: var(--t-exito, #16a34a); border-color: transparent; }
+.pp__hito--hecho span:last-child { color: var(--t-ink-suave); text-decoration: line-through; }

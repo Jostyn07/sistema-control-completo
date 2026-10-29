@@ -10,6 +10,7 @@ const NOMBRES_PANTALLA = {
   compras: 'Compras', ventas: 'Ventas', finanzas: 'Finanzas', facturacion: 'Facturación', nomina: 'Nóminas',
   'importar-exportar': 'Importar/Exportar', suscripcion: 'Suscripción', historial: 'Historial', perfil: 'Mi perfil'
 };
+const nombrePantalla = (p) => p ? (NOMBRES_PANTALLA[p] || p) : 'Sin identificar';
 const NOMBRES_ACCION = {
   'venta.creada': 'Venta registrada', 'venta.estado_cambiado': 'Estado de venta cambiado', 'venta.entrega_registrada': 'Entrega de venta',
   'compra.registrada': 'Compra registrada', 'compra.recibida': 'Compra recibida', 'producto.creado': 'Producto creado',
@@ -31,7 +32,7 @@ const MUESTRA_MINIMA = 5; // menos que esto no alcanza para concluir
 // Reglas que convierten los números en tareas concretas
 function recomendaciones(d) {
   const lista = [];
-  const nombre = (p) => NOMBRES_PANTALLA[p] || p;
+  const nombre = (p) => nombrePantalla(p);
   const totalEmpresas = (d.totales && d.totales.empresas_activas) || 0;
 
   for (const p of d.por_pantalla || []) {
@@ -136,7 +137,7 @@ function pintarUso(d) {
     <h3>Diagnóstico por pantalla</h3>
     ${tablaSimple(['Pantalla', 'Visitas', 'Empresas', 'Ventanas sin guardar', 'Búsquedas sin resultado', '¿Cómo funciona?', 'Errores de datos', 'Fallas', 'Lentitud (p95)'],
       (d.por_pantalla || []).map(p => [
-        `<strong>${escaparHtml(NOMBRES_PANTALLA[p.pantalla] || p.pantalla)}</strong>`, num(p.vistas), num(p.empresas),
+        `<strong>${escaparHtml(nombrePantalla(p.pantalla))}</strong>`, num(p.vistas), num(p.empresas),
         p.ventanas ? `${pct(p.ventanas_sin_guardar, p.ventanas)} % <span class="texto-secundario">(${num(p.ventanas)})</span>` : '—',
         p.busquedas ? `${pct(p.busquedas_vacias, p.busquedas)} % <span class="texto-secundario">(${num(p.busquedas)})</span>` : '—',
         num(p.ayuda), num(p.errores_usuario),
@@ -170,7 +171,7 @@ function pintarUso(d) {
     <div class="uso-columnas">
       <div>
         <h3>Pantallas más usadas</h3>
-        ${barras(d.pantallas || [], { etiqueta: f => NOMBRES_PANTALLA[f.pantalla] || f.pantalla, valor: f => f.vistas, extra: f => `${num(f.empresas)} emp.` })}
+        ${barras(d.pantallas || [], { etiqueta: f => nombrePantalla(f.pantalla), valor: f => f.vistas, extra: f => `${num(f.empresas)} emp.` })}
       </div>
       <div>
         <h3>Acciones más hechas</h3>
@@ -180,7 +181,7 @@ function pintarUso(d) {
 
     <h3>Ventanas que se cierran sin guardar</h3>
     ${tablaSimple(['Pantalla', 'Ventana', 'Abiertas', 'Sin guardar', '% abandono', 'Segundos antes de cerrar'],
-      (d.formularios || []).map(f => [escaparHtml(NOMBRES_PANTALLA[f.pantalla] || f.pantalla), escaparHtml(nombreFormulario(f.formulario)),
+      (d.formularios || []).map(f => [escaparHtml(nombrePantalla(f.pantalla)), escaparHtml(nombreFormulario(f.formulario)),
         num(f.cerrados), num(f.cerrados_sin_guardar), `<strong>${pct(f.cerrados_sin_guardar, f.cerrados)} %</strong>`,
         f.segundos_mediana_sin_guardar != null ? num(Math.round(f.segundos_mediana_sin_guardar)) : '—']))}
 
@@ -199,7 +200,7 @@ function pintarUso(d) {
       <div>
         <h3>Ayuda y recorridos</h3>
         ${tablaSimple(['Pantalla', '¿Cómo funciona?', 'Recorridos completos', 'Omitidos', 'Paso al omitir'],
-          (d.ayuda || []).map(f => [escaparHtml(NOMBRES_PANTALLA[f.pantalla] || f.pantalla), num(f.ayuda), num(f.recorridos_completados),
+          (d.ayuda || []).map(f => [escaparHtml(nombrePantalla(f.pantalla)), num(f.ayuda), num(f.recorridos_completados),
             num(f.recorridos_omitidos), f.paso_mediano_al_omitir != null ? num(f.paso_mediano_al_omitir) : '—']))}
       </div>
       <div>

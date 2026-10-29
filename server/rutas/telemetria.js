@@ -10,7 +10,7 @@ const { EVENTOS } = require('../servicios/telemetria/catalogo');
 const { construirEvento, enviar } = require('../servicios/telemetria');
 const router = express.Router();
 
-router.post('/eventos', (req, res) => {
+router.post('/eventos', async (req, res) => {
   const lista = Array.isArray(req.body && req.body.eventos) ? req.body.eventos.slice(0, 20) : null;
   if (!lista) return res.status(400).json({ error: 'Formato inválido' });
 
@@ -25,7 +25,7 @@ router.post('/eventos', (req, res) => {
       origen: 'navegador'
     }));
 
-  enviar(eventos);
+  await enviar(eventos); // se espera: en Vercel lo que queda después de responder se pierde
   res.status(204).end();
 });
 

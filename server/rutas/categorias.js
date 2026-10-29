@@ -7,6 +7,7 @@
 // ventas_items, que es una variante dentro de una venta (ej: color).
 // - GET  /            lista las categorías del usuario
 // - POST /            crea una categoría nueva { nombre }
+// - DELETE /:id       borra una categoría sin productos
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
@@ -50,6 +51,22 @@ router.post('/', async (req, res, next) => {
       .select('id, nombre').single();
     if (error) throw new Error(error.message);
     res.status(201).json(data);
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/categorias/:id — solo si ningún producto la usa
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { count, error: eUso } = await supabase.from('productos')
+      .select('id', { count: 'exact', head: true })
+      .eq('empresa_id', req.empresa.id).eq('categoria_id', req.params.id);
+    if (eUso) throw new Error(eUso.message);
+    if (count > 0) return res.status(409).json({ error: `No se puede eliminar: ${count} producto(s) usan esta categoría` });
+    const { data, error } = await supabase.from('categorias_productos').delete()
+      .eq('id', req.params.id).eq('empresa_id', req.empresa.id).select('id');
+    if (error) throw new Error(error.message);
+    if (!data || !data.length) return res.status(404).json({ error: 'Categoría no encontrada' });
+    res.json({ eliminado: true });
   } catch (err) { next(err); }
 });
 

@@ -6,6 +6,8 @@
 //
 // Definiciones acordadas:
 //   MRR              suma de precio_mensual de las suscripciones 'activa'
+//                     de empresas con al menos un pago aceptado
+//   Cortesía         'activa' sin ningún pago aceptado (activadas a mano)
 //   Usuarios activos 'activa' + 'prueba' (cualquiera usando el sistema hoy)
 //   Nuevos clientes  fecha_inicio dentro del período
 //   Churn            pasaron a 'vencida' o 'cancelada' dentro del período
@@ -20,6 +22,22 @@ const supabase = require('../supabase/cliente');
 const { calcularRango } = require('../servicios/periodo');
 const router = express.Router();
 
+const ESTADOS_PAGO_ACEPTADO = ['APPROVED', 'Aceptada', 'Aceptado'];
+
+// Empresas con al menos un pago aceptado: las demás 'activa' son cortesía
+async function empresasQuePagaron() {
+  const { data, error } = await supabase.from('pagos_suscripcion')
+    .select('empresa_id').in('estado', ESTADOS_PAGO_ACEPTADO);
+  if (error) throw new Error(error.message);
+  return new Set((data || []).map(p => p.empresa_id));
+}
+
+// 'activa' se divide en 'pagada' y 'cortesia'
+function tipoDe(s, pagaron) {
+  if (s.estado !== 'activa') return s.estado;
+  return pagaron.has(s.empresa_id) ? 'pagada' : 'cortesia';
+}
+
 // GET /api/admin/verificar — solo confirma acceso, sin traer datos.
 // admin.js la llama primero, antes de pintar cualquier cosa, para
 // poder redirigir de inmediato si la sesión no es la tuya.
@@ -32,12 +50,15 @@ router.get('/metricas', async (req, res, next) => {
 
     const { data: subs, error } = await supabase
       .from('suscripciones')
-      .select('usuario_id, estado, fecha_inicio, fecha_vencimiento, actualizado_en, plan_id, planes_suscripcion(nombre, precio_mensual)');
+      .select('usuario_id, empresa_id, estado, fecha_inicio, fecha_vencimiento, actualizado_en, plan_id, planes_suscripcion(nombre, precio_mensual)');
     if (error) throw new Error(error.message);
+    const pagaron = await empresasQuePagaron();
 
     const activas = subs.filter(s => s.estado === 'activa');
+    const pagadas = activas.filter(s => pagaron.has(s.empresa_id));
+    const cortesia = activas.length - pagadas.length;
     const enPrueba = subs.filter(s => s.estado === 'prueba');
-    const mrr = activas.reduce((s, x) => s + Number(x.planes_suscripcion?.precio_mensual || 0), 0);
+    const mrr = pagadas.reduce((s, x) => s + Number(x.planes_suscripcion?.precio_mensual || 0), 0);
 
     const dentroDelRango = (fechaTexto) =>
       fechaTexto && new Date(fechaTexto) >= rango.desde && new Date(fechaTexto) <= rango.hasta;
@@ -48,17 +69,21 @@ router.get('/metricas', async (req, res, next) => {
     const porPlan = new Map();
     for (const s of [...activas, ...enPrueba]) {
       const nombre = s.planes_suscripcion?.nombre || 'Sin plan';
-      porPlan.set(nombre, (porPlan.get(nombre) || 0) + 1);
+      const fila = porPlan.get(nombre) || { pagada: 0, cortesia: 0, prueba: 0 };
+      fila[tipoDe(s, pagaron)]++;
+      porPlan.set(nombre, fila);
     }
 
     res.json({
       periodo: { desde: rango.desde.toISOString(), hasta: rango.hasta.toISOString() },
       mrr: Math.round(mrr * 100) / 100,
       usuarios_activos: activas.length + enPrueba.length,
+      clientes_pagos: pagadas.length,
+      cortesia,
       pruebas_gratuitas: enPrueba.length,
       nuevos_clientes: nuevosClientes,
       churn,
-      por_plan: [...porPlan.entries()].map(([nombre, cantidad]) => ({ nombre, cantidad }))
+      por_plan: [...porPlan.entries()].map(([nombre, f]) => ({ nombre, ...f, cantidad: f.pagada + f.cortesia + f.prueba }))
     });
   } catch (err) { next(err); }
 });
@@ -68,9 +93,10 @@ router.get('/clientes', async (req, res, next) => {
   try {
     const { data: subs, error } = await supabase
       .from('suscripciones')
-      .select('usuario_id, estado, fecha_inicio, fecha_vencimiento, planes_suscripcion(nombre, precio_mensual)')
+      .select('usuario_id, empresa_id, estado, fecha_inicio, fecha_vencimiento, planes_suscripcion(nombre, precio_mensual)')
       .order('fecha_inicio', { ascending: false });
     if (error) throw new Error(error.message);
+    const pagaron = await empresasQuePagaron();
 
     // No hay tabla propia de usuarios — el correo vive en Supabase Auth.
     // Se trae con la Admin API (requiere la Service Role Key, que el
@@ -83,10 +109,10 @@ router.get('/clientes', async (req, res, next) => {
       usuario_id: s.usuario_id,
       correo: correoPorId.get(s.usuario_id) || '(usuario eliminado)',
       plan: s.planes_suscripcion?.nombre || '—',
-      mrr: s.estado === 'activa' ? Number(s.planes_suscripcion?.precio_mensual || 0) : 0,
+      mrr: tipoDe(s, pagaron) === 'pagada' ? Number(s.planes_suscripcion?.precio_mensual || 0) : 0,
       fecha_inicio: s.fecha_inicio,
       fecha_vencimiento: s.fecha_vencimiento,
-      estado: s.estado
+      estado: tipoDe(s, pagaron)
     }));
 
     res.json(clientes);

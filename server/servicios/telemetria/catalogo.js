@@ -52,7 +52,10 @@ const EVENTOS = {
   'formulario.cerrado':     { props: { pantalla: PANTALLAS, formulario: 'identificador', guardado: 'booleano', segundos: 'numero' }, navegador: true },
   'ayuda.abierta':          { props: { pantalla: PANTALLAS }, navegador: true },
   'encuesta.mostrada':      { props: { pantalla: PANTALLAS, encuesta: ['facilidad', 'formulario'] }, navegador: true },
-  'error.pantalla':         { props: { pantalla: PANTALLAS }, navegador: true }
+  'error.pantalla':         { props: { pantalla: PANTALLAS }, navegador: true },
+  // Primeros pasos en Inicio
+  'ejemplo.cargado':        { props: { pantalla: PANTALLAS }, navegador: true },
+  'ejemplo.borrado':        { props: { pantalla: PANTALLAS }, navegador: true }
 };
 
 // Ruta del API (patrón, nunca con IDs) + método + éxito → evento de negocio
