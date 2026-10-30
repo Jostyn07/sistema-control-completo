@@ -31,10 +31,12 @@ const MODULOS_EXCEL = [
     descripcion: 'Colaboradores y su historial de encargos.', forma: 'nominas' }
 ];
 
-// Quien no fabrica no ve Materiales ni Procesos; Compras por Excel aún es solo de materiales
-const MODULOS_SOLO_FABRICACION = ['materiales', 'procesos', 'compras'];
+// Quien no fabrica no ve Materiales ni Procesos
+const MODULOS_SOLO_FABRICACION = ['materiales', 'procesos'];
 function modulosVisibles() {
-  return Negocio.fabrica() ? MODULOS_EXCEL : MODULOS_EXCEL.filter(m => !MODULOS_SOLO_FABRICACION.includes(m.clave));
+  // Sin tema.js nuevo (Negocio) se muestran todos, como antes
+  const fabrica = typeof Negocio === 'undefined' || Negocio.fabrica();
+  return fabrica ? MODULOS_EXCEL : MODULOS_EXCEL.filter(m => !MODULOS_SOLO_FABRICACION.includes(m.clave));
 }
 
 let moduloActualExcel = null;
@@ -196,9 +198,16 @@ function cerrarModalExcel() {
   reporteActualExcel = null;
 }
 
+const TAMANO_MAXIMO_EXCEL = 4 * 1024 * 1024; // igual que el servidor
+
 async function alSeleccionarArchivo(evento) {
   const archivo = evento.target.files[0];
   if (!archivo) return;
+  if (archivo.size > TAMANO_MAXIMO_EXCEL) {
+    mostrarAviso(`El archivo pesa ${(archivo.size / 1048576).toFixed(1)} MB y el máximo es 4 MB. Borra hojas o columnas que no necesites, o divídelo en dos.`, 'error');
+    evento.target.value = '';
+    return;
+  }
 
   document.getElementById('pasoSeleccionArchivo').hidden = true;
   document.getElementById('lineaCargandoExcel').hidden = false;
@@ -240,7 +249,9 @@ async function alSeleccionarArchivo(evento) {
     }
     document.getElementById('botonConfirmarImportacion').hidden = false;
   } catch (err) {
-    mostrarAviso(err.message, 'error');
+    // Sin respuesta del servidor (conexión cortada o el archivo no alcanzó a subir)
+    const sinRespuesta = err instanceof TypeError;
+    mostrarAviso(sinRespuesta ? 'No se pudo subir el archivo. Revisa tu conexión e inténtalo de nuevo; si sigue pasando, prueba con un archivo más liviano.' : err.message, 'error');
     document.getElementById('pasoSeleccionArchivo').hidden = false;
   } finally {
     document.getElementById('lineaCargandoExcel').hidden = true;
@@ -383,14 +394,14 @@ function columnasSimple(clave) {
   }
   if (clave === 'inventario') {
     return [
-      { titulo: 'Material', obtener: (f) => f.codigo_material || '' },
+      { titulo: 'Artículo', obtener: (f) => f.codigo_material || f.codigo_producto || '' },
       { titulo: 'Tipo', obtener: (f) => f.tipo || '' },
       { titulo: 'Stock resultante', obtener: (f) => f.stock_nuevo_proyectado ?? '' }
     ];
   }
   if (clave === 'compras') {
     return [
-      { titulo: 'Material', obtener: (f) => f.codigo_material || '' },
+      { titulo: 'Artículo', obtener: (f) => f.codigo_material || f.codigo_producto || '' },
       { titulo: 'Estado', obtener: (f) => f.estado || '' },
       { titulo: 'Proveedor', obtener: (f) => f.datos.proveedor || '' }
     ];
