@@ -4,7 +4,7 @@
 //   cargarPendientesCompra()
 //   abrirFormularioCompra(materialId)
 //   confirmarCompra(datosCompra)
-//   cargarEnCamino()
+//   (los pedidos en camino se ven en el historial)
 //   marcarLlegada(compraId)
 //   cargarHistorialCompras(filtros)
 // ============================================================
@@ -12,6 +12,17 @@
 let pendientesEnMemoria = [];
 let historialEnMemoria = [];
 let materialesParaCompra = [];
+let productosParaCompra = []; // productos de reventa
+
+// Nombre y unidad de lo comprado (material o producto de reventa)
+function nombreArticulo(c) {
+  if (c.materiales) return c.materiales.nombre;
+  if (c.productos) return c.productos.nombre;
+  return '—';
+}
+function unidadArticulo(c) {
+  return c.materiales ? c.materiales.unidad : (c.productos ? 'und' : '');
+}
 let filtroEstadoCompras = 'todas';
 let periodoActualCompras = 'mes';
 
@@ -24,7 +35,7 @@ async function cargarPendientesCompra() {
     pendientesEnMemoria = await API.obtener('/api/compras/pendientes');
 
     if (pendientesEnMemoria.length === 0) {
-      cuerpo.innerHTML = '<tr><td colspan="8" class="tabla__vacio">Nada pendiente: todos los materiales están por encima de su punto de reorden.</td></tr>';
+      cuerpo.innerHTML = '<tr><td colspan="8" class="tabla__vacio">Nada pendiente por comprar.</td></tr>';
       return;
     }
 
@@ -35,10 +46,10 @@ async function cargarPendientesCompra() {
         <td>${p.stock_actual} ${escaparHtml(p.unidad)}</td>
         <td>${p.punto_reorden}</td>
         <td><strong>${p.cantidad_sugerida} ${escaparHtml(p.unidad)}</strong></td>
-        <td>${escaparHtml(p.proveedor_sugerido)} <span class="texto-secundario">(${p.tiempo_entrega_dias} día(s))</span></td>
+        <td>${p.proveedor_sugerido ? `${escaparHtml(p.proveedor_sugerido)} <span class="texto-secundario">(${p.tiempo_entrega_dias} día(s))</span>` : '—'}</td>
         <td>${formatearPesos(p.costo_estimado)}</td>
         <td>
-          <button type="button" class="boton boton--pequeno boton--primario" onclick="abrirFormularioCompra('${p.material_id}')">Comprar</button>
+          <button type="button" class="boton boton--pequeno boton--primario" onclick="${p.producto_id ? `abrirFormularioCompra('p:${p.producto_id}')` : `abrirFormularioCompra('m:${p.material_id}')`}">Comprar</button>
           ${p.ya_en_camino > 0 ? `<div class="texto-secundario" style="margin-top:4px">Ya pediste ${p.ya_en_camino} ${escaparHtml(p.unidad)}, llega ${formatearFechaCorta(p.llega_aprox)}</div>` : ''}
         </td>
       </tr>`).join('');
@@ -48,40 +59,68 @@ async function cargarPendientesCompra() {
 }
 
 // ---- 2. Formulario de compra ----
-async function abrirFormularioCompra(materialId) {
+// Opciones con prefijo: "m:<id>" material, "p:<id>" producto de reventa
+async function abrirFormularioCompra(articulo) {
+  const fabrica = Negocio.fabrica();
+  const revende = Negocio.revende();
   try {
-    materialesParaCompra = await API.obtener('/api/materiales');
+    const [materiales, productos] = await Promise.all([
+      fabrica ? API.obtener('/api/materiales') : [],
+      revende ? API.obtener('/api/productos') : []
+    ]);
+    materialesParaCompra = materiales;
+    productosParaCompra = productos.filter(p => p.tipo === 'reventa');
   } catch (err) {
-    mostrarAviso('No se pudo cargar la lista de materiales: ' + err.message, 'error');
+    mostrarAviso('No se pudo cargar la lista: ' + err.message, 'error');
     return;
   }
-  if (materialesParaCompra.length === 0) {
-    mostrarAviso('No hay materiales registrados. Créalos primero en la pestaña Materiales.', 'error');
+  if (materialesParaCompra.length === 0 && productosParaCompra.length === 0) {
+    mostrarAviso(revende && !fabrica
+      ? 'Primero agrega tus productos en la pestaña Productos.'
+      : 'No hay materiales registrados. Créalos primero en la pestaña Materiales.', 'error');
     return;
   }
 
+  const opcionesMateriales = materialesParaCompra
+    .map(m => `<option value="m:${m.id}">${escaparHtml(m.nombre)} (${escaparHtml(m.unidad)})</option>`).join('');
+  const opcionesProductos = productosParaCompra
+    .map(p => `<option value="p:${p.id}">${escaparHtml(p.nombre)}</option>`).join('');
+  const ambos = opcionesMateriales && opcionesProductos;
   const selector = document.getElementById('selectorMaterialCompra');
-  selector.innerHTML = materialesParaCompra
-    .map(m => `<option value="${m.id}">${escaparHtml(m.nombre)} (${escaparHtml(m.unidad)})</option>`)
-    .join('');
+  selector.innerHTML = ambos
+    ? `<optgroup label="Materiales">${opcionesMateriales}</optgroup><optgroup label="Productos para revender">${opcionesProductos}</optgroup>`
+    : opcionesMateriales + opcionesProductos;
+  document.getElementById('etiquetaArticuloCompra').textContent = ambos ? 'Qué compraste *' : (opcionesProductos ? 'Producto *' : 'Material *');
 
-  if (materialId) selector.value = materialId;
-  precargarDatosMaterial(materialId);
+  if (articulo && selector.querySelector(`option[value="${articulo}"]`)) selector.value = articulo;
+  precargarDatosMaterial();
 
   document.getElementById('campoNotasCompra').value = '';
   document.getElementById('modalCompra').hidden = false;
 }
 
 // Precarga proveedor sugerido, cantidad recomendada y último precio (todo editable)
-function precargarDatosMaterial(materialId) {
-  const id = materialId || document.getElementById('selectorMaterialCompra').value;
-  const material = materialesParaCompra.find(m => m.id === id);
-  if (!material) return;
+function precargarDatosMaterial() {
+  const [clase, id] = document.getElementById('selectorMaterialCompra').value.split(':');
+  const esProducto = clase === 'p';
+  document.getElementById('bloqueDiasEntrega').hidden = !esProducto;
+  document.getElementById('campoDiasEntrega').value = '0';
 
-  const pendiente = pendientesEnMemoria.find(p => p.material_id === id);
-  document.getElementById('campoProveedorCompra').value = material.proveedor;
-  document.getElementById('campoCantidadCompra').value = pendiente ? pendiente.cantidad_sugerida : '';
-  document.getElementById('campoPrecioCompra').value = material.costo_unitario;
+  if (esProducto) {
+    const producto = productosParaCompra.find(p => p.id === id);
+    if (!producto) return;
+    const pendiente = pendientesEnMemoria.find(p => p.producto_id === id);
+    document.getElementById('campoProveedorCompra').value = '';
+    document.getElementById('campoCantidadCompra').value = pendiente ? pendiente.cantidad_sugerida : '';
+    document.getElementById('campoPrecioCompra').value = producto.costo_calculado;
+  } else {
+    const material = materialesParaCompra.find(m => m.id === id);
+    if (!material) return;
+    const pendiente = pendientesEnMemoria.find(p => p.material_id === id);
+    document.getElementById('campoProveedorCompra').value = material.proveedor;
+    document.getElementById('campoCantidadCompra').value = pendiente ? pendiente.cantidad_sugerida : '';
+    document.getElementById('campoPrecioCompra').value = material.costo_unitario;
+  }
   calcularTotalCompra();
 }
 
@@ -96,30 +135,38 @@ function cerrarFormularioCompra() {
 }
 
 async function confirmarCompra() {
+  const [clase, id] = document.getElementById('selectorMaterialCompra').value.split(':');
   const datosCompra = {
-    material_id: document.getElementById('selectorMaterialCompra').value,
     proveedor: document.getElementById('campoProveedorCompra').value,
     cantidad: document.getElementById('campoCantidadCompra').value,
     precio_unitario: document.getElementById('campoPrecioCompra').value,
     notas: document.getElementById('campoNotasCompra').value
   };
+  if (clase === 'p') {
+    datosCompra.producto_id = id;
+    datosCompra.dias_entrega = Number(document.getElementById('campoDiasEntrega').value || 0);
+  } else {
+    datosCompra.material_id = id;
+  }
 
+  if (!id) { mostrarAviso('Elige qué compraste', 'error'); return; }
   if (!datosCompra.proveedor.trim()) { mostrarAviso('El proveedor es obligatorio', 'error'); return; }
   if (!datosCompra.cantidad || Number(datosCompra.cantidad) <= 0) { mostrarAviso('La cantidad debe ser mayor a 0', 'error'); return; }
   if (datosCompra.precio_unitario === '' || Number(datosCompra.precio_unitario) < 0) { mostrarAviso('El precio unitario no es válido', 'error'); return; }
 
+  const boton = document.getElementById('botonConfirmarCompra');
+  boton.disabled = true;
   try {
-    const resultado = await API.enviar('/api/compras', datosCompra);
-    mostrarAviso(resultado.mensaje || 'Pedido registrado');
-    if (resultado.sugerencia) {
-      setTimeout(() => mostrarAviso(resultado.sugerencia, 'error'), 1800);
-    }
+    const resultado = await conDecisionCosto(d => API.enviar('/api/compras', { ...datosCompra, decision_costo: d }));
+    if (!resultado) return; // canceló la decisión de costo
+    mostrarAviso(resultado.mensaje || 'Compra registrada');
     cerrarFormularioCompra();
     cargarPendientesCompra();
-    cargarEnCamino();
     cargarHistorialCompras();
   } catch (err) {
     mostrarAviso(err.message, 'error');
+  } finally {
+    boton.disabled = false;
   }
 }
 
@@ -144,7 +191,7 @@ function abrirEliminarCompra(compraId) {
 
   const texto = document.getElementById('textoEliminarCompra');
   if (compra && compra.estado === 'recibida') {
-    texto.textContent = `Esta compra ya está marcada como recibida: su cantidad (${compra.cantidad} ${compra.materiales ? compra.materiales.unidad : ''}) ya se sumó al stock. Al eliminarla, esa cantidad se restará automáticamente.`;
+    texto.textContent = `Esta compra ya está marcada como recibida: su cantidad (${compra.cantidad} ${unidadArticulo(compra)}) ya se sumó al stock. Al eliminarla, esa cantidad se restará automáticamente.`;
   } else {
     texto.textContent = 'Esta compra aún no ha llegado, así que no afecta el stock actual.';
   }
@@ -165,7 +212,6 @@ async function confirmarEliminarCompra(forzar = false) {
     mostrarAviso(resultado.stock_revertido ? 'Compra eliminada y el stock se corrigió' : 'Compra eliminada');
     cerrarEliminarCompra();
     cargarPendientesCompra();
-    cargarEnCamino();
     cargarHistorialCompras();
   } catch (err) {
     if (!forzar && err.message.includes('dejaría el material en negativo')) {
@@ -227,7 +273,7 @@ function pintarHistorialCompras() {
   if (texto) {
     lista = lista.filter(c =>
       normalizarTextoCompras(c.proveedor).includes(texto) ||
-      normalizarTextoCompras(c.materiales ? c.materiales.nombre : '').includes(texto));
+      normalizarTextoCompras(nombreArticulo(c)).includes(texto));
   }
 
   if (historialEnMemoria.length === 0) {
@@ -243,9 +289,9 @@ function pintarHistorialCompras() {
     <tr>
       <td>${numeroCortoCompra(c)}</td>
       <td>${formatearFecha(c.fecha)}</td>
-      <td>${escaparHtml(c.materiales ? c.materiales.nombre : '—')}</td>
+      <td>${escaparHtml(nombreArticulo(c))}</td>
       <td><span class="celda-cliente">${avatarTexto(c.proveedor)}${escaparHtml(c.proveedor)}</span></td>
-      <td>${c.cantidad} ${escaparHtml(c.materiales ? c.materiales.unidad : '')}</td>
+      <td>${c.cantidad} ${escaparHtml(unidadArticulo(c))}</td>
       <td>${formatearPesos(c.precio_unitario)}</td>
       <td>${formatearPesos(c.total)}</td>
       <td><span class="etiqueta-estado etiqueta-estado--${c.estado === 'recibida' ? 'listo' : 'pendiente'}">${ETIQUETA_ESTADO_COMPRA[c.estado] || c.estado}</span></td>
@@ -335,7 +381,7 @@ function resumenCompras(lista) {
     total: lista.reduce((s, c) => s + Number(c.total || 0), 0),
     ordenes: lista.length,
     proveedores: new Set(lista.map(c => (c.proveedor || '').trim().toLowerCase()).filter(Boolean)).size,
-    materiales: new Set(lista.map(c => c.material_id).filter(Boolean)).size
+    materiales: new Set(lista.map(c => c.material_id || c.producto_id).filter(Boolean)).size
   };
 }
 
@@ -363,7 +409,7 @@ function pintarKpisCompras(listaActual, listaAnterior) {
     { icono: 'carrito', color: 'azul', etiqueta: 'Total de compras', valor: formatearPesos(actual.total), delta: variacionPct(actual.total, previo.total) },
     { icono: 'caja', color: 'verde', etiqueta: 'Órdenes de compra', valor: String(actual.ordenes), delta: variacionPct(actual.ordenes, previo.ordenes) },
     { icono: 'camion', color: 'morado', etiqueta: 'Proveedores', valor: String(actual.proveedores), delta: variacionPct(actual.proveedores, previo.proveedores) },
-    { icono: 'barras', color: 'naranja', etiqueta: 'Materiales distintos', valor: String(actual.materiales), delta: variacionPct(actual.materiales, previo.materiales) }
+    { icono: 'barras', color: 'naranja', etiqueta: 'Artículos distintos', valor: String(actual.materiales), delta: variacionPct(actual.materiales, previo.materiales) }
   ];
 
   contenedor.innerHTML = tarjetas.map(t => {
@@ -394,9 +440,9 @@ function pintarComprasRecientes() {
   const recientes = [...historialEnMemoria].sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 5);
   contenedor.innerHTML = recientes.map(c => `
     <div class="celda-cliente" style="justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--t-borde);">
-      <span class="celda-cliente">${avatarTexto(c.materiales ? c.materiales.nombre : '?')}
+      <span class="celda-cliente">${avatarTexto(nombreArticulo(c))}
         <span>
-          <strong style="display:block;font-size:0.875rem;">${escaparHtml(c.materiales ? c.materiales.nombre : '—')}</strong>
+          <strong style="display:block;font-size:0.875rem;">${escaparHtml(nombreArticulo(c))}</strong>
           <span class="texto-secundario">${escaparHtml(c.proveedor)} · ${formatearFecha(c.fecha)}</span>
         </span>
       </span>

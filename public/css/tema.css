@@ -698,3 +698,31 @@ a.barra-superior__usuario { text-decoration: none; color: inherit; }
 .pp__marca { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid var(--t-borde); display: grid; place-items: center; font-size: .8rem; color: #fff; }
 .pp__hito--hecho .pp__marca { background: var(--t-exito, #16a34a); border-color: transparent; }
 .pp__hito--hecho span:last-child { color: var(--t-ink-suave); text-decoration: line-through; }
+
+/* Tipo de negocio: lo que no aplica no se muestra */
+.negocio-sin-fabricacion .barra-lateral__enlace[href$="materiales.html"],
+.negocio-sin-fabricacion .barra-lateral__enlace[href$="procesos.html"],
+.negocio-sin-fabricacion .solo-fabricacion,
+.negocio-sin-reventa .solo-reventa { display: none !important; }
+
+/* Selector de tipo de negocio */
+.tn { max-width: 720px; width: 100%; }
+.tn h2 { margin: 0 0 18px; }
+.tn__opciones { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tn__opcion { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; padding: 18px; border: 2px solid var(--t-borde); border-radius: var(--t-radio); background: var(--t-tarjeta-bg); color: var(--t-ink); font: inherit; cursor: pointer; transition: border-color .15s, background .15s; }
+.tn__opcion:hover { border-color: var(--t-accent); }
+.tn__opcion:focus-visible { outline: 3px solid var(--t-accent); outline-offset: 2px; }
+.tn__opcion svg { width: 28px; height: 28px; color: var(--t-accent); margin-bottom: 4px; }
+.tn__opcion strong { font-size: 1rem; }
+.tn__opcion span { color: var(--t-ink-suave); font-size: .875rem; line-height: 1.4; }
+.tn__opcion--activa { border-color: var(--t-accent); background: color-mix(in srgb, var(--t-accent) 8%, var(--t-tarjeta-bg)); }
+@media (max-width: 640px) { .tn__opciones { grid-template-columns: 1fr; } }
+
+/* Decisión de costo al comprar */
+.dc__opciones { display: grid; gap: 10px; margin: 16px 0 4px; }
+.dc__opcion { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; border: 2px solid var(--t-borde); border-radius: var(--t-radio-chico); background: var(--t-tarjeta-bg); color: var(--t-ink); font: inherit; cursor: pointer; text-align: left; }
+.dc__opcion:hover, .dc__opcion:focus-visible { border-color: var(--t-accent); outline: none; }
+.dc__opcion strong { font-variant-numeric: tabular-nums; }
+
+/* Tipo de producto */
+.etiqueta-tipo { display: inline-block; font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--t-exito-fondo); color: var(--t-exito); vertical-align: middle; }

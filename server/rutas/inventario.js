@@ -48,6 +48,7 @@ router.get('/capacidad', async (req, res, next) => {
       .select('id, nombre, foto_url, precio_venta')
       .eq('empresa_id', req.empresa.id)
       .eq('activo', true)
+      .eq('tipo', 'fabricado') // los de reventa no se fabrican
       .order('nombre');
     if (eProd) throw new Error(eProd.message);
 

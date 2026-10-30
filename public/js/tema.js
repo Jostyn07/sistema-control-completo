@@ -610,3 +610,144 @@ document.addEventListener('DOMContentLoaded', () => {
     reportar(r && (r.message || r), 'promesa');
   });
 })();
+
+// ============================================================
+// Tipo de negocio: fabricante, comerciante o ambos.
+// Se guarda en la empresa. Lo último conocido queda en el navegador
+// para ocultar Materiales/Procesos antes del primer pintado; luego se
+// confirma con el servidor. Sin elegir, la persona con permiso de
+// configuración ve el selector una vez.
+// ============================================================
+const Negocio = (() => {
+  const CLAVE = 'modelo_negocio';
+  const PREDETERMINADO = { fabricacion: true, reventa: false, definido: false };
+  let permisos = [];
+  let avisarListo;
+  const listo = new Promise(r => { avisarListo = r; }); // se resuelve tras consultar al servidor
+
+  function leer() {
+    try { return { ...PREDETERMINADO, ...(JSON.parse(localStorage.getItem(CLAVE) || 'null') || {}) }; }
+    catch (_) { return { ...PREDETERMINADO }; }
+  }
+
+  function aplicarClases(m) {
+    const raiz = document.documentElement;
+    raiz.classList.toggle('negocio-sin-fabricacion', !m.fabricacion);
+    raiz.classList.toggle('negocio-sin-reventa', !m.reventa);
+  }
+
+  function guardarLocal(m) {
+    try { localStorage.setItem(CLAVE, JSON.stringify(m)); } catch (_) {}
+    aplicarClases(m);
+    document.dispatchEvent(new CustomEvent('negocio:cambio', { detail: m }));
+  }
+
+  aplicarClases(leer());
+
+  const OPCIONES = [
+    { id: 'fabricacion', titulo: 'Fabrico mis productos', texto: 'Materiales, recetas, procesos y producción.',
+      icono: '<path d="M2 20h20"/><path d="M4 20V9l5 3V9l5 3V5h6v15"/>' },
+    { id: 'reventa', titulo: 'Compro y revendo', texto: 'Compras, precios y existencias.',
+      icono: '<circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.4 11.6a1 1 0 0 0 1 .8h8.8a1 1 0 0 0 1-.8L21 8H6"/>' },
+    { id: 'ambos', titulo: 'Las dos cosas', texto: 'Fabrico algunos productos y compro otros para revender.',
+      icono: '<path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/>' }
+  ];
+
+  function seleccionActual(m) {
+    if (!m.definido) return null;
+    return m.fabricacion && m.reventa ? 'ambos' : (m.reventa ? 'reventa' : 'fabricacion');
+  }
+
+  function abrirSelector(permitirCerrar) {
+    if (document.getElementById('modalTipoNegocio')) return;
+    const actual = seleccionActual(leer());
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'modalTipoNegocio';
+    modal.innerHTML = `
+      <div class="modal__contenido tarjeta tn" role="dialog" aria-modal="true" aria-labelledby="tituloTipoNegocio">
+        <h2 id="tituloTipoNegocio">¿Cómo funciona tu negocio?</h2>
+        <div class="tn__opciones" role="radiogroup">
+          ${OPCIONES.map(o => `
+            <button type="button" class="tn__opcion${o.id === actual ? ' tn__opcion--activa' : ''}" data-opcion="${o.id}" role="radio" aria-checked="${o.id === actual}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${o.icono}</svg>
+              <strong>${o.titulo}</strong>
+              <span>${o.texto}</span>
+            </button>`).join('')}
+        </div>
+        <div class="modal__acciones">
+          ${permitirCerrar ? '<button type="button" class="boton" data-accion="cerrar">Cancelar</button>' : ''}
+          <button type="button" class="boton boton--primario" data-accion="guardar" ${actual ? '' : 'disabled'}>Continuar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    let elegida = actual;
+    const botonGuardar = modal.querySelector('[data-accion="guardar"]');
+    modal.querySelectorAll('[data-opcion]').forEach(b => b.addEventListener('click', () => {
+      elegida = b.dataset.opcion;
+      modal.querySelectorAll('[data-opcion]').forEach(x => {
+        const activa = x === b;
+        x.classList.toggle('tn__opcion--activa', activa);
+        x.setAttribute('aria-checked', activa);
+      });
+      botonGuardar.disabled = false;
+    }));
+    const cerrar = modal.querySelector('[data-accion="cerrar"]');
+    if (cerrar) cerrar.addEventListener('click', () => modal.remove());
+
+    botonGuardar.addEventListener('click', async () => {
+      const cuerpo = { fabricacion: elegida !== 'reventa', reventa: elegida !== 'fabricacion' };
+      botonGuardar.disabled = true;
+      try {
+        const m = await API.actualizar('/api/empresas/modelo-negocio', cuerpo);
+        guardarLocal({ ...cuerpo, definido: true, ...m });
+        modal.remove();
+        // La pantalla actual puede dejar de aplicar (p. ej. Materiales para un comerciante)
+        const pagina = location.pathname.split('/').pop();
+        if (!cuerpo.fabricacion && ['materiales.html', 'procesos.html'].includes(pagina)) location.href = '/productos.html';
+        else location.reload();
+      } catch (err) {
+        botonGuardar.disabled = false;
+        mostrarAviso(err.message, 'error');
+      }
+    });
+  }
+
+  function puedeElegir() { return permisos.includes('configuracion.editar'); }
+
+  function pintarTarjetaPerfil(m) {
+    const tarjeta = document.getElementById('tarjetaTipoNegocio');
+    if (!tarjeta) return;
+    tarjeta.hidden = !puedeElegir();
+    const o = OPCIONES.find(x => x.id === seleccionActual(m));
+    document.getElementById('textoTipoNegocio').textContent = o ? o.titulo : 'Sin elegir';
+  }
+
+  async function sincronizar() {
+    if (!localStorage.getItem('token_sesion') || typeof API === 'undefined') return;
+    try {
+      const r = await API.obtener('/api/empresas');
+      permisos = (r.activa && r.activa.permisos) || [];
+      const m = { ...PREDETERMINADO, ...((r.activa && r.activa.modelo_negocio) || {}) };
+      const antes = JSON.stringify(leer());
+      if (antes !== JSON.stringify(m)) guardarLocal(m);
+      pintarTarjetaPerfil(m);
+      if (!m.definido && puedeElegir()) abrirSelector(false);
+    } catch (_) { /* sin conexión: se queda con lo último conocido */ }
+    finally { avisarListo(); }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (document.querySelector('.navegacion')) sincronizar(); else avisarListo();
+  });
+
+  return {
+    modelo: leer,
+    fabrica: () => leer().fabricacion,
+    revende: () => leer().reventa,
+    abrirSelector,
+    listo,
+    eligiendo: () => !!document.getElementById('modalTipoNegocio')
+  };
+})();

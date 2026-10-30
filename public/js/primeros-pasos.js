@@ -1,7 +1,7 @@
 // ============================================================
 // PRIMEROS PASOS — public/js/primeros-pasos.js
-// Hitos en Inicio: primer material, primer producto con receta y
-// primera venta. Se marcan solos con los datos reales (los de
+// Hitos en Inicio. Fabricante: primer material, primer producto con
+// receta y primera venta. Comerciante: primer producto y primera venta. Se marcan solos con los datos reales (los de
 // ejemplo no cuentan) y la tarjeta desaparece al completar los 3.
 // "Cargar ejemplo" crea datos reales marcados con " (ejemplo)" por
 // la API normal (stock e historial cuadran); "Borrar ejemplo" los quita.
@@ -22,14 +22,18 @@ const PrimerosPasos = (() => {
       nombre: 'Torta de chocolate' + MARCA, precio_venta: 45000,
       receta: { harina: 0.5, huevos: 4, chocolate: 0.2 }
     },
-    venta: { cliente: 'Cliente' + MARCA, cantidad: 2 }
+    venta: { cliente: 'Cliente' + MARCA, cantidad: 2 },
+    reventa: {
+      nombre: 'Audífonos inalámbricos' + MARCA, categoria: 'Tecnología' + MARCA,
+      costo_compra: 35000, precio_venta: 59900, stock_inicial: 20, stock_minimo: 5, venta: 2
+    }
   };
 
   let ocupado = false;
 
   async function leerDatos() {
     const [materiales, productos, ventas] = await Promise.all([
-      API.obtener('/api/materiales').catch(() => []),
+      Negocio.fabrica() ? API.obtener('/api/materiales').catch(() => []) : [],
       API.obtener('/api/productos').catch(() => []),
       API.obtener('/api/ventas').catch(() => [])
     ]);
@@ -43,12 +47,19 @@ const PrimerosPasos = (() => {
       productos: d.productos.filter(p => !esEjemplo(p.nombre)),
       ventas: d.ventas.filter(v => !esEjemplo(v.cliente))
     };
+    const venta = { id: 'venta', titulo: 'Registra tu primera venta', hecho: reales.ventas.length > 0, enlace: 'ventas.html' };
+    const hitos = Negocio.fabrica()
+      ? [
+          { id: 'material', titulo: 'Crea tu primer material', hecho: reales.materiales.length > 0, enlace: 'materiales.html' },
+          { id: 'producto', titulo: 'Arma tu primer producto con su receta', hecho: reales.productos.length > 0, enlace: 'productos.html' },
+          venta
+        ]
+      : [
+          { id: 'producto', titulo: 'Agrega tu primer producto', hecho: reales.productos.length > 0, enlace: 'productos.html' },
+          venta
+        ];
     return {
-      hitos: [
-        { id: 'material', titulo: 'Crea tu primer material', hecho: reales.materiales.length > 0, enlace: 'materiales.html' },
-        { id: 'producto', titulo: 'Arma tu primer producto con su receta', hecho: reales.productos.length > 0, enlace: 'productos.html' },
-        { id: 'venta', titulo: 'Registra tu primera venta', hecho: reales.ventas.length > 0, enlace: 'ventas.html' }
-      ],
+      hitos,
       hayEjemplo: d.materiales.some(m => esEjemplo(m.nombre)) || d.productos.some(p => esEjemplo(p.nombre)) ||
         d.ventas.some(v => esEjemplo(v.cliente))
     };
@@ -107,8 +118,30 @@ const PrimerosPasos = (() => {
     }
   }
 
+  // Comerciante: un producto comprado con existencias y una venta
+  async function crearEjemploReventa() {
+    const r = EJEMPLO.reventa;
+    const categoria = await API.enviar('/api/categorias', { nombre: r.categoria });
+    const producto = await API.enviar('/api/productos', {
+      tipo: 'reventa', nombre: r.nombre, categoria_id: categoria.id, proveedor: EJEMPLO.proveedor,
+      costo_compra: r.costo_compra, precio_venta: r.precio_venta,
+      stock_inicial: r.stock_inicial, stock_minimo: r.stock_minimo
+    });
+    await API.enviar('/api/ventas', {
+      cliente: EJEMPLO.venta.cliente,
+      items: [{ producto_id: producto.id, cantidad: r.venta }]
+    });
+  }
+
   function cargarEjemplo(boton) {
     return conBoton(boton, 'Cargando…', async () => {
+      if (Negocio.revende()) await crearEjemploReventa();
+      if (!Negocio.fabrica()) {
+        medir('ejemplo.cargado');
+        mostrarAviso('Ejemplo cargado: revisa Productos, Inventario y Ventas');
+        setTimeout(() => location.reload(), 900);
+        return;
+      }
       const categoria = await API.enviar('/api/categorias', { nombre: EJEMPLO.categoria });
       const ids = {};
       for (const m of EJEMPLO.materiales) {
@@ -161,3 +194,4 @@ const PrimerosPasos = (() => {
 })();
 
 document.addEventListener('DOMContentLoaded', () => { PrimerosPasos.pintar().catch(() => {}); });
+document.addEventListener('negocio:cambio', () => { PrimerosPasos.pintar().catch(() => {}); });

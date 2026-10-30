@@ -129,11 +129,15 @@ async function resolverModoCosteo(producto, tieneProcesos) {
 async function recalcularProductoDesdeSusProcesos(productoId, empresaId) {
   const { data: producto, error: eProd } = await supabase
     .from('productos')
-    .select('id, usa_costeo_por_procesos, minutos_fabricacion')
+    .select('id, tipo, usa_costeo_por_procesos, minutos_fabricacion, costo_calculado')
     .eq('id', productoId)
     .eq('empresa_id', empresaId)
     .single();
   if (eProd || !producto) throw new Error('Producto no encontrado');
+  // Reventa: su costo es el de compra, nunca se recalcula desde materiales
+  if (producto.tipo === 'reventa') {
+    return { minutos_fabricacion: 0, costo_calculado: Number(producto.costo_calculado || 0), usa_costeo_por_procesos: false };
+  }
 
   const { data: procesos, error: eProc } = await supabase
     .from('procesos')
@@ -206,7 +210,8 @@ async function recalcularTodosLosProductos(empresaId) {
     .from('productos')
     .select('id')
     .eq('empresa_id', empresaId)
-    .eq('activo', true);
+    .eq('activo', true)
+    .eq('tipo', 'fabricado');
   if (error) throw new Error(error.message);
 
   let contador = 0;

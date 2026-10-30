@@ -4,6 +4,7 @@
 // - GET    /                       mis empresas + empresa activa + mis permisos
 // - PUT    /predeterminada         { empresa_id } empresa que abre al iniciar sesión
 // - PATCH  /actual                 { nombre } renombra la empresa activa
+// - PUT    /modelo-negocio         { fabricacion, reventa } qué hace el negocio
 // - GET    /miembros               equipo de la empresa activa
 // - POST   /miembros               { correo, rol } agrega a alguien ya registrado
 // - PATCH  /miembros/:usuarioId    { rol?, estado? } cambia rol o suspende
@@ -16,6 +17,7 @@ const express = require('express');
 const { supabaseAdmin } = require('../supabase/cliente');
 const requierePermiso = require('../middleware/permissions');
 const { ROLES } = require('../seguridad/permisos');
+const { validarModelo } = require('../servicios/modelo-negocio');
 const router = express.Router();
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -34,7 +36,7 @@ router.get('/', async (req, res, next) => {
     if (error) throw new Error('No se pudieron cargar tus empresas');
 
     res.json({
-      activa: { id: req.empresa.id, rol: req.empresa.rol, permisos: req.empresa.permisos },
+      activa: { id: req.empresa.id, rol: req.empresa.rol, permisos: req.empresa.permisos, modelo_negocio: req.empresa.modelo },
       empresas: data.map(m => ({
         id: m.empresa_id,
         nombre: m.empresas.nombre,
@@ -80,6 +82,22 @@ router.patch('/actual', requierePermiso('configuracion', 'editar'), async (req, 
       .from('empresas').update({ nombre }).eq('id', req.empresa.id).select('id, nombre').single();
     if (error) throw new Error('No se pudo renombrar la empresa');
     res.json(data);
+  } catch (err) { next(err); }
+});
+
+// PUT /api/empresas/modelo-negocio — cuerpo: { fabricacion, reventa }
+// Cambiarlo no borra nada: solo cambia lo que se muestra.
+router.put('/modelo-negocio', requierePermiso('configuracion', 'editar'), async (req, res, next) => {
+  try {
+    const { modelo, error: invalido } = validarModelo(req.body);
+    if (invalido) return res.status(400).json({ error: invalido });
+    const { data: empresa, error: eGet } = await supabaseAdmin
+      .from('empresas').select('configuracion').eq('id', req.empresa.id).single();
+    if (eGet) throw new Error('No se pudo leer la configuración');
+    const configuracion = { ...(empresa.configuracion || {}), modelo_negocio: modelo };
+    const { error } = await supabaseAdmin.from('empresas').update({ configuracion }).eq('id', req.empresa.id);
+    if (error) throw new Error('No se pudo guardar el tipo de negocio');
+    res.json({ ...modelo, definido: true });
   } catch (err) { next(err); }
 });
 

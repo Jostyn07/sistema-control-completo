@@ -11,6 +11,7 @@
 // - AJUSTE:  cantidad es la diferencia a corregir (puede ser
 //            negativa) y se SUMA tal cual al stock.
 // Ninguna fila puede dejar el stock en negativo.
+// Cada fila es de un material o de un producto (stock de terminados).
 // ============================================================
 const supabase = require('../../supabase/cliente');
 const { randomUUID } = require('crypto');
@@ -36,6 +37,16 @@ async function obtenerMaterialesPorCodigo(empresaId) {
   return new Map((data || []).map((m) => [m.codigo.toLowerCase(), m]));
 }
 
+async function obtenerProductosPorCodigo(empresaId) {
+  const [{ data, error }, { data: stock, error: eS }] = await Promise.all([
+    supabase.from('productos').select('id, codigo').eq('empresa_id', empresaId).not('codigo', 'is', null),
+    supabase.from('inventario_productos').select('producto_id, stock_actual').eq('empresa_id', empresaId)
+  ]);
+  if (error || eS) throw new Error((error || eS).message);
+  const stockPorId = new Map((stock || []).map((s) => [s.producto_id, Number(s.stock_actual)]));
+  return new Map((data || []).map((p) => [p.codigo.toLowerCase(), { ...p, stock_actual: stockPorId.get(p.id) || 0 }]));
+}
+
 // Calcula en cuánto cambia el stock según el tipo. Devuelve `undefined`
 // si el tipo no es válido (ya se habrá reportado como error antes).
 function deltaSegunTipo(tipo, cantidad) {
@@ -49,7 +60,9 @@ function deltaSegunTipo(tipo, cantidad) {
 // -------------------- 1. ANALIZAR --------------------
 async function analizarInventario(buffer, empresaId) {
   const filasExcel = leerFilas(buffer);
-  const materialesPorCodigo = await obtenerMaterialesPorCodigo(empresaId);
+  const [materialesPorCodigo, productosPorCodigo] = await Promise.all([
+    obtenerMaterialesPorCodigo(empresaId), obtenerProductosPorCodigo(empresaId)
+  ]);
 
   // Saldo proyectado por material a medida que se procesan las filas del
   // archivo EN ORDEN — así, si dos filas mueven el mismo material, la
@@ -57,6 +70,7 @@ async function analizarInventario(buffer, empresaId) {
   // stock que había antes de abrir el archivo).
   const saldoProyectado = new Map();
   for (const material of materialesPorCodigo.values()) saldoProyectado.set(material.id, Number(material.stock_actual));
+  for (const producto of productosPorCodigo.values()) saldoProyectado.set(producto.id, producto.stock_actual);
 
   const resumen = { validas: 0, errores: 0 };
 
@@ -64,15 +78,21 @@ async function analizarInventario(buffer, empresaId) {
     const numeroFila = indice + 2;
     const datos = extraerDatos(filaExcel);
     const codigoMaterial = aTextoLimpio(datos.codigo_material);
+    const codigoProducto = aTextoLimpio(datos.codigo_producto);
 
     const errores = [
-      requerido(datos.codigo_material, 'Código material'),
+      !codigoMaterial && !codigoProducto ? 'Falta "Código material" o "Código producto"' : null,
+      codigoMaterial && codigoProducto ? 'Usa "Código material" o "Código producto", no los dos' : null,
       enListaValido(datos.tipo, 'Tipo', TIPOS_VALIDOS),
       requerido(datos.motivo, 'Motivo')
     ].filter(Boolean);
 
-    const material = codigoMaterial ? materialesPorCodigo.get(codigoMaterial.toLowerCase()) : null;
+    let material = codigoMaterial ? materialesPorCodigo.get(codigoMaterial.toLowerCase()) : null;
     if (codigoMaterial && !material) errores.push(`El material con código "${codigoMaterial}" no existe`);
+    const producto = codigoProducto && !codigoMaterial ? productosPorCodigo.get(codigoProducto.toLowerCase()) : null;
+    if (codigoProducto && !codigoMaterial && !producto) errores.push(`El producto con código "${codigoProducto}" no existe`);
+    // Desde aquí el artículo es el material o el producto (mismo cálculo de saldo)
+    if (producto) material = producto;
 
     const tipoNorm = aTextoLimpio(datos.tipo).toUpperCase();
     const esEntradaOSalida = tipoNorm === 'ENTRADA' || tipoNorm === 'SALIDA';
@@ -103,7 +123,9 @@ async function analizarInventario(buffer, empresaId) {
     return {
       numero_fila: numeroFila,
       codigo_material: codigoMaterial || null,
-      material_id: material ? material.id : null,
+      material_id: material && !producto ? material.id : null,
+      codigo_producto: codigoProducto || null,
+      producto_id: producto ? producto.id : null,
       tipo: errores.length ? (TIPOS_VALIDOS.includes(tipoNorm) ? tipoNorm : null) : tipoNorm,
       datos,
       delta,
@@ -131,6 +153,17 @@ async function importarInventario(empresaId, filas) {
     // Todo o nada por fila, en la base. Nunca deja negativo.
     const ajusteId = randomUUID();
     const motivo = `[${fila.tipo}] ${aTextoLimpio(fila.datos.motivo)}`;
+
+    if (fila.producto_id && !fila.material_id) {
+      const op = await aplicarOperacion({
+        empresaId, tipo: 'importacion', origenTabla: 'productos', origenId: fila.producto_id, motivo,
+        movimientos: [{ producto_id: fila.producto_id, cantidad: fila.delta }]
+      }).catch((err) => { throw new Error(`Fila ${fila.numero_fila}: ${err.message}`); });
+      if (!op.ok) throw new Error(`Fila ${fila.numero_fila}: dejaría el stock en negativo, no se importó`);
+      resultado.aplicados++;
+      continue;
+    }
+
     const operacion = await aplicarOperacion({
       empresaId, tipo: 'importacion', origenTabla: 'inventario_ajustes', origenId: ajusteId, motivo,
       movimientos: [{ material_id: fila.material_id, cantidad: fila.delta }]

@@ -22,6 +22,14 @@ const ETIQUETA_ESTADO = {
   listo: 'Listo',
   entregado: 'Entregado'
 };
+// Quien solo revende no produce: el mismo estado se llama "En preparación"
+const NOMBRE_EN_PRODUCCION = () => (typeof Negocio !== 'undefined' && !Negocio.fabrica() ? 'En preparación' : 'En producción');
+ETIQUETA_ESTADO.en_produccion = NOMBRE_EN_PRODUCCION();
+document.addEventListener('DOMContentLoaded', () => {
+  const nombre = NOMBRE_EN_PRODUCCION();
+  document.querySelectorAll('.etiqueta-en-produccion, option[value="en_produccion"]').forEach(el => { el.textContent = nombre; });
+});
+
 const SIGUIENTE_ESTADO = {
   pendiente: 'en_produccion',
   en_produccion: 'listo',

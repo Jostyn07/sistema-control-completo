@@ -189,6 +189,7 @@ async function inicializarSelectorMaterialMovimientos() {
 }
 
 async function cargarGraficoMovimientos() {
+  if (!Negocio.fabrica()) return;
   const canvas = document.getElementById('graficoMovimientosInventario');
   const vacio = document.getElementById('graficoMovimientosInventarioVacio');
   if (!canvas) return;
@@ -310,14 +311,14 @@ async function cargarRendimientoProductos() {
 // ---- KPIs de Inventario (foto del momento, sin período) ----
 let chartInventarioEstado = null;
 
-function pintarDoughnutInventario(totalMateriales, stockBajo, agotados) {
+function pintarDoughnutInventario(totalMateriales, stockBajo, agotados, etiqueta = 'materiales') {
   const canvas = document.getElementById('graficoInventarioEstado');
   const vacio = document.getElementById('graficoInventarioVacio');
   if (!canvas) return;
 
   if (totalMateriales === 0) {
     canvas.hidden = true;
-    if (vacio) vacio.hidden = false;
+    if (vacio) { vacio.hidden = false; vacio.textContent = `Sin ${etiqueta} registrados todavía.`; }
     return;
   }
   canvas.hidden = false;
@@ -361,18 +362,30 @@ function pintarDoughnutInventario(totalMateriales, stockBajo, agotados) {
         ctx.textBaseline = 'middle';
         ctx.fillText(String(totalMateriales), left + width / 2, top + height / 2 - 8);
         ctx.font = '0.75rem sans-serif';
-        ctx.fillText('materiales', left + width / 2, top + height / 2 + 14);
+        ctx.fillText(etiqueta, left + width / 2, top + height / 2 + 14);
         ctx.restore();
       }
     }]
   });
 }
 
+// Comerciante: el inventario son sus productos, no materiales
+async function resumenInventarioProductos() {
+  const lista = (await API.obtener('/api/inventario/productos')).filter(p => p.controla_stock && p.activo !== false);
+  return {
+    valor_inventario: lista.reduce((s, p) => s + (p.valor_inventario || 0), 0),
+    total_materiales: lista.length,
+    stock_bajo: lista.filter(p => p.estado === 'amarillo').length,
+    agotados: lista.filter(p => p.estado === 'rojo').length
+  };
+}
+
 async function cargarInventarioKpis() {
   const panel = document.getElementById('panelInventarioKpis');
   if (!panel) return { stockBajo: 0, agotados: 0 };
+  const deProductos = !Negocio.fabrica();
   try {
-    const r = await API.obtener('/api/dashboard/inventario');
+    const r = deProductos ? await resumenInventarioProductos() : await API.obtener('/api/dashboard/inventario');
     panel.innerHTML = `
       <div class="indicador tarjeta">
         <span class="campo__etiqueta">Valor del inventario</span>
@@ -380,7 +393,7 @@ async function cargarInventarioKpis() {
         ${cajaIconoKpi(0)}
       </div>
       <div class="indicador tarjeta">
-        <span class="campo__etiqueta">Materiales</span>
+        <span class="campo__etiqueta">${deProductos ? 'Productos' : 'Materiales'}</span>
         <span class="indicador__valor">${r.total_materiales}</span>
         ${cajaIconoKpi(1)}
       </div>
@@ -394,7 +407,7 @@ async function cargarInventarioKpis() {
         <span class="indicador__valor ${r.agotados > 0 ? 'indicador__valor--negativo' : ''}">${r.agotados}</span>
         ${cajaIconoKpi(3)}
       </div>`;
-    pintarDoughnutInventario(r.total_materiales, r.stock_bajo, r.agotados);
+    pintarDoughnutInventario(r.total_materiales, r.stock_bajo, r.agotados, deProductos ? 'productos' : 'materiales');
     return { stockBajo: r.stock_bajo, agotados: r.agotados };
   } catch (err) {
     panel.innerHTML = `<p class="tabla__vacio">No se pudieron cargar los KPIs de inventario: ${escaparHtml(err.message)}</p>`;
@@ -482,14 +495,14 @@ async function cargarResumenCompras() {
   try {
     const pendientes = await API.obtener('/api/compras/pendientes');
     if (pendientes.length === 0) {
-      contenedor.innerHTML = '<p class="texto-secundario">Todos los materiales están por encima de su punto de reorden.</p>';
+      contenedor.innerHTML = '<p class="texto-secundario">Nada pendiente por comprar.</p>';
       return { rojos: 0, total: 0 };
     }
     const rojos = pendientes.filter(p => p.estado === 'rojo');
     const costoTotal = pendientes.reduce((s, p) => s + p.costo_estimado, 0);
 
     contenedor.innerHTML = `
-      <p class="numero-resumen">${pendientes.length} <span class="texto-secundario">material(es) por comprar</span></p>
+      <p class="numero-resumen">${pendientes.length} <span class="texto-secundario">${Negocio.fabrica() && !Negocio.revende() ? 'material(es)' : (Negocio.fabrica() ? 'artículo(s)' : 'producto(s)')} por comprar</span></p>
       <p class="texto-secundario" style="margin:4px 0 0">
         ${rojos.length > 0 ? `<strong style="color:#b91c1c">${rojos.length} urgente(s): ${rojos.map(r => escaparHtml(r.nombre)).join(', ')}</strong> · ` : ''}
         costo estimado ${formatearPesos(costoTotal)}
@@ -504,6 +517,7 @@ async function cargarResumenCompras() {
 // ---- Capacidad de producción ----
 async function cargarResumenCapacidad() {
   const contenedor = document.getElementById('resumenCapacidad');
+  if (!Negocio.fabrica()) return 0;
   try {
     const capacidad = await API.obtener('/api/inventario/capacidad');
     if (capacidad.length === 0) {
@@ -587,7 +601,12 @@ function pintarAlertas({ rojosCompra, sinStock, sinFacturar, entregasVencidas })
   if (sinStock > 0)
     alertas.push({ texto: `${sinStock} producto(s) no se pueden fabricar con el stock actual.`, enlace: '/inventario.html', accion: 'Ver inventario', severidad: 'critico', peso: 3 });
   if (rojosCompra > 0)
-    alertas.push({ texto: `${rojosCompra} material(es) en zona roja: hay que comprar ya para no frenar la producción.`, enlace: '/compras.html', accion: 'Ver compras', severidad: 'critico', peso: 2 });
+    alertas.push({
+      texto: Negocio.revende()
+        ? `${rojosCompra} ${Negocio.fabrica() ? 'artículo(s)' : 'producto(s)'} agotado(s) o en zona roja: hay que comprar ya.`
+        : `${rojosCompra} material(es) en zona roja: hay que comprar ya para no frenar la producción.`,
+      enlace: '/compras.html', accion: 'Ver compras', severidad: 'critico', peso: 2
+    });
   if (sinFacturar > 0)
     alertas.push({ texto: `${sinFacturar} venta(s) sin factura generada.`, enlace: '/facturacion.html', accion: 'Facturar', severidad: 'advertencia', peso: 1 });
 
@@ -716,6 +735,8 @@ document.addEventListener('DOMContentLoaded', () => {
   inicializarSelectorMetricaProducto();
   inicializarSelectorMaterialMovimientos();
   refrescarInicio();
+  // Si el tipo de negocio resultó distinto al guardado en el navegador, se repinta
+  document.addEventListener('negocio:cambio', () => refrescarInicio());
   setInterval(refrescarInicio, SEGUNDOS_REFRESCO_INICIO * 1000);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) refrescarInicio();

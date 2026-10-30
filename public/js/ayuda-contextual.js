@@ -123,8 +123,46 @@ function crearModalAyudaContextualSiNoExiste() {
   return modal;
 }
 
+// Versiones para quien solo compra y revende (sin fabricación)
+const AYUDA_REVENTA = {
+  inicio: {
+    titulo: 'Inicio — tu resumen del negocio',
+    html: `
+      <p>Aquí ves cómo va tu negocio: ventas, ganancia, existencias, pedidos y lo que hay que comprar.</p>
+      <p>Úsala como tu pantalla principal para saber qué necesita tu atención hoy.</p>`
+  },
+  productos: {
+    titulo: 'Productos',
+    html: `
+      <p>Aquí registras lo que vendes: nombre, categoría, costo de compra, precio de venta y cuántas unidades tienes.</p>
+      <p>El sistema calcula la ganancia de cada producto y te avisa cuando quedan pocas unidades.</p>
+      <p class="texto-secundario">Costo de compra → Precio de venta → Ganancia</p>`
+  },
+  inventario: {
+    titulo: 'Inventario',
+    html: `
+      <p>Aquí controlas cuántas unidades tienes de cada producto. El sistema te avisa cuando algo se está acabando.</p>
+      <p class="texto-secundario">Compra → Entrada &nbsp;·&nbsp; Venta → Salida &nbsp;·&nbsp; Conteo físico → Ajuste</p>
+      <p>Los ajustes quedan registrados en el historial, para saber qué cambió y por qué.</p>`
+  },
+  compras: {
+    titulo: 'Compras',
+    html: `
+      <p>Aquí registras lo que les compras a tus proveedores: qué, cuánto pagaste y cuándo llega.</p>
+      <p>Si ya lo tienes, se suma de una vez al inventario; si llega después, se suma cuando llegue.</p>
+      <p>Si pagas un precio distinto, eliges qué costo queda: el nuevo, un promedio o el que tenías.</p>`
+  },
+  ventas: {
+    titulo: 'Ventas',
+    html: `
+      <p>Aquí registras los pedidos de tus clientes: productos, cantidades, datos de contacto, fecha de entrega y estado.</p>
+      <p>El sistema calcula el total y la ganancia, y descuenta las unidades del inventario.</p>`
+  }
+};
+
 function abrirAyudaContextual(clave) {
-  const contenido = AYUDA_CONTEXTUAL[clave];
+  const sinFabricacion = typeof Negocio !== 'undefined' && !Negocio.fabrica();
+  const contenido = (sinFabricacion && AYUDA_REVENTA[clave]) || AYUDA_CONTEXTUAL[clave];
   if (!contenido) return;
   const modal = crearModalAyudaContextualSiNoExiste();
   modal.querySelector('#tituloAyudaContextual').textContent = contenido.titulo;

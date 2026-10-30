@@ -15,11 +15,12 @@ const PARA_QUE_SIRVE =
 const ESTADOS_VALIDOS = ['PENDIENTE', 'RECIBIDA'];
 
 const ADVERTENCIAS = [
-  'Este archivo NO crea materiales nuevos: el "Código material" debe existir ya (en la plataforma o en 01_Materiales.xlsx importado antes que este).',
+  'Este archivo NO crea materiales ni productos: el "Código material" o el "Código producto" debe existir ya.',
+  'Cada fila lleva "Código material" (insumos) O "Código producto" (productos de reventa), nunca los dos.',
   'PENDIENTE: se registra el pedido pero el stock NO se suma todavía (se sumará cuando se confirme la llegada, igual que una compra normal).',
   'RECIBIDA: antes de importar, eliges si estas compras deben sumar el stock automáticamente o no (por ejemplo, si el stock ya lo cargaste aparte por Materiales o Inventario).',
   'El "Código compra" es solo tu referencia — no se usa para relacionar con otros Excel. Se guarda al inicio de las Notas.',
-  'Si el precio pagado es distinto al costo registrado del material, queda igual en el historial de precios (no cambia el costo del material automáticamente).'
+  'Si el precio pagado es distinto al costo registrado, queda en el historial pero el costo no cambia solo: cámbialo en la plataforma si quieres. Un producto de reventa sin costo toma el de la compra.'
 ];
 
 const COLUMNAS = [
@@ -40,9 +41,16 @@ const COLUMNAS = [
   {
     clave: 'codigo_material',
     encabezado: 'Código material',
-    obligatorio: true,
-    descripcion: 'Código del material (de 01_Materiales.xlsx) que se compró.',
+    obligatorio: false,
+    descripcion: 'Código del material (de 01_Materiales.xlsx) que se compró. Vacío si es un producto.',
     ejemplo: 'MAT001'
+  },
+  {
+    clave: 'codigo_producto',
+    encabezado: 'Código producto',
+    obligatorio: false,
+    descripcion: 'Código del producto de reventa (de 02_Productos.xlsx) que se compró. Vacío si es un material.',
+    ejemplo: ''
   },
   {
     clave: 'proveedor',

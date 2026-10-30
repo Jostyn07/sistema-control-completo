@@ -9,9 +9,18 @@
 //     este producto. En este modo, productos_materiales ya NO se edita
 //     desde aquí — se ignora cualquier `materiales` que llegue en el
 //     body de PUT.
+//
+// Productos de reventa (tipo = 'reventa'): se compran terminados. Sin
+// ficha técnica ni procesos; su costo es el costo de compra y su stock
+// vive en inventario_productos (se mueve por el núcleo de inventario).
+// - POST /            con tipo 'reventa': alta en un paso, con existencias
+// - PUT  /:id         si es de reventa: datos, costo de compra y mínimo
+// - PUT  /:id/tipo    { tipo: 'fabricado' } pasa a fabricarse (conserva historial)
 // ============================================================
 const express = require('express');
 const supabase = require('../supabase/cliente');
+const { supabaseAdminBase } = require('../supabase/cliente');
+const libro = require('../servicios/inventario/libro');
 const { calcularCostoProducto, obtenerCostoMinutoManoObra, recalcularProductoDesdeSusProcesos } = require('../servicios/costos');
 const router = express.Router();
 
@@ -161,9 +170,111 @@ router.put('/:id/costeo-materiales', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// ---- Reventa ----
+function numeroNoNegativo(valor, porDefecto = 0) {
+  if (valor === undefined || valor === null || valor === '') return porDefecto;
+  const n = Number(valor);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+function validarReventa(datos, creando) {
+  const errores = [];
+  if (!datos.nombre || !String(datos.nombre).trim()) errores.push('El nombre es obligatorio');
+  if (!datos.categoria_id) errores.push('Elige una categoría (Ventas la necesita)');
+  if (numeroNoNegativo(datos.precio_venta, null) === null) errores.push('El precio de venta debe ser 0 o más');
+  if (numeroNoNegativo(datos.costo_compra, null) === null) errores.push('El costo de compra debe ser 0 o más');
+  if (numeroNoNegativo(datos.stock_minimo) === null) errores.push('El stock mínimo debe ser 0 o más');
+  if (creando && numeroNoNegativo(datos.stock_inicial) === null) errores.push('La cantidad inicial debe ser 0 o más');
+  return errores;
+}
+
+async function guardarMinimo(productoId, empresaId, usuarioId, stockMinimo) {
+  const { error } = await supabaseAdminBase.from('inventario_productos').upsert({
+    producto_id: productoId, empresa_id: empresaId, controla_stock: true,
+    stock_minimo: stockMinimo, actualizado_en: new Date().toISOString(), actualizado_por: usuarioId
+  }, { onConflict: 'producto_id' });
+  if (error) throw new Error(error.message);
+}
+
+async function crearReventa(req, res) {
+  const errores = validarReventa(req.body, true);
+  if (errores.length) return res.status(400).json({ error: errores.join('. ') });
+  const costo = Math.round(Number(req.body.costo_compra) * 100) / 100;
+  const stockInicial = numeroNoNegativo(req.body.stock_inicial);
+  const proveedor = String(req.body.proveedor || '').trim().slice(0, 120);
+
+  const { data: producto, error } = await supabase.from('productos').insert({
+    empresa_id: req.empresa.id, usuario_id: req.usuarioId, tipo: 'reventa',
+    nombre: req.body.nombre.trim(),
+    foto_url: req.body.foto_url || null,
+    categoria_id: req.body.categoria_id || null,
+    precio_venta: Number(req.body.precio_venta),
+    minutos_fabricacion: 0,
+    costo_calculado: costo
+  }).select('*, categorias_productos(id, nombre)').single();
+  if (error) throw new Error(error.message);
+
+  try {
+    await guardarMinimo(producto.id, req.empresa.id, req.usuarioId, numeroNoNegativo(req.body.stock_minimo));
+    // Las existencias iniciales entran como compra, para que el historial cuadre
+    if (stockInicial > 0) {
+      const operacion = await libro.aplicarOperacion({
+        empresaId: req.empresa.id, usuarioId: req.usuarioId, tipo: 'compra_reventa',
+        origenTabla: 'productos', origenId: producto.id,
+        motivo: proveedor ? `Existencias iniciales · ${proveedor}` : 'Existencias iniciales',
+        clave: `stock-inicial:${producto.id}`,
+        movimientos: [{ producto_id: producto.id, cantidad: stockInicial, costo_unitario: costo }]
+      });
+      if (!operacion.ok) throw new Error('No se pudieron registrar las existencias iniciales');
+    }
+  } catch (err) {
+    // Sin existencias registradas el producto quedaría a medias: se deshace
+    await supabaseAdminBase.from('inventario_productos').delete().eq('producto_id', producto.id);
+    await supabase.from('productos').delete().eq('id', producto.id).eq('empresa_id', req.empresa.id);
+    throw err;
+  }
+  res.status(201).json({ ...conMargen(producto), stock_actual: stockInicial });
+}
+
+async function editarReventa(req, res, productoId) {
+  const errores = validarReventa(req.body, false);
+  if (errores.length) return res.status(400).json({ error: errores.join('. ') });
+  const { data: producto, error } = await supabase.from('productos').update({
+    nombre: req.body.nombre.trim(),
+    foto_url: req.body.foto_url || null,
+    categoria_id: req.body.categoria_id || null,
+    precio_venta: Number(req.body.precio_venta),
+    costo_calculado: Math.round(Number(req.body.costo_compra) * 100) / 100,
+    actualizado_en: new Date().toISOString()
+  }).eq('id', productoId).eq('empresa_id', req.empresa.id)
+    .select('*, categorias_productos(id, nombre)').single();
+  if (error) throw new Error(error.message);
+  if (req.body.stock_minimo !== undefined) {
+    await guardarMinimo(productoId, req.empresa.id, req.usuarioId, numeroNoNegativo(req.body.stock_minimo));
+  }
+  return res.json(conMargen(producto));
+}
+
+// PUT /api/productos/:id/tipo — { tipo: 'fabricado' }
+// Un producto de reventa pasa a fabricarse: conserva stock, ventas e
+// historial; su costo se recalcula cuando se le agregue la receta.
+router.put('/:id/tipo', async (req, res, next) => {
+  try {
+    if (req.body.tipo !== 'fabricado') return res.status(400).json({ error: 'Solo se puede pasar a fabricado' });
+    const { data, error } = await supabase.from('productos')
+      .update({ tipo: 'fabricado', actualizado_en: new Date().toISOString() })
+      .eq('id', req.params.id).eq('empresa_id', req.empresa.id).eq('tipo', 'reventa')
+      .select('*, categorias_productos(id, nombre)').maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return res.status(404).json({ error: 'Producto de reventa no encontrado' });
+    res.json(conMargen(data));
+  } catch (err) { next(err); }
+});
+
 // POST /api/productos
 router.post('/', async (req, res, next) => {
   try {
+    if (req.body.tipo === 'reventa') return await crearReventa(req, res);
     const errores = validarProducto(req.body);
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
@@ -216,8 +327,9 @@ router.put('/:id', async (req, res, next) => {
     if (errores.length) return res.status(400).json({ error: errores.join('. ') });
 
     const { data: actual, error: eActual } = await supabase
-      .from('productos').select('minutos_fabricacion, usa_costeo_por_procesos').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
+      .from('productos').select('tipo, minutos_fabricacion, usa_costeo_por_procesos').eq('id', req.params.id).eq('empresa_id', req.empresa.id).single();
     if (eActual || !actual) return res.status(404).json({ error: 'Producto no encontrado' });
+    if (actual.tipo === 'reventa') return await editarReventa(req, res, req.params.id);
 
     const { count: countProcesos, error: eCountProc } = await supabase
       .from('procesos').select('id', { count: 'exact', head: true })

@@ -158,3 +158,50 @@ function exigirSesion() {
   }
   return true;
 }
+// ============================================================
+// Decisión de costo al comprar: si el precio pagado es distinto al
+// costo registrado, el servidor responde 409 requiere_decision_costo
+// y aquí la persona elige. enviar(decision) hace la petición.
+//   await conDecisionCosto(d => API.enviar('/api/compras', { ...datos, decision_costo: d }))
+// Devuelve null si la persona cancela.
+// ============================================================
+function preguntarDecisionCosto(info) {
+  return new Promise((resolver) => {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    const opciones = [
+      { id: 'nuevo', texto: 'Usar el precio de esta compra', valor: info.costo_nuevo },
+      { id: 'promedio', texto: 'Promediar con lo que tengo', valor: info.costo_promedio },
+      { id: 'mantener', texto: 'Dejar el costo actual', valor: info.costo_actual }
+    ];
+    const unidad = info.unidad ? ` / ${info.unidad}` : '';
+    const div = document.createElement('div');
+    div.textContent = info.articulo || '';
+    modal.innerHTML = `
+      <div class="modal__contenido tarjeta" role="dialog" aria-modal="true">
+        <h2>¿Qué costo queda${info.articulo ? ` para ${div.innerHTML}` : ''}?</h2>
+        <div class="dc__opciones">
+          ${opciones.map(o => `<button type="button" class="dc__opcion" data-decision="${o.id}">
+            <span>${o.texto}</span><strong>${formatearPesos(o.valor)}${unidad}</strong></button>`).join('')}
+        </div>
+        <div class="modal__acciones"><button type="button" class="boton" data-decision="">Cancelar</button></div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.querySelectorAll('[data-decision]').forEach(b => b.addEventListener('click', () => {
+      modal.remove();
+      resolver(b.dataset.decision || null);
+    }));
+    modal.querySelector('.dc__opcion').focus();
+  });
+}
+
+async function conDecisionCosto(enviar) {
+  try {
+    return await enviar(undefined);
+  } catch (err) {
+    if (err.status !== 409 || !err.datos || !err.datos.requiere_decision_costo) throw err;
+    const decision = await preguntarDecisionCosto(err.datos);
+    if (!decision) return null;
+    return enviar(decision);
+  }
+}

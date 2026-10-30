@@ -13,8 +13,14 @@
 //   - Este importador NO toca la ficha técnica (productos_materiales):
 //     al actualizar un producto sin procesos, se preserva la ficha
 //     técnica que ya tenía para no perderla ni recalcular mal el costo.
+//   - Tipo FABRICADO / REVENTA. Reventa: costo = "Costo compra" y las
+//     "Existencias" de un producto nuevo entran como compra por el núcleo.
+//     El tipo de un producto existente no se cambia desde el Excel.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { supabaseAdminBase } = require('../../supabase/cliente');
+const libro = require('../inventario/libro');
+const { normalizarModelo } = require('../modelo-negocio');
 const { usuarioActual } = require('../../contexto');
 const { leerFilas } = require('../excel/lector');
 const { COLUMNAS } = require('../excel/definiciones/productos');
@@ -29,10 +35,28 @@ function extraerDatos(filaExcel) {
   return datos;
 }
 
+// '' (no indicado), 'fabricado', 'reventa' o undefined (no válido)
+function aTipo(valor) {
+  const t = aTextoLimpio(valor).toLowerCase();
+  if (t === '') return '';
+  if (['fabricado', 'fabricados', 'fabrico'].includes(t)) return 'fabricado';
+  if (['reventa', 'revendo', 'comprado'].includes(t)) return 'reventa';
+  return undefined;
+}
+
+async function tipoPorDefecto(empresaId) {
+  const { data } = await supabase.from('empresas').select('configuracion').eq('id', empresaId).maybeSingle();
+  const m = normalizarModelo(data && data.configuracion);
+  return m.reventa && !m.fabricacion ? 'reventa' : 'fabricado';
+}
+
 function validarFila(datos) {
   const errores = [
     requerido(datos.nombre, 'Producto'),
     numeroValido(datos.precio_venta, 'Precio venta', { minimo: 0 }),
+    aTipo(datos.tipo) === undefined ? 'Tipo debe ser FABRICADO o REVENTA' : null,
+    numeroValido(datos.costo_compra, 'Costo compra', { minimo: 0, opcional: true }),
+    numeroValido(datos.existencias, 'Existencias', { minimo: 0, opcional: true }),
     numeroValido(datos.minutos_fabricacion, 'Minutos fabricación', { minimo: 0, opcional: true }),
     siNoValido(datos.activo, 'Activo', { opcional: true })
   ].filter(Boolean);
@@ -48,7 +72,7 @@ async function obtenerCategoriasExistentes(empresaId) {
 async function obtenerProductosExistentes(empresaId) {
   const { data, error } = await supabase
     .from('productos')
-    .select('id, codigo, nombre, precio_venta, minutos_fabricacion, foto_url, activo, categoria_id, usa_costeo_por_procesos, categorias_productos(nombre)')
+    .select('id, codigo, nombre, tipo, precio_venta, costo_calculado, minutos_fabricacion, foto_url, activo, categoria_id, usa_costeo_por_procesos, categorias_productos(nombre)')
     .eq('empresa_id', empresaId);
   if (error) throw new Error(error.message);
 
@@ -82,9 +106,10 @@ async function siguienteCodigoDisponible(empresaId) {
 // -------------------- 1. ANALIZAR --------------------
 async function analizarProductos(buffer, empresaId) {
   const filasExcel = leerFilas(buffer);
-  const [{ porCodigo, porNombre }, categorias] = await Promise.all([
+  const [{ porCodigo, porNombre }, categorias, tipoNuevo] = await Promise.all([
     obtenerProductosExistentes(empresaId),
-    obtenerCategoriasExistentes(empresaId)
+    obtenerCategoriasExistentes(empresaId),
+    tipoPorDefecto(empresaId)
   ]);
   const codigosVistosEnArchivo = new Set();
   const resumen = { nuevos: 0, actualizados: 0, sin_cambios: 0, advertencias: 0, errores: 0 };
@@ -114,6 +139,20 @@ async function analizarProductos(buffer, empresaId) {
 
     let accion = existente ? 'actualizar' : 'crear';
 
+    const tipoIndicado = aTipo(datos.tipo);
+    const tipo = existente ? (existente.tipo || 'fabricado') : (tipoIndicado || tipoNuevo);
+    if (existente && tipoIndicado && tipoIndicado !== tipo) {
+      errores.push(`Este producto es ${tipo === 'reventa' ? 'de REVENTA' : 'FABRICADO'}; el tipo se cambia desde la plataforma`);
+    }
+    if (tipo === 'reventa' && !existente && aTextoLimpio(datos.costo_compra) === '') errores.push('Costo compra es obligatorio para productos de REVENTA');
+    if (tipo === 'reventa' && !categoriaTexto && !(existente && existente.categoria_id)) errores.push('Categoría es obligatoria para productos de REVENTA');
+    if (tipo === 'fabricado' && (aTextoLimpio(datos.costo_compra) !== '' || aTextoLimpio(datos.existencias) !== '')) {
+      advertencias.push('Costo compra y Existencias solo aplican a productos de REVENTA: se ignorarán.');
+    }
+    if (tipo === 'reventa' && existente && aTextoLimpio(datos.existencias) !== '') {
+      advertencias.push('Existencias solo se usa al crear: para sumar unidades registra una compra.');
+    }
+
     if (existente && existente.tiene_procesos && aTextoLimpio(datos.minutos_fabricacion) !== '') {
       advertencias.push('Este producto ya tiene Procesos configurados: los minutos de fabricación se calculan solos y este valor se ignorará.');
     }
@@ -125,7 +164,8 @@ async function analizarProductos(buffer, empresaId) {
         aTextoLimpio(datos.nombre).toLowerCase() === existente.nombre.toLowerCase() &&
         Number(aNumero(datos.precio_venta)) === Number(existente.precio_venta) &&
         categoriaNueva === categoriaActual &&
-        (existente.tiene_procesos || aTextoLimpio(datos.minutos_fabricacion) === '' ||
+        (tipo !== 'reventa' || aTextoLimpio(datos.costo_compra) === '' || Number(aNumero(datos.costo_compra)) === Number(existente.costo_calculado)) &&
+        (tipo === 'reventa' || existente.tiene_procesos || aTextoLimpio(datos.minutos_fabricacion) === '' ||
           Number(aNumero(datos.minutos_fabricacion)) === Number(existente.minutos_fabricacion));
       if (sinCambios) accion = 'sin_cambios';
     }
@@ -140,6 +180,7 @@ async function analizarProductos(buffer, empresaId) {
       numero_fila: numeroFila,
       codigo,
       datos,
+      tipo,
       accion,
       producto_id: existente ? existente.id : null,
       errores,
@@ -169,11 +210,47 @@ async function obtenerOCrearCategoriaId(empresaId, nombreCategoria, cache) {
   return creada.id;
 }
 
+// Producto de reventa nuevo: costo de compra y existencias por el núcleo
+async function crearReventaDesdeExcel({ empresaId, fila, codigo, categoriaId }) {
+  const datos = fila.datos;
+  const costo = aNumero(datos.costo_compra) ?? 0;
+  const { data: producto, error } = await supabase.from('productos').insert({
+    empresa_id: empresaId, usuario_id: usuarioActual(), tipo: 'reventa',
+    codigo,
+    nombre: aTextoLimpio(datos.nombre),
+    categoria_id: categoriaId,
+    precio_venta: aNumero(datos.precio_venta),
+    minutos_fabricacion: 0,
+    foto_url: aTextoLimpio(datos.foto_url) || null,
+    costo_calculado: costo,
+    activo: aBooleanoSiNo(datos.activo) ?? true
+  }).select('id').single();
+  if (error) throw new Error(`Fila ${fila.numero_fila}: ${error.message}`);
+
+  const { error: eInv } = await supabaseAdminBase.from('inventario_productos').upsert({
+    producto_id: producto.id, empresa_id: empresaId, controla_stock: true,
+    actualizado_en: new Date().toISOString(), actualizado_por: usuarioActual()
+  }, { onConflict: 'producto_id' });
+  if (eInv) throw new Error(`Fila ${fila.numero_fila}: ${eInv.message}`);
+
+  const existencias = aNumero(datos.existencias) ?? 0;
+  if (existencias > 0) {
+    const operacion = await libro.aplicarOperacion({
+      empresaId, usuarioId: usuarioActual(), tipo: 'compra_reventa',
+      origenTabla: 'productos', origenId: producto.id,
+      motivo: 'Existencias iniciales (Excel)', clave: `stock-inicial:${producto.id}`,
+      movimientos: [{ producto_id: producto.id, cantidad: existencias, costo_unitario: costo }]
+    });
+    if (!operacion.ok) throw new Error(`Fila ${fila.numero_fila}: no se pudieron registrar las existencias`);
+  }
+}
+
 // -------------------- 2. IMPORTAR --------------------
 async function importarProductos(empresaId, filas, modo = 'crear_y_actualizar') {
   let siguienteConsecutivo = null;
   const cacheCategorias = new Map();
   const resultado = { creados: 0, actualizados: 0, sin_cambios: 0, omitidos: 0, categorias_creadas: 0 };
+  let tipoNuevo = null;
 
   for (const fila of filas) {
     if (fila.errores && fila.errores.length) { resultado.omitidos++; continue; }
@@ -194,6 +271,14 @@ async function importarProductos(empresaId, filas, modo = 'crear_y_actualizar') 
         codigo = `PROD${String(siguienteConsecutivo).padStart(3, '0')}`;
         siguienteConsecutivo++;
       }
+      // El tipo se vuelve a decidir aquí: no se confía en lo que trae la fila
+      if (tipoNuevo == null) tipoNuevo = await tipoPorDefecto(empresaId);
+      const tipo = aTipo(datos.tipo) || tipoNuevo;
+      if (tipo === 'reventa') {
+        await crearReventaDesdeExcel({ empresaId, fila, codigo, categoriaId });
+        resultado.creados++;
+        continue;
+      }
       const minutosFabricacion = aNumero(datos.minutos_fabricacion) ?? 0;
       const costoCalculado = await calcularCostoProducto({ materiales: [], minutosFabricacion, empresaId });
 
@@ -212,9 +297,25 @@ async function importarProductos(empresaId, filas, modo = 'crear_y_actualizar') 
       resultado.creados++;
     } else if (fila.accion === 'actualizar') {
       const { data: actual, error: eActual } = await supabase
-        .from('productos').select('minutos_fabricacion, categoria_id, foto_url, activo, usa_costeo_por_procesos')
+        .from('productos').select('tipo, costo_calculado, minutos_fabricacion, categoria_id, foto_url, activo, usa_costeo_por_procesos')
         .eq('id', fila.producto_id).eq('empresa_id', empresaId).single();
       if (eActual || !actual) throw new Error(`Fila ${fila.numero_fila}: el producto ya no existe`);
+
+      if (actual.tipo === 'reventa') {
+        const costo = aNumero(datos.costo_compra);
+        const { error } = await supabase.from('productos').update({
+          nombre: aTextoLimpio(datos.nombre),
+          categoria_id: categoriaTexto ? categoriaId : actual.categoria_id,
+          precio_venta: aNumero(datos.precio_venta),
+          costo_calculado: costo == null ? actual.costo_calculado : costo,
+          foto_url: aTextoLimpio(datos.foto_url) || actual.foto_url,
+          activo: aBooleanoSiNo(datos.activo) ?? actual.activo,
+          actualizado_en: new Date().toISOString()
+        }).eq('id', fila.producto_id).eq('empresa_id', empresaId);
+        if (error) throw new Error(`Fila ${fila.numero_fila}: ${error.message}`);
+        resultado.actualizados++;
+        continue;
+      }
 
       const { count: countProcesos, error: eCount } = await supabase
         .from('procesos').select('id', { count: 'exact', head: true })
@@ -260,4 +361,4 @@ async function importarProductos(empresaId, filas, modo = 'crear_y_actualizar') 
   return resultado;
 }
 
-module.exports = { analizarProductos, importarProductos };
+module.exports = { analizarProductos, importarProductos, _interno: { aTipo, validarFila } };

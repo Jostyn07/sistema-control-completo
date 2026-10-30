@@ -58,18 +58,32 @@ async function recibirCompra(compraId, empresaId) {
     return actual;
   }
 
-  const { data: material } = await supabase
-    .from('materiales').select('costo_unitario').eq('id', reclamada.material_id).eq('empresa_id', empresaId).maybeSingle();
-  if (!material) throw new Error('El material de esta compra ya no existe');
+  // Compra de material o de un producto de reventa
+  let tipo = 'compra';
+  let movimiento;
+  if (reclamada.producto_id) {
+    tipo = 'compra_reventa';
+    movimiento = { producto_id: reclamada.producto_id, cantidad: Number(reclamada.cantidad),
+                   costo_unitario: Number(reclamada.precio_unitario || 0) };
+  } else {
+    const { data: material } = await supabase
+      .from('materiales').select('costo_unitario').eq('id', reclamada.material_id).eq('empresa_id', empresaId).maybeSingle();
+    if (!material) {
+      await supabase.from('compras').update({ estado: 'pendiente', fecha_llegada: null })
+        .eq('id', reclamada.id).eq('empresa_id', empresaId);
+      throw new Error('El material de esta compra ya no existe');
+    }
+    movimiento = { material_id: reclamada.material_id, cantidad: Number(reclamada.cantidad),
+                   costo_unitario: Number(reclamada.precio_unitario ?? material.costo_unitario) };
+  }
 
   // Clave por compra: aunque dos peticiones lleguen juntas, solo suma una vez
   try {
     const operacion = await aplicarOperacion({
       empresaId, usuarioId: usuarioActual() || reclamada.usuario_id,
-      tipo: 'compra', origenTabla: 'compras', origenId: reclamada.id,
+      tipo, origenTabla: 'compras', origenId: reclamada.id,
       clave: `compra-recibida:${reclamada.id}`,
-      movimientos: [{ material_id: reclamada.material_id, cantidad: Number(reclamada.cantidad),
-                      costo_unitario: Number(reclamada.precio_unitario ?? material.costo_unitario) }]
+      movimientos: [movimiento]
     });
     if (!operacion.ok) throw new Error('No se pudo sumar la compra al inventario');
   } catch (err) {

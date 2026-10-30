@@ -31,6 +31,12 @@ const MODULOS_EXCEL = [
     descripcion: 'Colaboradores y su historial de encargos.', forma: 'nominas' }
 ];
 
+// Quien no fabrica no ve Materiales ni Procesos; Compras por Excel aún es solo de materiales
+const MODULOS_SOLO_FABRICACION = ['materiales', 'procesos', 'compras'];
+function modulosVisibles() {
+  return Negocio.fabrica() ? MODULOS_EXCEL : MODULOS_EXCEL.filter(m => !MODULOS_SOLO_FABRICACION.includes(m.clave));
+}
+
 let moduloActualExcel = null;
 let reporteActualExcel = null;
 let modoIA = false;            // ¿el archivo se organiza con IA?
@@ -38,9 +44,12 @@ let estadoIA = { disponible: false };
 let resultadoIA = null;
 
 // -------------------- Arranque de la página --------------------
-function inicializarPaginaExcel() {
-  const lista = document.getElementById('listaModulosExcel');
-  lista.innerHTML = MODULOS_EXCEL.map((m) => `
+document.addEventListener('negocio:cambio', () => {
+  if (document.getElementById('listaModulosExcel')) pintarModulosExcel();
+});
+
+function pintarModulosExcel() {
+  document.getElementById('listaModulosExcel').innerHTML = modulosVisibles().map((m) => `
     <article class="modulo-excel">
       <h3>${m.nombre}</h3>
       <p>${m.descripcion}</p>
@@ -51,6 +60,10 @@ function inicializarPaginaExcel() {
       </div>
     </article>
   `).join('');
+}
+
+function inicializarPaginaExcel() {
+  pintarModulosExcel();
   cargarEstadoIA();
 }
 
@@ -80,7 +93,7 @@ function abrirModalIA() {
   document.getElementById('tituloModalExcel').textContent = 'Subir cualquier Excel con IA';
   const selector = document.getElementById('selectorModuloIA');
   selector.innerHTML = '<option value="auto">Detectar automáticamente</option>' +
-    MODULOS_EXCEL.map(m => `<option value="${m.clave}">${m.nombre}</option>`).join('');
+    modulosVisibles().map(m => `<option value="${m.clave}">${m.nombre}</option>`).join('');
   document.getElementById('campoModuloIA').hidden = false;
   document.getElementById('casillaUsarIA').hidden = true;
   prepararCampoArchivo();

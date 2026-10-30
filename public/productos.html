@@ -39,7 +39,7 @@
       </span>
       <div class="encabezado-modulo__texto">
         <h1>Productos</h1>
-        <p>Gestiona tus productos terminados. El stock es cuánto puedes fabricar hoy según tus materiales.</p>
+        <p>Precios, costos y existencias de tus productos.</p>
       </div>
       <div class="encabezado-modulo__acciones">
         <button type="button" class="boton boton--pequeno" onclick="abrirAyudaContextual('productos')" title="¿Cómo funciona esta sección?">
@@ -50,9 +50,9 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Importar
         </a>
-        <button type="button" class="boton boton--primario" onclick="abrirFichaProducto()">
+        <button type="button" class="boton boton--primario" onclick="nuevoProducto()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Nueva ficha técnica
+          Agregar producto
         </button>
       </div>
     </div>
@@ -60,7 +60,7 @@
     <div class="kpi-grid" id="kpisProductos"></div>
 
     <!-- Precio de hora global: se cambia en un solo lugar y afecta todas las fichas -->
-    <section class="tarjeta banner-precio-hora">
+    <section class="tarjeta banner-precio-hora solo-fabricacion">
       <div>
         <span class="campo__etiqueta">Precio de hora de mano de obra</span>
         <strong id="textoPrecioHoraBanner">Cargando…</strong>
@@ -70,7 +70,7 @@
 
     <!-- Productos con procesos cuya lista de materiales no coincide con
          la ficha técnica manual — hay que decidir cuál usar -->
-    <section class="tarjeta" id="seccionConflictosMateriales" hidden>
+    <section class="tarjeta solo-fabricacion" id="seccionConflictosMateriales" hidden>
       <h2 style="margin-top:0">Materiales por resolver</h2>
       <p class="texto-secundario">
         Estos productos tienen procesos con su propia lista de materiales, distinta a la
@@ -125,7 +125,7 @@
 
       <table class="tabla" id="tablaProductosLista" hidden>
         <thead>
-          <tr><th>Producto</th><th>Categoría</th><th>Precio de venta</th><th>Costo</th><th>Stock (fabricable)</th><th>Material limitante</th><th>Última actualización</th><th>Estado</th><th>Acciones</th></tr>
+          <tr><th>Producto</th><th>Categoría</th><th>Precio de venta</th><th>Costo</th><th>Stock</th><th class="solo-fabricacion">Material limitante</th><th>Última actualización</th><th>Estado</th><th>Acciones</th></tr>
         </thead>
         <tbody id="cuerpoTablaProductosLista"></tbody>
       </table>
@@ -155,16 +155,48 @@
         </label>
 
         <div class="fila-campos">
-          <label class="campo">
-            <span class="campo__etiqueta">Precio de venta (COP) *</span>
-            <input type="number" id="campoPrecioVenta" min="0" step="500" oninput="calcularCostoEnVivo()">
+          <label class="campo" id="campoCostoCompraEtiqueta" hidden>
+            <span class="campo__etiqueta">Costo de compra (COP) *</span>
+            <input type="number" id="campoCostoCompra" min="0" step="100" oninput="calcularMargenReventa()">
           </label>
           <label class="campo">
+            <span class="campo__etiqueta">Precio de venta (COP) *</span>
+            <input type="number" id="campoPrecioVenta" min="0" step="500" oninput="calcularCostoEnVivo(); calcularMargenReventa()">
+          </label>
+          <label class="campo" id="campoMinutosEtiqueta">
             <span class="campo__etiqueta">Minutos de fabricación</span>
             <input type="text" id="campoMinutosSoloLectura" disabled hidden>
             <input type="number" id="campoMinutosEditable" min="0" step="0.1" oninput="calcularCostoEnVivo()">
           </label>
         </div>
+        <div id="bloqueReventa" hidden>
+          <div class="fila-campos" id="bloqueReventaInicial">
+            <label class="campo">
+              <span class="campo__etiqueta">Cantidad que tienes hoy</span>
+              <input type="number" id="campoStockInicial" min="0" step="1" value="0">
+            </label>
+            <label class="campo">
+              <span class="campo__etiqueta">Proveedor</span>
+              <input type="text" id="campoProveedorReventa" maxlength="120">
+            </label>
+          </div>
+          <div class="fila-campos">
+            <label class="campo">
+              <span class="campo__etiqueta">Avisarme cuando queden</span>
+              <input type="number" id="campoStockMinimo" min="0" step="1" value="0">
+            </label>
+            <div class="campo" id="bloqueStockActual" hidden>
+              <span class="campo__etiqueta">Existencias</span>
+              <strong id="textoStockActual" style="padding:9px 0;display:block">0</strong>
+            </div>
+          </div>
+          <section class="tarjeta tarjeta--resumen">
+            <div><span class="campo__etiqueta">Ganancia por unidad</span><strong id="resumenGananciaReventa">$0</strong></div>
+            <div><span class="campo__etiqueta">Margen</span><strong id="resumenMargenReventa">0%</strong></div>
+          </section>
+        </div>
+
+        <div id="bloqueFabricacion">
         <p class="texto-secundario" id="textoMinutosOrigen" style="margin:-8px 0 4px" hidden>
           Se suman solos según los procesos que le asignes a esta ficha técnica en la pestaña Procesos.
         </p>
@@ -200,11 +232,31 @@
           <div><span class="campo__etiqueta">Costo total</span><strong id="resumenCostoTotal">$0</strong></div>
           <div><span class="campo__etiqueta">Margen</span><strong id="resumenMargen">$0 (0%)</strong></div>
         </section>
+        </div>
 
         <div class="modal__acciones">
+          <button type="button" class="boton solo-fabricacion" id="botonConvertirFabricado" onclick="convertirEnFabricado()" hidden style="margin-right:auto">Pasar a fabricado</button>
           <button type="button" class="boton" onclick="cerrarFichaProducto()">Cancelar</button>
-          <button type="button" class="boton boton--primario" onclick="guardarProducto()">Guardar ficha técnica</button>
+          <button type="button" class="boton boton--primario" id="botonGuardarProducto" onclick="guardarProducto()">Guardar</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Qué tipo de producto se agrega (negocios que fabrican y revenden) -->
+    <div class="modal" id="modalTipoProducto" hidden>
+      <div class="modal__contenido tarjeta tn" style="max-width:560px">
+        <h2>¿Qué tipo de producto vas a agregar?</h2>
+        <div class="tn__opciones" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+          <button type="button" class="tn__opcion" onclick="elegirTipoProducto('fabricado')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M4 20V9l5 3V9l5 3V5h6v15"/></svg>
+            <strong>Lo fabrico</strong><span>Con receta de materiales.</span>
+          </button>
+          <button type="button" class="tn__opcion" onclick="elegirTipoProducto('reventa')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M3 4h2l2.4 11.6a1 1 0 0 0 1 .8h8.8a1 1 0 0 0 1-.8L21 8H6"/></svg>
+            <strong>Lo compro para revender</strong><span>Costo de compra y existencias.</span>
+          </button>
+        </div>
+        <div class="modal__acciones"><button type="button" class="boton" onclick="document.getElementById('modalTipoProducto').hidden = true">Cancelar</button></div>
       </div>
     </div>
 
