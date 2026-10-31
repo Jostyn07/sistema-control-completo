@@ -45,6 +45,7 @@ const facturacionImportador = require('../servicios/importadores/facturacion');
 const facturacionExportador = require('../servicios/exportadores/facturacion');
 const nominasImportador = require('../servicios/importadores/nominas');
 const nominasExportador = require('../servicios/exportadores/nominas');
+const reemplazo = require('../servicios/importadores/reemplazo');
 
 const MODULOS = {
   materiales: {
@@ -75,7 +76,7 @@ const MODULOS = {
     analizar: (buffer, empresaId) => inventarioImportador.analizarInventario(buffer, empresaId),
     // Inventario no tiene "modo" (crear/actualizar) — cada fila válida
     // siempre se aplica como un movimiento nuevo; no necesita opciones.
-    importar: (empresaId, filas) => inventarioImportador.importarInventario(empresaId, filas)
+    importar: (empresaId, filas, opciones) => inventarioImportador.importarInventario(empresaId, filas, { reemplazar: opciones.reemplazar === true })
   },
   compras: {
     archivo: '05_Compras.xlsx',
@@ -126,7 +127,9 @@ const MODULOS = {
   }
 };
 
-const TAMANO_MAXIMO = 10 * 1024 * 1024; // 10 MB
+// Vercel corta el cuerpo de una petición en 4,5 MB (la conexión se cae y el
+// navegador solo ve "Failed to fetch"); por eso el límite queda debajo.
+const TAMANO_MAXIMO = 4 * 1024 * 1024; // 4 MB
 const subida = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: TAMANO_MAXIMO },
@@ -187,7 +190,7 @@ router.get('/ia/estado', async (req, res, next) => {
 router.post('/ia/convertir', (req, res, next) => {
   subidaIA.single('archivo')(req, res, async (errSubida) => {
     if (errSubida) {
-      const mensaje = errSubida.code === 'LIMIT_FILE_SIZE' ? 'El archivo no puede pesar más de 10 MB' : errSubida.message;
+      const mensaje = errSubida.code === 'LIMIT_FILE_SIZE' ? 'El archivo no puede pesar más de 4 MB' : errSubida.message;
       return res.status(400).json({ error: mensaje });
     }
     const moduloPedido = String(req.query.modulo || 'auto');
@@ -209,6 +212,36 @@ router.post('/ia/convertir', (req, res, next) => {
       next(err);
     }
   });
+});
+
+// Las rutas /todo/* van antes de /:modulo/*: si no, "todo" se toma como un módulo y da 404
+// GET /api/excel/todo/plantillas — ZIP con la plantilla vacía de cada módulo
+router.get('/todo/plantillas', async (req, res, next) => {
+  try {
+    const archivos = [];
+    for (const clave of Object.keys(MODULOS)) {
+      archivos.push({ nombre: MODULOS[clave].archivo, buffer: await MODULOS[clave].plantilla() });
+    }
+    const zip = await crearZip(archivos);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="Sistema_Control_Plantillas.zip"');
+    res.send(zip);
+  } catch (err) { next(err); }
+});
+
+// GET /api/excel/todo/exportar — ZIP con la información actual de cada módulo
+router.get('/todo/exportar', async (req, res, next) => {
+  try {
+    const archivos = [];
+    for (const clave of Object.keys(MODULOS)) {
+      archivos.push({ nombre: MODULOS[clave].archivo, buffer: await MODULOS[clave].exportarActual(req.empresa.id) });
+    }
+    const zip = await crearZip(archivos);
+    const fecha = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="Mi_Negocio_Exportacion_${fecha}.zip"`);
+    res.send(zip);
+  } catch (err) { next(err); }
 });
 
 // GET /api/excel/:modulo/plantilla
@@ -269,37 +302,13 @@ router.post('/:modulo/importar', async (req, res, next) => {
       return res.status(400).json({ error: 'No hay filas para importar. Vuelve a analizar el archivo.' });
     }
 
+    // "Reemplazar" (true) o "Sumar" (false, lo de siempre).
+    const reemplazar = opciones.reemplazar === true;
+    const clave = req.params.modulo;
+    const previo = reemplazar ? await reemplazo.antesDeImportar(clave, req.empresa.id) : {};
     const resultado = await modulo.importar(req.empresa.id, filas, opciones);
-    res.json(resultado);
-  } catch (err) { next(err); }
-});
-
-// GET /api/excel/todo/plantillas — ZIP con la plantilla vacía de cada módulo
-router.get('/todo/plantillas', async (req, res, next) => {
-  try {
-    const archivos = [];
-    for (const clave of Object.keys(MODULOS)) {
-      archivos.push({ nombre: MODULOS[clave].archivo, buffer: await MODULOS[clave].plantilla() });
-    }
-    const zip = await crearZip(archivos);
-    res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', 'attachment; filename="Sistema_Control_Plantillas.zip"');
-    res.send(zip);
-  } catch (err) { next(err); }
-});
-
-// GET /api/excel/todo/exportar — ZIP con la información actual de cada módulo
-router.get('/todo/exportar', async (req, res, next) => {
-  try {
-    const archivos = [];
-    for (const clave of Object.keys(MODULOS)) {
-      archivos.push({ nombre: MODULOS[clave].archivo, buffer: await MODULOS[clave].exportarActual(req.empresa.id) });
-    }
-    const zip = await crearZip(archivos);
-    const fecha = new Date().toISOString().slice(0, 10);
-    res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename="Mi_Negocio_Exportacion_${fecha}.zip"`);
-    res.send(zip);
+    const posterior = reemplazar ? await reemplazo.despuesDeImportar(clave, req.empresa.id, filas) : {};
+    res.json({ ...resultado, ...previo, ...posterior, reemplazar });
   } catch (err) { next(err); }
 });
 

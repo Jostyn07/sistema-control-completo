@@ -31,6 +31,14 @@ const MODULOS_EXCEL = [
     descripcion: 'Colaboradores y su historial de encargos.', forma: 'nominas' }
 ];
 
+// Quien no fabrica no ve Materiales ni Procesos
+const MODULOS_SOLO_FABRICACION = ['materiales', 'procesos'];
+function modulosVisibles() {
+  // Sin tema.js nuevo (Negocio) se muestran todos, como antes
+  const fabrica = typeof Negocio === 'undefined' || Negocio.fabrica();
+  return fabrica ? MODULOS_EXCEL : MODULOS_EXCEL.filter(m => !MODULOS_SOLO_FABRICACION.includes(m.clave));
+}
+
 let moduloActualExcel = null;
 let reporteActualExcel = null;
 let modoIA = false;            // ¿el archivo se organiza con IA?
@@ -38,9 +46,12 @@ let estadoIA = { disponible: false };
 let resultadoIA = null;
 
 // -------------------- Arranque de la página --------------------
-function inicializarPaginaExcel() {
-  const lista = document.getElementById('listaModulosExcel');
-  lista.innerHTML = MODULOS_EXCEL.map((m) => `
+document.addEventListener('negocio:cambio', () => {
+  if (document.getElementById('listaModulosExcel')) pintarModulosExcel();
+});
+
+function pintarModulosExcel() {
+  document.getElementById('listaModulosExcel').innerHTML = modulosVisibles().map((m) => `
     <article class="modulo-excel">
       <h3>${m.nombre}</h3>
       <p>${m.descripcion}</p>
@@ -51,6 +62,10 @@ function inicializarPaginaExcel() {
       </div>
     </article>
   `).join('');
+}
+
+function inicializarPaginaExcel() {
+  pintarModulosExcel();
   cargarEstadoIA();
 }
 
@@ -80,7 +95,7 @@ function abrirModalIA() {
   document.getElementById('tituloModalExcel').textContent = 'Subir cualquier Excel con IA';
   const selector = document.getElementById('selectorModuloIA');
   selector.innerHTML = '<option value="auto">Detectar automáticamente</option>' +
-    MODULOS_EXCEL.map(m => `<option value="${m.clave}">${m.nombre}</option>`).join('');
+    modulosVisibles().map(m => `<option value="${m.clave}">${m.nombre}</option>`).join('');
   document.getElementById('campoModuloIA').hidden = false;
   document.getElementById('casillaUsarIA').hidden = true;
   prepararCampoArchivo();
@@ -183,9 +198,16 @@ function cerrarModalExcel() {
   reporteActualExcel = null;
 }
 
+const TAMANO_MAXIMO_EXCEL = 4 * 1024 * 1024; // igual que el servidor
+
 async function alSeleccionarArchivo(evento) {
   const archivo = evento.target.files[0];
   if (!archivo) return;
+  if (archivo.size > TAMANO_MAXIMO_EXCEL) {
+    mostrarAviso(`El archivo pesa ${(archivo.size / 1048576).toFixed(1)} MB y el máximo es 4 MB. Borra hojas o columnas que no necesites, o divídelo en dos.`, 'error');
+    evento.target.value = '';
+    return;
+  }
 
   document.getElementById('pasoSeleccionArchivo').hidden = true;
   document.getElementById('lineaCargandoExcel').hidden = false;
@@ -227,7 +249,9 @@ async function alSeleccionarArchivo(evento) {
     }
     document.getElementById('botonConfirmarImportacion').hidden = false;
   } catch (err) {
-    mostrarAviso(err.message, 'error');
+    // Sin respuesta del servidor (conexión cortada o el archivo no alcanzó a subir)
+    const sinRespuesta = err instanceof TypeError;
+    mostrarAviso(sinRespuesta ? 'No se pudo subir el archivo. Revisa tu conexión e inténtalo de nuevo; si sigue pasando, prueba con un archivo más liviano.' : err.message, 'error');
     document.getElementById('pasoSeleccionArchivo').hidden = false;
   } finally {
     document.getElementById('lineaCargandoExcel').hidden = true;
@@ -370,14 +394,14 @@ function columnasSimple(clave) {
   }
   if (clave === 'inventario') {
     return [
-      { titulo: 'Material', obtener: (f) => f.codigo_material || '' },
+      { titulo: 'Artículo', obtener: (f) => f.codigo_material || f.codigo_producto || '' },
       { titulo: 'Tipo', obtener: (f) => f.tipo || '' },
       { titulo: 'Stock resultante', obtener: (f) => f.stock_nuevo_proyectado ?? '' }
     ];
   }
   if (clave === 'compras') {
     return [
-      { titulo: 'Material', obtener: (f) => f.codigo_material || '' },
+      { titulo: 'Artículo', obtener: (f) => f.codigo_material || f.codigo_producto || '' },
       { titulo: 'Estado', obtener: (f) => f.estado || '' },
       { titulo: 'Proveedor', obtener: (f) => f.datos.proveedor || '' }
     ];
@@ -417,13 +441,39 @@ function filasParaImportar() {
   return reporteActualExcel.filas;
 }
 
-async function confirmarImportacion() {
+// Qué hace "Reemplazar" en cada módulo (se muestra en la pregunta).
+const TEXTO_REEMPLAZAR = {
+  materiales: 'Reemplazar desactiva los materiales que no estén en el Excel. Sumar los conserva.',
+  productos: 'Reemplazar desactiva los productos que no estén en el Excel. Sumar los conserva.',
+  procesos: 'Reemplazar desactiva los procesos que no estén en el Excel. Sumar los conserva.',
+  inventario: 'Reemplazar deja el stock igual a la cantidad del Excel. Sumar la suma al stock actual.',
+  compras: 'Reemplazar borra las compras actuales. Sumar las agrega a las que ya tienes.',
+  ventas: 'Reemplazar borra las ventas actuales. Sumar las agrega a las que ya tienes.',
+  finanzas: 'Reemplazar borra el capital registrado y desactiva los costos fijos que no estén en el Excel.',
+  facturacion: 'Reemplazar borra el historial de facturas actual. Sumar lo agrega.',
+  nominas: 'Reemplazar borra los encargos actuales y desactiva los colaboradores que no estén en el Excel.'
+};
+const BORRAN_HISTORIAL = ['compras', 'ventas', 'facturacion', 'finanzas', 'nominas'];
+
+function confirmarImportacion() {
+  document.getElementById('textoReemplazarModulo').textContent = TEXTO_REEMPLAZAR[moduloActualExcel.clave] || '';
+  document.getElementById('modalModoGuardado').hidden = false;
+}
+
+function cerrarModalModoGuardado() {
+  document.getElementById('modalModoGuardado').hidden = true;
+}
+
+async function ejecutarImportacion(reemplazar) {
+  if (reemplazar && BORRAN_HISTORIAL.includes(moduloActualExcel.clave)
+    && !confirm(`Se borrará la información actual de ${moduloActualExcel.nombre} y no se puede deshacer. ¿Continuar?`)) return;
+  cerrarModalModoGuardado();
   const boton = document.getElementById('botonConfirmarImportacion');
   boton.disabled = true;
   try {
-    const cuerpo = { filas: filasParaImportar(), ...opcionesSeleccionadas() };
+    const cuerpo = { filas: filasParaImportar(), ...opcionesSeleccionadas(), reemplazar };
     const resultado = await API.enviar(`/api/excel/${moduloActualExcel.clave}/importar`, cuerpo);
-    mostrarAviso('Importación completada.', 'ok');
+    mostrarAviso(reemplazar ? 'Información reemplazada.' : 'Información sumada.', 'ok');
     console.log('Resultado de la importación:', resultado);
     cerrarModalExcel();
   } catch (err) {

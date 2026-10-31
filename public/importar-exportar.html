@@ -109,6 +109,19 @@
         </div>
       </div>
     </div>
+
+    <!-- 4. Pregunta antes de guardar: reemplazar o sumar -->
+    <div class="modal" id="modalModoGuardado" hidden>
+      <div class="modal__contenido tarjeta">
+        <h2>¿Qué hacemos con la información actual?</h2>
+        <p id="textoReemplazarModulo"></p>
+        <div class="modal__acciones">
+          <button type="button" class="boton" onclick="cerrarModalModoGuardado()">Cancelar</button>
+          <button type="button" class="boton boton--peligro" onclick="ejecutarImportacion(true)">Reemplazar</button>
+          <button type="button" class="boton boton--primario" onclick="ejecutarImportacion(false)">Sumar</button>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script src="js/api.js"></script>
