@@ -53,7 +53,7 @@ const MODULOS = {
     plantilla: () => materialesExportador.generarPlantilla(),
     exportarActual: (empresaId) => materialesExportador.exportarMateriales(empresaId),
     analizar: (buffer, empresaId) => materialesImportador.analizarMateriales(buffer, empresaId),
-    importar: (empresaId, filas, opciones) => materialesImportador.importarMateriales(empresaId, filas, opciones.modo || 'crear_y_actualizar')
+    importar: (empresaId, filas, opciones) => materialesImportador.importarMateriales(empresaId, filas, opciones.modo || 'crear_y_actualizar', { reemplazar: opciones.reemplazar === true })
   },
   productos: {
     archivo: '02_Productos.xlsx',

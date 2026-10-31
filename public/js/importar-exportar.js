@@ -443,15 +443,15 @@ function filasParaImportar() {
 
 // Qué hace "Reemplazar" en cada módulo (se muestra en la pregunta).
 const TEXTO_REEMPLAZAR = {
-  materiales: 'Reemplazar desactiva los materiales que no estén en el Excel. Sumar los conserva.',
-  productos: 'Reemplazar desactiva los productos que no estén en el Excel. Sumar los conserva.',
-  procesos: 'Reemplazar desactiva los procesos que no estén en el Excel. Sumar los conserva.',
+  materiales: 'Reemplazar deja el stock igual al del Excel. Sumar suma el stock del Excel al actual.',
+  productos: 'Los productos del Excel se crean o actualizan. Los demás no se tocan.',
+  procesos: 'Los procesos del Excel se crean o actualizan. Los demás no se tocan.',
   inventario: 'Reemplazar deja el stock igual a la cantidad del Excel. Sumar la suma al stock actual.',
   compras: 'Reemplazar borra las compras actuales. Sumar las agrega a las que ya tienes.',
   ventas: 'Reemplazar borra las ventas actuales. Sumar las agrega a las que ya tienes.',
-  finanzas: 'Reemplazar borra el capital registrado y desactiva los costos fijos que no estén en el Excel.',
+  finanzas: 'Reemplazar borra el capital registrado. Sumar lo agrega.',
   facturacion: 'Reemplazar borra el historial de facturas actual. Sumar lo agrega.',
-  nominas: 'Reemplazar borra los encargos actuales y desactiva los colaboradores que no estén en el Excel.'
+  nominas: 'Reemplazar borra los encargos actuales. Sumar los agrega.'
 };
 const BORRAN_HISTORIAL = ['compras', 'ventas', 'facturacion', 'finanzas', 'nominas'];
 

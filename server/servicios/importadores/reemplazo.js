@@ -74,7 +74,8 @@ async function borrarEncargos(empresaId) {
 
 // Se ejecuta ANTES de importar. Devuelve lo que necesita despuesDeImportar.
 async function antesDeImportar(modulo, empresaId, filas) {
-  const pendientes = await registrosFaltantes(modulo, empresaId, filas);
+  // Ya NO se desactivan registros que falten en el Excel (desactivaba catálogos enteros).
+  const pendientes = [];
   let borrados = 0;
   switch (modulo) {
     case 'compras': borrados = await borrarTodo('compras', empresaId); break;
@@ -96,8 +97,7 @@ const BORRAN_HISTORIAL = ['compras', 'ventas', 'facturacion', 'finanzas', 'nomin
 
 // Para preguntar antes: cuántos registros desactivaría "Reemplazar".
 async function contarAfectados(modulo, empresaId, filas) {
-  const pendientes = await registrosFaltantes(modulo, empresaId, filas);
-  return { desactivaria: pendientes.length };
+  return { desactivaria: 0 };
 }
 
 module.exports = { antesDeImportar, despuesDeImportar, contarAfectados, BORRAN_HISTORIAL };

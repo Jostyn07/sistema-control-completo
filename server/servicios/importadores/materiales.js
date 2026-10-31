@@ -118,12 +118,7 @@ async function analizarMateriales(buffer, empresaId) {
 
     let accion = existente ? 'actualizar' : 'crear';
 
-    const stockActualNuevo = aNumero(datos.stock_actual);
-    if (existente && stockActualNuevo != null && Number(stockActualNuevo) !== Number(existente.stock_actual)) {
-      advertencias.push(
-        'El Stock actual no se actualiza desde aquí (usa Inventario para registrar entradas, salidas o ajustes); se ignorará ese valor.'
-      );
-    }
+
 
     if (existente && errores.length === 0) {
       const sinCambios =
@@ -155,12 +150,33 @@ async function analizarMateriales(buffer, empresaId) {
 
 // -------------------- 2. IMPORTAR (escribe en la base) --------------------
 // modo: 'crear_solamente' | 'actualizar_solamente' | 'crear_y_actualizar'
-async function importarMateriales(empresaId, filas, modo = 'crear_y_actualizar') {
+// opciones.reemplazar: en materiales que ya existen, el "Stock actual" del
+// Excel queda como stock final. Sin reemplazar (Sumar), se suma al actual.
+async function aplicarStockExistente(empresaId, fila, reemplazar) {
+  const valor = aNumero(fila.datos.stock_actual);
+  if (valor == null || valor === undefined || !fila.material_id) return;
+  const { data, error } = await supabase.from('materiales')
+    .select('stock_actual, costo_unitario').eq('id', fila.material_id).eq('empresa_id', empresaId).single();
+  if (error) throw new Error(`Fila ${fila.numero_fila}: ${error.message}`);
+  const delta = Math.round((reemplazar ? valor - Number(data.stock_actual || 0) : valor) * 10000) / 10000;
+  if (delta === 0) return;
+  const op = await aplicarOperacion({
+    empresaId, tipo: 'importacion', origenTabla: 'materiales', origenId: fila.material_id,
+    motivo: reemplazar ? 'Stock reemplazado (importación Excel)' : 'Stock sumado (importación Excel)',
+    movimientos: [{ material_id: fila.material_id, cantidad: delta, costo_unitario: data.costo_unitario }]
+  });
+  if (op && op.ok === false) throw new Error(`Fila ${fila.numero_fila}: el stock quedaría negativo`);
+  return true;
+}
+
+async function importarMateriales(empresaId, filas, modo = 'crear_y_actualizar', opciones = {}) {
   let siguienteConsecutivo = null;
-  const resultado = { creados: 0, actualizados: 0, sin_cambios: 0, omitidos: 0 };
+  const resultado = { creados: 0, actualizados: 0, sin_cambios: 0, omitidos: 0, stock_ajustado: 0 };
 
   for (const fila of filas) {
     if (fila.errores && fila.errores.length) { resultado.omitidos++; continue; }
+    if (fila.material_id && modo !== 'crear_solamente'
+      && await aplicarStockExistente(empresaId, fila, opciones.reemplazar === true)) resultado.stock_ajustado++;
     if (fila.accion === 'sin_cambios') { resultado.sin_cambios++; continue; }
     if (fila.accion === 'crear' && modo === 'actualizar_solamente') { resultado.omitidos++; continue; }
     if (fila.accion === 'actualizar' && modo === 'crear_solamente') { resultado.omitidos++; continue; }
@@ -210,7 +226,7 @@ async function importarMateriales(empresaId, filas, modo = 'crear_y_actualizar')
         stock_seguridad: aNumero(datos.stock_seguridad) ?? 0,
         activo: aBooleanoSiNo(datos.activo) ?? true,
         actualizado_en: new Date().toISOString()
-        // stock_actual NUNCA se toca desde aquí — ver advertencia del importador.
+        // stock_actual se ajusta aparte (aplicarStockExistente), con movimiento de inventario.
       };
       const { error } = await supabase
         .from('materiales').update(cambios).eq('id', fila.material_id).eq('empresa_id', empresaId);
