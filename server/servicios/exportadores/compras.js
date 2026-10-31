@@ -16,25 +16,28 @@ function generarPlantilla() {
 async function exportarCompras(empresaId) {
   const { data, error } = await supabase
     .from('compras')
-    .select('fecha, proveedor, cantidad, precio_unitario, estado, notas, materiales!inner(codigo, empresa_id)')
+    .select('fecha, proveedor, cantidad, precio_unitario, estado, notas, materiales(codigo), productos(codigo)')
     .eq('empresa_id', empresaId)
-    .eq('materiales.empresa_id', empresaId)
     .order('fecha', { ascending: false })
     .limit(LIMITE_HISTORIAL);
   if (error) throw new Error(error.message);
 
   const filas = (data || [])
-    .filter((c) => c.materiales.codigo)
-    .map((c) => [
-      '', // el "Código compra" original no se guarda por separado, ver definiciones/compras.js
-      new Date(c.fecha).toLocaleDateString('es-CO'),
-      c.materiales.codigo,
-      c.proveedor,
-      c.cantidad,
-      c.precio_unitario,
-      c.estado.toUpperCase(),
-      c.notas || ''
-    ]);
+    .filter((c) => (c.materiales && c.materiales.codigo) || (c.productos && c.productos.codigo))
+    .map((c) => {
+      const valores = {
+        codigo: '', // el "Código compra" original no se guarda por separado, ver definiciones/compras.js
+        fecha: new Date(c.fecha).toLocaleDateString('es-CO'),
+        codigo_material: c.materiales ? c.materiales.codigo : '',
+        codigo_producto: c.productos ? c.productos.codigo : '',
+        proveedor: c.proveedor,
+        cantidad: c.cantidad,
+        precio_unitario: c.precio_unitario,
+        estado: c.estado.toUpperCase(),
+        notas: c.notas || ''
+      };
+      return COLUMNAS.map((col) => valores[col.clave] ?? '');
+    });
 
   return crearLibro({ titulo: TITULO, paraQueSirve: PARA_QUE_SIRVE, columnas: COLUMNAS, filas, advertencias: ADVERTENCIAS });
 }

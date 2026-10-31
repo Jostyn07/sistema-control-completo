@@ -35,6 +35,9 @@ const EVENTOS = {
   'foto.subida':            { props: {} },
   'equipo.miembro_agregado': { props: {} },
   'suscripcion.pago_iniciado': { props: {} },
+  'negocio.modelo_definido': { props: {} },
+  'producto.convertido':    { props: {} },
+  'compra.reventa':         { props: {} },
   'suscripcion.cancelada':  { props: {} },
   'suscripcion.pagada':     { props: { periodo: ['mensual', 'anual'] } },
   // Registro (antes de tener empresa): por qué se rechaza un intento
@@ -79,6 +82,9 @@ const EVENTOS_DE_RUTA = {
   'POST /api/almacenamiento/foto-producto': 'foto.subida',
   'POST /api/empresas/miembros': 'equipo.miembro_agregado',
   'POST /api/suscripcion/iniciar-pago': 'suscripcion.pago_iniciado',
+  'PUT /api/empresas/modelo-negocio': 'negocio.modelo_definido',
+  'PUT /api/productos/:id/tipo': 'producto.convertido',
+  'POST /api/inventario/productos/:id/compra-reventa': 'compra.reventa',
   'POST /api/suscripcion/cancelar': 'suscripcion.cancelada'
 };
 

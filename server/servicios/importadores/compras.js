@@ -13,6 +13,11 @@
 //     el movimiento — igual que confirmar la llegada de una compra. Si es
 //     false, solo queda el historial, sin tocar el stock (para cuando ya
 //     se cargó aparte por Materiales o por Inventario).
+//
+// Cada fila es de un material ("Código material") o de un producto de
+// reventa ("Código producto"). El costo no cambia solo desde el Excel
+// (no hay a quién preguntarle); solo un producto sin costo toma el de
+// la compra.
 // ============================================================
 const supabase = require('../../supabase/cliente');
 const { aplicarOperacion } = require('../inventario/nucleo');
@@ -39,10 +44,20 @@ async function obtenerMaterialesPorCodigo(empresaId) {
   return new Map((data || []).map((m) => [m.codigo.toLowerCase(), m]));
 }
 
+async function obtenerProductosPorCodigo(empresaId) {
+  const { data, error } = await supabase
+    .from('productos').select('id, codigo, tipo, costo_calculado')
+    .eq('empresa_id', empresaId).not('codigo', 'is', null);
+  if (error) throw new Error(error.message);
+  return new Map((data || []).map((p) => [p.codigo.toLowerCase(), p]));
+}
+
 // -------------------- 1. ANALIZAR --------------------
 async function analizarCompras(buffer, empresaId) {
   const filasExcel = leerFilas(buffer);
-  const materialesPorCodigo = await obtenerMaterialesPorCodigo(empresaId);
+  const [materialesPorCodigo, productosPorCodigo] = await Promise.all([
+    obtenerMaterialesPorCodigo(empresaId), obtenerProductosPorCodigo(empresaId)
+  ]);
   const resumen = { validas: 0, errores: 0 };
   let hayFilasRecibidas = false;
 
@@ -50,10 +65,12 @@ async function analizarCompras(buffer, empresaId) {
     const numeroFila = indice + 2;
     const datos = extraerDatos(filaExcel);
     const codigoMaterial = aTextoLimpio(datos.codigo_material);
+    const codigoProducto = aTextoLimpio(datos.codigo_producto);
     const estado = aTextoLimpio(datos.estado).toUpperCase();
 
     const errores = [
-      requerido(datos.codigo_material, 'Código material'),
+      !codigoMaterial && !codigoProducto ? 'Falta "Código material" o "Código producto"' : null,
+      codigoMaterial && codigoProducto ? 'Usa "Código material" o "Código producto", no los dos' : null,
       requerido(datos.proveedor, 'Proveedor'),
       numeroValido(datos.cantidad, 'Cantidad', { minimo: 0.0001 }),
       numeroValido(datos.precio_unitario, 'Precio unitario', { minimo: 0 }),
@@ -63,6 +80,9 @@ async function analizarCompras(buffer, empresaId) {
 
     const material = codigoMaterial ? materialesPorCodigo.get(codigoMaterial.toLowerCase()) : null;
     if (codigoMaterial && !material) errores.push(`El material con código "${codigoMaterial}" no existe`);
+    const producto = codigoProducto && !codigoMaterial ? productosPorCodigo.get(codigoProducto.toLowerCase()) : null;
+    if (codigoProducto && !codigoMaterial && !producto) errores.push(`El producto con código "${codigoProducto}" no existe`);
+    if (producto && producto.tipo !== 'reventa') errores.push(`"${codigoProducto}" es un producto fabricado: no se compra, se fabrica`);
 
     if (estado === 'RECIBIDA') hayFilasRecibidas = true;
 
@@ -72,6 +92,8 @@ async function analizarCompras(buffer, empresaId) {
       numero_fila: numeroFila,
       codigo_material: codigoMaterial || null,
       material_id: material ? material.id : null,
+      codigo_producto: codigoProducto || null,
+      producto_id: producto ? producto.id : null,
       estado: ESTADOS_VALIDOS.includes(estado) ? estado : null,
       datos,
       errores
@@ -79,6 +101,41 @@ async function analizarCompras(buffer, empresaId) {
   });
 
   return { modulo: 'compras', total_filas: filas.length, resumen, hay_filas_recibidas: hayFilasRecibidas, filas };
+}
+
+// Compra de un producto de reventa (se vuelve a verificar en la base)
+async function importarCompraProducto({ empresaId, fila, cantidad, precioUnitario, fechaCompra, notas, esRecibida, afectarInventario }) {
+  const { data: producto, error } = await supabase
+    .from('productos').select('id, tipo, costo_calculado')
+    .eq('id', fila.producto_id).eq('empresa_id', empresaId).maybeSingle();
+  if (error || !producto) throw new Error(`Fila ${fila.numero_fila}: el producto ya no existe`);
+  if (producto.tipo !== 'reventa') throw new Error(`Fila ${fila.numero_fila}: el producto no es de reventa`);
+
+  const { data: compra, error: eCompra } = await supabase.from('compras').insert({
+    empresa_id: empresaId, usuario_id: usuarioActual(),
+    producto_id: producto.id,
+    proveedor: aTextoLimpio(fila.datos.proveedor),
+    cantidad, precio_unitario: precioUnitario, notas,
+    fecha: fechaCompra,
+    estado: esRecibida ? 'recibida' : 'pendiente',
+    fecha_estimada_llegada: fechaCompra,
+    ...(esRecibida ? { fecha_llegada: fechaCompra } : {})
+  }).select('id').single();
+  if (eCompra) throw new Error(`Fila ${fila.numero_fila}: ${eCompra.message}`);
+
+  if (!(Number(producto.costo_calculado) > 0)) {
+    await supabase.from('productos').update({ costo_calculado: precioUnitario })
+      .eq('id', producto.id).eq('empresa_id', empresaId);
+  }
+
+  if (esRecibida && afectarInventario) {
+    const operacion = await aplicarOperacion({
+      empresaId, tipo: 'importacion', origenTabla: 'compras', origenId: compra.id,
+      motivo: 'Compra importada desde Excel', clave: `compra-recibida:${compra.id}`,
+      movimientos: [{ producto_id: producto.id, cantidad, costo_unitario: Number(precioUnitario) }]
+    });
+    if (!operacion.ok) throw new Error(`Fila ${fila.numero_fila}: no se pudo sumar al inventario`);
+  }
 }
 
 // -------------------- 2. IMPORTAR --------------------
@@ -97,12 +154,18 @@ async function importarCompras(empresaId, filas, { afectarInventario = true } = 
     const codigo = aTextoLimpio(datos.codigo);
     const notas = [codigo ? `[${codigo}]` : null, aTextoLimpio(datos.notas) || null].filter(Boolean).join(' ') || null;
 
+    const esRecibida = fila.estado === 'RECIBIDA';
+    if (!fila.material_id && fila.producto_id) {
+      await importarCompraProducto({ empresaId, fila, cantidad, precioUnitario, fechaCompra, notas, esRecibida, afectarInventario });
+      if (esRecibida) resultado.registradas_recibidas++; else resultado.registradas_pendientes++;
+      continue;
+    }
+
     const { data: material, error: eMat } = await supabase
       .from('materiales').select('id, costo_unitario, tiempo_entrega_dias, stock_actual')
       .eq('id', fila.material_id).eq('empresa_id', empresaId).single();
     if (eMat || !material) throw new Error(`Fila ${fila.numero_fila}: el material ya no existe`);
 
-    const esRecibida = fila.estado === 'RECIBIDA';
     const cambios = {
       empresa_id: empresaId, usuario_id: usuarioActual(),
       material_id: fila.material_id,

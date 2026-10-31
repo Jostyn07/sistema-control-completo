@@ -2,7 +2,7 @@
 // MIDDLEWARE DE EMPRESA (TENANT) — server/middleware/tenant.js
 // FASE 5. Va después de requiereAutenticacion. Decide en qué
 // empresa trabaja la petición y la deja en:
-//   req.empresa = { id, rol, permisos, total_empresas }
+//   req.empresa = { id, rol, permisos, total_empresas, modelo }
 //
 // Reglas:
 // - La empresa activa llega en el encabezado X-Empresa-Id. Si no
@@ -15,6 +15,7 @@
 const { supabaseAdminBase: supabaseAdmin, crearClienteUsuario, crearClienteServicioConActor, RLS_ACTIVO } = require('../supabase/cliente');
 const { ejecutarConContexto } = require('../contexto');
 const { permisosDeRol } = require('../seguridad/permisos');
+const { normalizarModelo } = require('../servicios/modelo-negocio');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const CAMPOS_PROTEGIDOS = ['empresa_id', 'usuario_id'];
@@ -39,12 +40,15 @@ async function resolverEmpresa(req, res, next) {
 
     // service_role a propósito: es la consulta que DECIDE el acceso,
     // y se filtra explícitamente por el usuario autenticado.
-    const { data: membresias, error } = await supabaseAdmin
+    const consultar = (columnas) => supabaseAdmin
       .from('empresa_usuarios')
-      .select('empresa_id, rol, es_predeterminada, empresas!inner(estado)')
+      .select(`empresa_id, rol, es_predeterminada, empresas!inner(${columnas})`)
       .eq('usuario_id', req.usuarioId)
       .eq('estado', 'activo')
       .eq('empresas.estado', 'activa');
+    let { data: membresias, error } = await consultar('estado, configuracion');
+    // Sin la migración 011 (columna configuracion) el sistema sigue funcionando
+    if (error && error.code === '42703') ({ data: membresias, error } = await consultar('estado'));
     if (error) throw new Error('No se pudo verificar la empresa: ' + (error.message || error.code || 'error desconocido'));
 
     if (!membresias || membresias.length === 0) {
@@ -66,7 +70,8 @@ async function resolverEmpresa(req, res, next) {
       id: membresia.empresa_id,
       rol: membresia.rol,
       permisos: permisosDeRol(membresia.rol),
-      total_empresas: membresias.length
+      total_empresas: membresias.length,
+      modelo: Object.freeze(normalizarModelo(membresia.empresas && membresia.empresas.configuracion))
     });
 
     limpiarCamposProtegidos(req.body);

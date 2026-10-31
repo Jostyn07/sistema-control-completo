@@ -8,14 +8,16 @@
 const TITULO = 'Productos';
 
 const PARA_QUE_SIRVE =
-  'Usa este archivo para crear o actualizar el catálogo de productos que vendes: nombre, categoría, precio y tiempo de fabricación.';
+  'Usa este archivo para crear o actualizar el catálogo de productos que vendes: los que fabricas y los que compras para revender.';
 
 const ADVERTENCIAS = [
   'Si dejas la columna "Código" vacía en una fila nueva, el sistema le asignará uno automáticamente (PROD001, PROD002, ...).',
   'Si escribes un Código que ya existe, esa fila ACTUALIZA el producto — no crea uno nuevo.',
   'Si la categoría que escribes no existe todavía, el sistema la crea automáticamente al importar.',
   'Los "Minutos de fabricación" solo se usan si el producto NO tiene Procesos configurados; si ya los tiene, ese tiempo se calcula solo y este valor se ignora.',
-  'Este archivo no incluye la ficha técnica (qué materiales necesita cada producto) — eso se administra desde la plataforma.'
+  'Este archivo no incluye la ficha técnica (qué materiales necesita cada producto) — eso se administra desde la plataforma.',
+  'Tipo: FABRICADO o REVENTA. Si lo dejas vacío, se usa el tipo que ya tenía el producto o, si es nuevo, el de tu negocio. El tipo de un producto existente no se cambia desde aquí.',
+  'Para productos de REVENTA, "Costo compra" es obligatorio al crearlos. "Existencias" solo se usa al crear el producto: entra como compra inicial.'
 ];
 
 const COLUMNAS = [
@@ -46,6 +48,27 @@ const COLUMNAS = [
     obligatorio: true,
     descripcion: 'Precio al que se comercializa. Debe ser mayor o igual a 0.',
     ejemplo: 85000
+  },
+  {
+    clave: 'tipo',
+    encabezado: 'Tipo',
+    obligatorio: false,
+    descripcion: 'FABRICADO (lo elaboras) o REVENTA (lo compras terminado).',
+    ejemplo: 'FABRICADO'
+  },
+  {
+    clave: 'costo_compra',
+    encabezado: 'Costo compra',
+    obligatorio: false,
+    descripcion: 'Solo REVENTA: lo que te cuesta cada unidad. Obligatorio al crear un producto de reventa.',
+    ejemplo: ''
+  },
+  {
+    clave: 'existencias',
+    encabezado: 'Existencias',
+    obligatorio: false,
+    descripcion: 'Solo REVENTA y solo al crear: unidades que tienes hoy.',
+    ejemplo: ''
   },
   {
     clave: 'minutos_fabricacion',

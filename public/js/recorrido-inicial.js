@@ -82,8 +82,51 @@ const PASOS_RECORRIDO_INICIAL = [
   }
 ];
 
+// Pasos que cambian para quien compra y revende
+const PASOS_REVENTA = {
+  'a[href="./productos.html"]': {
+    titulo: 'Productos',
+    texto: 'Aquí registras lo que vendes: nombre, categoría, costo de compra, precio de venta y cuántas unidades tienes. El sistema calcula la ganancia de cada producto.',
+    diagrama: 'Costo de compra → Precio de venta → Ganancia'
+  },
+  'a[href="./inventario.html"]': {
+    titulo: 'Inventario',
+    texto: 'Aquí ves cuántas unidades tienes de cada producto, registras compras, salidas y conteos, y el sistema te avisa cuando algo se está acabando.',
+    diagrama: 'Compra → Entrada &nbsp;·&nbsp; Venta → Salida &nbsp;·&nbsp; Conteo físico → Ajuste'
+  },
+  'a[href="./compras.html"]': {
+    titulo: 'Compras',
+    texto: 'Aquí registras lo que les compras a tus proveedores: qué, cuánto pagaste y cuándo llega. Al llegar, se suma solo al inventario.'
+  },
+  'a[href="./ventas.html"]': {
+    titulo: 'Ventas',
+    texto: 'Aquí registras los pedidos de tus clientes. El sistema calcula el total y la ganancia, y descuenta las unidades del inventario.'
+  }
+};
+
+// Ajusta el recorrido al tipo de negocio
+function pasosSegunNegocio() {
+  const fabrica = Negocio.fabrica();
+  const revende = Negocio.revende();
+  if (fabrica && !revende) return PASOS_RECORRIDO_INICIAL;
+  const sinFabricacion = ['a[href="./materiales.html"]', 'a[href="./procesos.html"]'];
+  return PASOS_RECORRIDO_INICIAL
+    .filter(p => fabrica || !sinFabricacion.includes(p.selector))
+    .map(p => {
+      if (p.titulo === '¿Cómo funciona todo junto?' && !fabrica) {
+        return { ...p,
+          texto: 'Las secciones están conectadas: lo que compras entra al inventario, al vender sale, y cada movimiento se refleja en tus costos y resultados.',
+          diagrama: '<strong>Productos</strong> → <strong>Compras</strong> → <strong>Inventario</strong> → <strong>Ventas</strong> → <strong>Finanzas</strong>' };
+      }
+      if (p.selector === 'a[href="./productos.html"]' && fabrica) {
+        return { ...p, texto: 'Aquí registras lo que vendes. Los productos que fabricas llevan su receta de materiales; los que compras para revender solo necesitan costo de compra, precio y existencias.' };
+      }
+      return !fabrica && PASOS_REVENTA[p.selector] ? { ...p, ...PASOS_REVENTA[p.selector] } : p;
+    });
+}
+
 function iniciarRecorridoInicial() {
-  iniciarRecorrido(PASOS_RECORRIDO_INICIAL, {
+  iniciarRecorrido(pasosSegunNegocio(), {
     alTerminar: () => {
       // Se marca completado tanto si lo termina como si lo salta a mitad
       // de camino — en ambos casos ya decidió que no lo quiere ver de
@@ -102,6 +145,10 @@ async function revisarSiMostrarRecorridoInicial() {
   if (forzar) { iniciarRecorridoInicial(); return; }
 
   try {
+    // Primero se sabe el tipo de negocio; si lo está eligiendo, el
+    // recorrido aparece cuando termine (la página se recarga)
+    await Negocio.listo;
+    if (Negocio.eligiendo()) return;
     const estado = await API.obtener('/api/configuracion/onboarding');
     if (!estado.completado) iniciarRecorridoInicial();
   } catch {

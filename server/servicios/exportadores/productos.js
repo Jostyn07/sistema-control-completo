@@ -14,6 +14,9 @@ function filaDesdeProducto(producto) {
   return COLUMNAS.map((columna) => {
     if (columna.clave === 'categoria') return categoria;
     if (columna.clave === 'activo') return producto.activo ? 'SI' : 'NO';
+    if (columna.clave === 'tipo') return producto.tipo === 'reventa' ? 'REVENTA' : 'FABRICADO';
+    if (columna.clave === 'costo_compra') return producto.tipo === 'reventa' ? Number(producto.costo_calculado || 0) : '';
+    if (columna.clave === 'existencias') return ''; // solo se usa al crear
     const valor = producto[columna.clave];
     return valor == null ? '' : valor;
   });
@@ -22,7 +25,7 @@ function filaDesdeProducto(producto) {
 async function exportarProductos(empresaId) {
   const { data, error } = await supabase
     .from('productos')
-    .select('codigo, nombre, precio_venta, minutos_fabricacion, foto_url, activo, categorias_productos(nombre)')
+    .select('codigo, nombre, tipo, costo_calculado, precio_venta, minutos_fabricacion, foto_url, activo, categorias_productos(nombre)')
     .eq('empresa_id', empresaId)
     .order('nombre');
   if (error) throw new Error(error.message);

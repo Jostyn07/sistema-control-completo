@@ -3,8 +3,12 @@
 // Requiere sesión. Todo se filtra por req.empresa.id.
 // - GET  /pendientes    materiales por debajo del punto de reorden
 //                       (también muestra si ya hay un pedido en camino)
-// - POST /              registra el PEDIDO — NO suma stock todavía;
-//                       queda "pendiente" con fecha estimada de llegada
+// - POST /              registra el PEDIDO de un material o de un
+//                       producto de reventa — NO suma stock todavía;
+//                       queda "pendiente" con fecha estimada de llegada.
+//                       Producto con dias_entrega 0: entra de una vez.
+//                       Si el precio difiere del costo: decision_costo
+//                       ('mantener' | 'nuevo' | 'promedio') o 409.
 // - POST /:id/recibir   confirma la llegada manualmente y suma el stock
 // - GET  /en-camino     pedidos hechos que aún no han llegado
 // - GET  /historial     compras pasadas (con su estado) con filtros
@@ -14,7 +18,11 @@ const supabase = require('../supabase/cliente');
 const servicioInventario = require('../servicios/inventario');
 const { calcularFechaEstimada, recibirCompra, procesarComprasVencidas } = require('../servicios/compras');
 const libro = require('../servicios/inventario/libro');
+const costoCompra = require('../servicios/costo-compra');
 const router = express.Router();
+
+// Material o producto de la compra, para mostrar su nombre
+const SELECT_ARTICULO = '*, materiales(nombre, unidad), productos(nombre)';
 
 // GET /api/compras/pendientes
 router.get('/pendientes', async (req, res, next) => {
@@ -63,24 +71,117 @@ router.get('/pendientes', async (req, res, next) => {
       })
       .sort((a, b) => (a.estado === 'rojo' ? 0 : 1) - (b.estado === 'rojo' ? 0 : 1));
 
+    if (req.empresa.modelo && req.empresa.modelo.reventa) pendientes.push(...await productosPorReponer(req.empresa.id));
     res.json(pendientes);
   } catch (err) { next(err); }
 });
 
+// Productos de reventa en o por debajo de su mínimo (mismo formato que materiales)
+async function productosPorReponer(empresaId) {
+  const [{ data: productos, error: eP }, { data: stock, error: eS }, { data: camino, error: eC }] = await Promise.all([
+    supabase.from('productos').select('id, nombre, costo_calculado').eq('empresa_id', empresaId).eq('tipo', 'reventa').eq('activo', true),
+    supabase.from('inventario_productos').select('producto_id, stock_actual, stock_minimo').eq('empresa_id', empresaId).eq('controla_stock', true),
+    supabase.from('compras').select('producto_id, cantidad, fecha_estimada_llegada').eq('empresa_id', empresaId).eq('estado', 'pendiente').not('producto_id', 'is', null)
+  ]);
+  if (eP || eS || eC) throw new Error((eP || eS || eC).message);
+  const stockPorId = new Map((stock || []).map(s => [s.producto_id, s]));
+  const caminoPorId = new Map();
+  for (const c of camino || []) {
+    const previo = caminoPorId.get(c.producto_id) || { cantidad: 0, fecha: null };
+    previo.cantidad += Number(c.cantidad);
+    if (!previo.fecha || c.fecha_estimada_llegada < previo.fecha) previo.fecha = c.fecha_estimada_llegada;
+    caminoPorId.set(c.producto_id, previo);
+  }
+  const lista = [];
+  for (const p of productos || []) {
+    const s = stockPorId.get(p.id);
+    if (!s) continue;
+    const actual = Number(s.stock_actual);
+    const minimo = Number(s.stock_minimo);
+    if (actual > 0 && (minimo <= 0 || actual > minimo)) continue;
+    const sugerido = Math.max(1, Math.ceil(Math.max(minimo, 1) * 2 - actual));
+    const enCamino = caminoPorId.get(p.id);
+    lista.push({
+      producto_id: p.id, nombre: p.nombre, unidad: 'unidad',
+      estado: actual <= 0 ? 'rojo' : 'amarillo',
+      stock_actual: actual, punto_reorden: minimo,
+      proveedor_sugerido: null, tiempo_entrega_dias: 0,
+      cantidad_sugerida: sugerido,
+      costo_unitario_actual: Number(p.costo_calculado || 0),
+      costo_estimado: Math.round(sugerido * Number(p.costo_calculado || 0) * 100) / 100,
+      ya_en_camino: enCamino ? enCamino.cantidad : 0,
+      llega_aprox: enCamino ? enCamino.fecha : null
+    });
+  }
+  return lista;
+}
+
+// Compra de un producto de reventa
+async function comprarProducto(req, res) {
+  const { producto_id, proveedor, cantidad, precio_unitario, notas, decision_costo } = req.body;
+  const { data: producto, error: eGet } = await supabase.from('productos')
+    .select('id, nombre, tipo, costo_calculado, activo').eq('id', producto_id).eq('empresa_id', req.empresa.id).maybeSingle();
+  if (eGet || !producto) return res.status(404).json({ error: 'Producto no encontrado' });
+  if (producto.tipo !== 'reventa') return res.status(400).json({ error: 'Solo se compran productos de reventa; los fabricados se producen' });
+
+  const stock = await costoCompra.stockDeProducto(producto.id, req.empresa.id);
+  const r = costoCompra.resolverCosto({
+    costoActual: producto.costo_calculado, stockActual: stock,
+    cantidad, precio: precio_unitario, decision: decision_costo
+  });
+  if (r.requiereDecision) return costoCompra.respuestaDecision(res, r.opciones, { articulo: producto.nombre });
+
+  const dias = Math.max(0, Math.min(365, parseInt(req.body.dias_entrega, 10) || 0));
+  const fechaEstimada = calcularFechaEstimada(dias);
+  const { data: compra, error: eCompra } = await supabase.from('compras').insert({
+    empresa_id: req.empresa.id, usuario_id: req.usuarioId,
+    producto_id: producto.id,
+    proveedor: proveedor.trim(),
+    cantidad: Number(cantidad),
+    precio_unitario: Number(precio_unitario),
+    notas: (notas || '').trim() || null,
+    estado: 'pendiente',
+    fecha_estimada_llegada: fechaEstimada
+  }).select().single();
+  if (eCompra) throw new Error(eCompra.message);
+
+  if (r.cambia) await costoCompra.aplicarCostoProducto({ productoId: producto.id, costo: r.costo, empresaId: req.empresa.id });
+
+  let recibida = false;
+  if (dias === 0) {
+    await recibirCompra(compra.id, req.empresa.id);
+    recibida = true;
+  }
+  res.status(201).json({
+    ...compra, estado: recibida ? 'recibida' : compra.estado,
+    costo_resultante: r.costo,
+    mensaje: recibida ? 'Compra registrada. El stock ya se sumó.' : `Pedido registrado. Se espera que llegue el ${fechaEstimada}.`
+  });
+}
+
 // POST /api/compras — registra el PEDIDO. El stock se suma cuando llega.
 router.post('/', async (req, res, next) => {
   try {
-    const { material_id, proveedor, cantidad, precio_unitario, notas } = req.body;
-    if (!material_id) return res.status(400).json({ error: 'Falta indicar el material' });
+    const { material_id, producto_id, proveedor, cantidad, precio_unitario, notas, decision_costo } = req.body;
+    if (!material_id && !producto_id) return res.status(400).json({ error: 'Falta indicar qué se compra' });
+    if (material_id && producto_id) return res.status(400).json({ error: 'Una compra es de un material o de un producto, no de ambos' });
     if (!proveedor || !proveedor.trim()) return res.status(400).json({ error: 'El proveedor es obligatorio' });
     if (!cantidad || isNaN(cantidad) || Number(cantidad) <= 0)
       return res.status(400).json({ error: 'La cantidad debe ser mayor a 0' });
     if (precio_unitario == null || isNaN(precio_unitario) || Number(precio_unitario) < 0)
       return res.status(400).json({ error: 'El precio unitario debe ser un número mayor o igual a 0' });
 
+    if (producto_id) return await comprarProducto(req, res);
+
     const { data: material, error: eGet } = await supabase
       .from('materiales').select('*').eq('id', material_id).eq('empresa_id', req.empresa.id).single();
     if (eGet || !material) return res.status(404).json({ error: 'Material no encontrado' });
+
+    const r = costoCompra.resolverCosto({
+      costoActual: material.costo_unitario, stockActual: material.stock_actual,
+      cantidad, precio: precio_unitario, decision: decision_costo
+    });
+    if (r.requiereDecision) return costoCompra.respuestaDecision(res, r.opciones, { articulo: material.nombre, unidad: material.unidad });
 
     const fechaEstimada = calcularFechaEstimada(material.tiempo_entrega_dias);
 
@@ -99,27 +200,16 @@ router.post('/', async (req, res, next) => {
       .select().single();
     if (eCompra) throw new Error(eCompra.message);
 
-    // El precio pagado se guarda en el historial de todas formas (es
-    // información del costo, independiente de si ya llegó físicamente)
-    const precioDiferente = Number(precio_unitario) !== Number(material.costo_unitario);
-    if (precioDiferente) {
-      const { error: eHist } = await supabase.from('materiales_historial_precio').insert({
-        empresa_id: req.empresa.id, usuario_id: req.usuarioId,
-        material_id,
-        costo_anterior: material.costo_unitario,
-        costo_nuevo: Number(precio_unitario),
-        origen: 'compra'
-      });
-      if (eHist) throw new Error(eHist.message);
-    }
+    // La persona decidió qué costo queda; si cambia, se recalculan sus productos
+    const productosRecalculados = r.cambia
+      ? await costoCompra.aplicarCostoMaterial({ material, costo: r.costo, empresaId: req.empresa.id, usuarioId: req.usuarioId })
+      : 0;
 
     res.status(201).json({
       ...compra,
-      mensaje: `Pedido registrado. Se espera que llegue el ${fechaEstimada}. El stock se sumará automáticamente ese día, o puedes marcarlo como "Llegó" antes si llega primero.`,
-      precio_diferente: precioDiferente,
-      sugerencia: precioDiferente
-        ? `Pagaste un precio distinto al costo registrado (${material.costo_unitario}). Si este es el nuevo precio normal, actualízalo en la pestaña Materiales.`
-        : null
+      costo_resultante: r.costo,
+      productos_recalculados: productosRecalculados,
+      mensaje: `Pedido registrado. Se espera que llegue el ${fechaEstimada}. El stock se sumará automáticamente ese día, o puedes marcarlo como "Llegó" antes si llega primero.`
     });
   } catch (err) { next(err); }
 });
@@ -138,7 +228,7 @@ router.get('/en-camino', async (req, res, next) => {
     await procesarComprasVencidas(req.empresa.id); // pone al día los que ya se vencieron
     const { data, error } = await supabase
       .from('compras')
-      .select('*, materiales(nombre, unidad)')
+      .select(SELECT_ARTICULO)
       .eq('empresa_id', req.empresa.id)
       .eq('estado', 'pendiente')
       .order('fecha_estimada_llegada', { ascending: true });
@@ -154,7 +244,7 @@ router.get('/historial', async (req, res, next) => {
 
     let consulta = supabase
       .from('compras')
-      .select('*, materiales(nombre, unidad)')
+      .select(SELECT_ARTICULO)
       .eq('empresa_id', req.empresa.id)
       .order('fecha', { ascending: false })
       .limit(200);
@@ -198,13 +288,17 @@ router.delete('/:id', async (req, res, next) => {
           empresaId: req.empresa.id, usuarioId: req.usuarioId,
           tipo: 'ajuste', origenTabla: 'compras', origenId: compra.id, motivo: motivoTexto,
           clave: `compra-eliminada:${compra.id}`,
-          movimientos: [{ material_id: compra.material_id, cantidad: -Number(compra.cantidad) }],
+          movimientos: [compra.producto_id
+            ? { producto_id: compra.producto_id, cantidad: -Number(compra.cantidad) }
+            : { material_id: compra.material_id, cantidad: -Number(compra.cantidad) }],
           permitirNegativo: !!req.body.forzar, detalleForzado: { confirmado: true }
         });
       }
       if (!resultado.ok) {
         return res.status(409).json({
-          error: 'Eliminar esta compra dejaría el material en negativo (ya se usó parte de lo comprado)',
+          error: compra.producto_id
+            ? 'Eliminar esta compra dejaría el producto en negativo (ya se vendió parte de lo comprado)'
+            : 'Eliminar esta compra dejaría el material en negativo (ya se usó parte de lo comprado)',
           faltantes: libro.faltantesLegibles(resultado.faltantes), puede_forzar: true
         });
       }

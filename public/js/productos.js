@@ -6,6 +6,7 @@ let categoriasDisponibles = [];   // categorías de producto del usuario (ej: "F
 let fichaEnEdicionUsaCosteoPorProcesos = false; // si true, "Materiales" es de solo lectura (viene de Procesos)
 let fichaEnEdicionTieneProcesos = false; // si true, "Minutos de fabricación" es de solo lectura (se derivan de Procesos)
 let minutosDerivadosActual = 0; // valor numérico de minutos cuando vienen derivados de procesos
+let tipoEnEdicion = 'fabricado';  // 'fabricado' (ficha técnica) o 'reventa' (se compra terminado)
 
 // ---- Categorías de producto ----
 async function cargarCategorias() {
@@ -102,12 +103,19 @@ let filasPorPaginaProductos = 12;
 async function cargarListaProductos() {
   const contenedor = document.getElementById('listaProductos');
   try {
-    const [productos, capacidad] = await Promise.all([
+    const [productos, capacidad, existencias] = await Promise.all([
       API.obtener('/api/productos'),
-      API.obtener('/api/inventario/capacidad')
+      API.obtener('/api/inventario/capacidad'),
+      API.obtener('/api/inventario/productos').catch(() => [])
     ]);
     capacidadPorProducto = new Map(capacidad.map(c => [c.id, c]));
+    const existenciasPorId = new Map(existencias.map(e => [e.producto_id, e]));
     productosEnMemoria = productos.map(p => {
+      // Reventa: su stock es lo que hay físicamente; fabricados: lo que se puede fabricar
+      if (p.tipo === 'reventa') {
+        const e = existenciasPorId.get(p.id) || {};
+        return { ...p, unidades_fabricables: Number(e.stock_actual || 0), stock_minimo: Number(e.stock_minimo || 0), material_limitante: null };
+      }
       const cap = capacidadPorProducto.get(p.id);
       return { ...p, unidades_fabricables: cap ? cap.unidades_fabricables : 0, material_limitante: cap ? cap.material_limitante : null };
     });
@@ -140,6 +148,7 @@ const UMBRAL_STOCK_BAJO_PRODUCTO = 10;
 function estadoStockProducto(p) {
   const u = Number(p.unidades_fabricables || 0);
   if (u <= 0) return 'sin';
+  if (p.tipo === 'reventa') return p.stock_minimo > 0 && u <= p.stock_minimo ? 'bajo' : 'ok';
   if (u < UMBRAL_STOCK_BAJO_PRODUCTO) return 'bajo';
   return 'ok';
 }
@@ -164,7 +173,7 @@ function pintarKpisProductos() {
     { icono: 'caja', color: 'azul', etiqueta: 'Total de productos', valor: String(total) },
     { icono: 'alerta', color: 'naranja', etiqueta: 'Productos con stock bajo', valor: String(stockBajo) },
     { icono: 'pausa', color: 'rosa', etiqueta: 'Productos sin stock', valor: String(sinStock) },
-    { icono: 'capas', color: 'morado', etiqueta: 'Valor fabricable hoy', valor: formatearPesos(valorFabricable) }
+    { icono: 'capas', color: 'morado', etiqueta: Negocio.revende() ? (Negocio.fabrica() ? 'Valor en stock' : 'Valor en existencias') : 'Valor fabricable hoy', valor: formatearPesos(valorFabricable) }
   ];
 
   contenedor.innerHTML = tarjetas.map(t => `
@@ -223,7 +232,7 @@ function pintarListaProductosFiltrada() {
 
 function renderizarVistaActual(lista) {
   if (productosEnMemoria.length === 0) {
-    document.getElementById('listaProductos').innerHTML = '<p class="tabla__vacio">Aún no hay productos. Crea la primera ficha técnica con el botón de arriba.</p>';
+    document.getElementById('listaProductos').innerHTML = '<p class="tabla__vacio">Aún no hay productos. Agrega el primero con el botón de arriba.</p>';
     document.getElementById('cuerpoTablaProductosLista').innerHTML = '<tr><td colspan="9" class="tabla__vacio">Aún no hay productos.</td></tr>';
     document.getElementById('paginacionProductos').innerHTML = '';
     return;
@@ -256,6 +265,11 @@ function claseEstadoProducto(p) {
   return e === 'ok' ? 'listo' : (e === 'bajo' ? 'pendiente' : 'critico');
 }
 
+// Solo se distingue cuando el negocio tiene productos de ambos tipos
+function etiquetaTipo(p) {
+  return p.tipo === 'reventa' && Negocio.fabrica() ? ' <span class="etiqueta-tipo">Reventa</span>' : '';
+}
+
 function pintarTarjetasProductos(lista) {
   const contenedor = document.getElementById('listaProductos');
   contenedor.innerHTML = lista.map(p => `
@@ -268,7 +282,7 @@ function pintarTarjetasProductos(lista) {
         <span class="texto-secundario" style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.55); color:#fff; padding:2px 8px; border-radius:999px; font-size:0.75rem;">Stock: ${Number(p.unidades_fabricables)}</span>
       </div>
       <div class="tarjeta-producto__cuerpo">
-        <h3>${escaparHtml(p.nombre)}</h3>
+        <h3>${escaparHtml(p.nombre)}${etiquetaTipo(p)}</h3>
         ${p.categorias_productos ? `<p class="texto-secundario" style="margin:-2px 0 6px">${escaparHtml(p.categorias_productos.nombre)}</p>` : ''}
         <p class="tarjeta-producto__precio">${formatearPesos(p.precio_venta)}</p>
         <p class="tarjeta-producto__margen ${p.margen_valor < 0 ? 'tarjeta-producto__margen--negativo' : ''}">
@@ -290,14 +304,14 @@ function pintarListaTablaProductos(lista) {
       <td>
         <span class="celda-cliente">
           ${p.foto_url ? `<img src="${escaparHtml(p.foto_url)}" class="miniatura" alt="">` : `<span class="miniatura miniatura--vacia"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8l9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>`}
-          <strong>${escaparHtml(p.nombre)}</strong>
+          <strong>${escaparHtml(p.nombre)}</strong>${etiquetaTipo(p)}
         </span>
       </td>
       <td>${p.categorias_productos ? escaparHtml(p.categorias_productos.nombre) : '—'}</td>
       <td>${formatearPesos(p.precio_venta)}</td>
       <td>${formatearPesos(p.costo_calculado)}</td>
       <td>${celdaStockProducto(p)}</td>
-      <td>${p.material_limitante ? escaparHtml(p.material_limitante.nombre) : '—'}</td>
+      <td class="solo-fabricacion">${p.material_limitante ? escaparHtml(p.material_limitante.nombre) : '—'}</td>
       <td>${p.actualizado_en ? new Date(p.actualizado_en).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</td>
       <td><span class="etiqueta-estado etiqueta-estado--${claseEstadoProducto(p)}">${etiquetaEstadoProducto(p)}</span></td>
       <td>${accionesProductoLista(p)}</td>
@@ -402,9 +416,69 @@ async function subirFotoProducto() {
   }
 }
 
-async function abrirFichaProducto(id) {
+// "Agregar producto": según el negocio, ficha técnica, reventa o se pregunta
+function nuevoProducto() {
+  const m = Negocio.modelo();
+  if (m.fabricacion && m.reventa) { document.getElementById('modalTipoProducto').hidden = false; return; }
+  abrirFichaProducto(null, m.reventa ? 'reventa' : 'fabricado');
+}
+
+function elegirTipoProducto(tipo) {
+  document.getElementById('modalTipoProducto').hidden = true;
+  abrirFichaProducto(null, tipo);
+}
+
+function mostrarModoProducto(esReventa, editando) {
+  document.getElementById('bloqueFabricacion').hidden = esReventa;
+  document.getElementById('campoMinutosEtiqueta').hidden = esReventa;
+  document.getElementById('bloqueReventa').hidden = !esReventa;
+  document.getElementById('campoCostoCompraEtiqueta').hidden = !esReventa;
+  document.getElementById('bloqueReventaInicial').hidden = !esReventa || editando;
+  document.getElementById('bloqueStockActual').hidden = !esReventa || !editando;
+  document.getElementById('botonConvertirFabricado').hidden = !esReventa || !editando;
+}
+
+function calcularMargenReventa() {
+  if (tipoEnEdicion !== 'reventa') return;
+  const costo = Number(document.getElementById('campoCostoCompra').value || 0);
+  const precio = Number(document.getElementById('campoPrecioVenta').value || 0);
+  const ganancia = precio - costo;
+  const elemento = document.getElementById('resumenGananciaReventa');
+  elemento.textContent = formatearPesos(ganancia);
+  elemento.style.color = ganancia < 0 ? 'var(--t-peligro)' : '';
+  document.getElementById('resumenMargenReventa').textContent = precio > 0 ? `${(ganancia / precio * 100).toFixed(1)}%` : '0%';
+}
+
+async function abrirFichaReventa(p) {
+  tipoEnEdicion = 'reventa';
+  await cargarCategorias();
+  document.getElementById('tituloFicha').textContent = p ? 'Editar producto' : 'Nuevo producto para revender';
+  document.getElementById('campoProductoId').value = p ? p.id : '';
+  document.getElementById('campoNombreProducto').value = p ? p.nombre : '';
+  document.getElementById('campoFoto').value = p ? (p.foto_url || '') : '';
+  document.getElementById('campoFotoArchivo').value = '';
+  document.getElementById('previsualizacionFoto').innerHTML = p && p.foto_url
+    ? `<img src="${escaparHtml(p.foto_url)}" class="previsualizacion-foto__imagen" alt="Foto actual">` : '';
+  document.getElementById('campoPrecioVenta').value = p ? p.precio_venta : '';
+  document.getElementById('campoCostoCompra').value = p ? p.costo_calculado : '';
+  document.getElementById('campoStockMinimo').value = p ? (p.stock_minimo || 0) : 0;
+  document.getElementById('campoStockInicial').value = 0;
+  document.getElementById('campoProveedorReventa').value = '';
+  document.getElementById('textoStockActual').textContent = p ? Number(p.unidades_fabricables || 0).toLocaleString('es-CO') : '0';
+  pintarSelectorCategoria(p ? (p.categoria_id || '') : '');
+  mostrarModoProducto(true, !!p);
+  calcularMargenReventa();
+  document.getElementById('modalProducto').hidden = false;
+  document.getElementById('campoNombreProducto').focus();
+}
+
+async function abrirFichaProducto(id, tipoNuevo) {
   const modal = document.getElementById('modalProducto');
   const titulo = document.getElementById('tituloFicha');
+  const existente = id ? productosEnMemoria.find(x => x.id === id) : null;
+  if ((existente && existente.tipo === 'reventa') || (!id && tipoNuevo === 'reventa')) return abrirFichaReventa(existente);
+  tipoEnEdicion = 'fabricado';
+  mostrarModoProducto(false, !!id);
 
   // Pide los precios actuales de materiales UNA sola vez (para calcular en vivo sin más llamadas)
   try {
@@ -580,8 +654,58 @@ function simularCambioPrecio(nuevoPrecio) {
 }
 
 // ---- Guardar (crear o editar) ----
+async function guardarReventa(id) {
+  const nombre = document.getElementById('campoNombreProducto').value.trim();
+  const categoria = document.getElementById('selectorCategoriaProducto').value;
+  const costo = document.getElementById('campoCostoCompra').value;
+  const precio = document.getElementById('campoPrecioVenta').value;
+  if (!nombre) { mostrarAviso('El nombre del producto es obligatorio', 'error'); return; }
+  if (!categoria || categoria === '__nueva__') { mostrarAviso('Elige una categoría', 'error'); return; }
+  if (costo === '' || Number(costo) < 0) { mostrarAviso('Escribe el costo de compra', 'error'); return; }
+  if (precio === '' || Number(precio) < 0) { mostrarAviso('Escribe el precio de venta', 'error'); return; }
+
+  const datos = {
+    tipo: 'reventa', nombre, categoria_id: categoria,
+    foto_url: document.getElementById('campoFoto').value,
+    costo_compra: Number(costo), precio_venta: Number(precio),
+    stock_minimo: Number(document.getElementById('campoStockMinimo').value || 0)
+  };
+  if (!id) {
+    datos.stock_inicial = Number(document.getElementById('campoStockInicial').value || 0);
+    datos.proveedor = document.getElementById('campoProveedorReventa').value.trim();
+  }
+  const boton = document.getElementById('botonGuardarProducto');
+  boton.disabled = true;
+  try {
+    if (id) await API.actualizar(`/api/productos/${id}`, datos);
+    else await API.enviar('/api/productos', datos);
+    mostrarAviso(id ? 'Producto actualizado' : 'Producto agregado');
+    cerrarFichaProducto();
+    cargarListaProductos();
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  } finally {
+    boton.disabled = false;
+  }
+}
+
+// Un producto de reventa pasa a fabricarse: se abre su ficha técnica
+async function convertirEnFabricado() {
+  const id = document.getElementById('campoProductoId').value;
+  if (!id || !confirm('Este producto pasará a fabricarse. Conserva su stock, ventas e historial; luego agrégale su receta.')) return;
+  try {
+    await API.actualizar(`/api/productos/${id}/tipo`, { tipo: 'fabricado' });
+    cerrarFichaProducto();
+    await cargarListaProductos();
+    abrirFichaProducto(id);
+  } catch (err) {
+    mostrarAviso(err.message, 'error');
+  }
+}
+
 async function guardarProducto() {
   const id = document.getElementById('campoProductoId').value;
+  if (tipoEnEdicion === 'reventa') return guardarReventa(id);
   const nombre = document.getElementById('campoNombreProducto').value;
   const precioVenta = document.getElementById('campoPrecioVenta').value;
 
@@ -640,6 +764,19 @@ async function eliminarProducto(id) {
 async function verDesglose(id) {
   const modal = document.getElementById('modalDesglose');
   const contenido = document.getElementById('contenidoDesglose');
+  const p = productosEnMemoria.find(x => x.id === id);
+  if (p && p.tipo === 'reventa') {
+    document.getElementById('tituloDesglose').textContent = p.nombre;
+    contenido.innerHTML = `
+      <section class="tarjeta tarjeta--resumen">
+        <div><span class="campo__etiqueta">Costo de compra</span><strong>${formatearPesos(p.costo_calculado)}</strong></div>
+        <div><span class="campo__etiqueta">Precio de venta</span><strong>${formatearPesos(p.precio_venta)}</strong></div>
+        <div><span class="campo__etiqueta">Ganancia</span><strong>${formatearPesos(p.margen_valor)} (${p.margen_porcentaje}%)</strong></div>
+        <div><span class="campo__etiqueta">Existencias</span><strong>${Number(p.unidades_fabricables).toLocaleString('es-CO')}</strong></div>
+      </section>`;
+    modal.hidden = false;
+    return;
+  }
   contenido.innerHTML = '<p>Cargando…</p>';
   modal.hidden = false;
 
@@ -718,6 +855,8 @@ async function resolverConflictoMaterial(productoId, usarProcesos) {
     mostrarAviso(err.message, 'error');
   }
 }
+
+document.addEventListener('negocio:cambio', () => { if (productosEnMemoria.length) { pintarKpisProductos(); buscarProductos(); } });
 
 document.addEventListener('DOMContentLoaded', () => {
   cargarPrecioHora();

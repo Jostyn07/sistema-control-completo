@@ -10,13 +10,14 @@
 const TITULO = 'Inventario';
 
 const PARA_QUE_SIRVE =
-  'Usa este archivo para registrar de una sola vez varias entradas, salidas o ajustes de stock de tus materiales ' +
+  'Usa este archivo para registrar de una sola vez varias entradas, salidas o ajustes de stock de tus materiales o productos ' +
   '(por ejemplo, tu inventario inicial o los resultados de un conteo físico).';
 
 const TIPOS_VALIDOS = ['ENTRADA', 'SALIDA', 'AJUSTE'];
 
 const ADVERTENCIAS = [
-  'Este archivo NO crea materiales nuevos: el "Código material" debe existir ya (en la plataforma o en 01_Materiales.xlsx importado antes que este).',
+  'Este archivo NO crea materiales ni productos: el "Código material" o el "Código producto" debe existir ya.',
+  'Cada fila lleva "Código material" O "Código producto", nunca los dos.',
   'ENTRADA y SALIDA: la Cantidad siempre se escribe en positivo — el sistema suma o resta sola según el Tipo.',
   'AJUSTE: la Cantidad es la diferencia a corregir (puede ser negativa), no el stock final. Ej: -5 significa "el conteo dio 5 menos de lo que había".',
   'Ninguna fila puede dejar el stock de un material en negativo — esas filas quedan marcadas con error y no se importan.',
@@ -35,9 +36,16 @@ const COLUMNAS = [
   {
     clave: 'codigo_material',
     encabezado: 'Código material',
-    obligatorio: true,
-    descripcion: 'Código del material (de 01_Materiales.xlsx) al que aplica este movimiento.',
+    obligatorio: false,
+    descripcion: 'Código del material (de 01_Materiales.xlsx). Vacío si es un producto.',
     ejemplo: 'MAT001'
+  },
+  {
+    clave: 'codigo_producto',
+    encabezado: 'Código producto',
+    obligatorio: false,
+    descripcion: 'Código del producto (de 02_Productos.xlsx). Vacío si es un material.',
+    ejemplo: ''
   },
   {
     clave: 'tipo',

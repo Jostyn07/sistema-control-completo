@@ -43,7 +43,9 @@ async function exportarInventario(empresaId) {
       const cantidad = tipo === 'AJUSTE'
         ? Math.round((Number(a.stock_nuevo) - Number(a.stock_anterior)) * 10000) / 10000
         : Math.abs(Math.round((Number(a.stock_nuevo) - Number(a.stock_anterior)) * 10000) / 10000);
-      return [new Date(a.fecha).toLocaleDateString('es-CO'), a.materiales.codigo, tipo, cantidad, motivo];
+      const valores = { fecha: new Date(a.fecha).toLocaleDateString('es-CO'), codigo_material: a.materiales.codigo,
+        codigo_producto: '', tipo, cantidad, motivo };
+      return COLUMNAS.map((col) => valores[col.clave] ?? '');
     });
 
   return crearLibro({ titulo: TITULO, paraQueSirve: PARA_QUE_SIRVE, columnas: COLUMNAS, filas, advertencias: ADVERTENCIAS });

@@ -20,8 +20,8 @@ const PASOS_PROGRESIVOS = {
       texto: 'Si tienes muchos materiales, puedes cargarlos todos desde Excel en vez de uno por uno.' }
   ],
   productos: [
-    { selector: '[onclick="abrirFichaProducto()"]', titulo: 'Nueva ficha técnica',
-      texto: 'Aquí creas un producto: nombre, categoría, precio, tiempo de fabricación y los materiales que necesita.' },
+    { selector: '[onclick="nuevoProducto()"]', titulo: 'Agregar producto',
+      texto: 'Aquí creas un producto: si lo fabricas, con su receta de materiales; si lo compras para revender, con su costo de compra y existencias.' },
     { selector: '[onclick="abrirPrecioHora()"]', titulo: 'Precio de tu hora de trabajo',
       texto: 'Este valor se usa para calcular el costo de mano de obra de TODOS tus productos — cámbialo aquí una sola vez.' },
     { selector: 'a[href="./importar-exportar.html"]', titulo: 'Cargar muchos de una vez',
@@ -41,7 +41,7 @@ const PASOS_PROGRESIVOS = {
   ],
   compras: [
     { selector: '[onclick="abrirFormularioCompra()"]', titulo: 'Registrar una compra',
-      texto: 'Registra un pedido a un proveedor. El stock se suma solo cuando confirmes que llegó.' },
+      texto: 'Registra lo que le compraste a un proveedor. El stock se suma cuando llegue.' },
     { selector: 'a[href="./importar-exportar.html"]', titulo: 'Cargar muchas de una vez',
       texto: 'Sube tu historial de compras (o pedidos nuevos) desde Excel.' }
   ],
@@ -69,10 +69,15 @@ const PASOS_PROGRESIVOS = {
   ]
 };
 
-function iniciarRecorridoProgresivoSiPrimeraVez(clave, intentosRestantes = 5) {
-  const pasos = PASOS_PROGRESIVOS[clave];
-  if (!pasos) return;
+// Solo cuentan los pasos cuyo elemento se ve (p. ej. sin "Precio de hora"
+// ni la vista de materiales para quien no fabrica)
+function elementoVisible(selector) {
+  const el = selector && document.querySelector(selector);
+  return !!el && el.getClientRects().length > 0;
+}
 
+function iniciarRecorridoProgresivoSiPrimeraVez(clave, intentosRestantes = 5) {
+  if (!PASOS_PROGRESIVOS[clave]) return;
   const llave = `recorrido_progresivo_${clave}`;
   if (localStorage.getItem(llave)) return;
 
@@ -80,11 +85,10 @@ function iniciarRecorridoProgresivoSiPrimeraVez(clave, intentosRestantes = 5) {
   // datos (evita que el recorrido arranque sobre una pantalla vacía
   // mientras todavía se está cargando la lista).
   setTimeout(() => {
-    // Si el elemento del primer paso ni siquiera existe todavía, se
-    // reintenta unas pocas veces más tarde en vez de mostrar el
-    // recorrido "flotando" sin nada que resaltar, o de insistir para siempre.
-    const primerPaso = pasos[0];
-    if (primerPaso.selector && !document.querySelector(primerPaso.selector)) {
+    const pasos = PASOS_PROGRESIVOS[clave].filter(p => !p.selector || elementoVisible(p.selector));
+    // Si todavía no se ve nada que resaltar, se reintenta unas pocas
+    // veces en vez de mostrar el recorrido "flotando" o insistir para siempre.
+    if (!pasos.some(p => p.selector)) {
       if (intentosRestantes > 0) setTimeout(() => iniciarRecorridoProgresivoSiPrimeraVez(clave, intentosRestantes - 1), 800);
       return;
     }

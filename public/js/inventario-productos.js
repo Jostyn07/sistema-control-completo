@@ -85,9 +85,11 @@ function pintarProductosStock() {
       ? `<span class="semaforo semaforo--${p.estado}"></span>`
       : '<span class="texto-secundario">—</span>';
     const valor = p.valor_inventario !== undefined && p.controla_stock ? formatearPesos(p.valor_inventario) : '—';
-    const acciones = p.controla_stock ? `
-        <button type="button" class="boton boton--pequeno boton--primario" onclick="abrirMovProducto('${p.producto_id}','ingreso')">Ingresar</button>
-        <button type="button" class="boton boton--pequeno" onclick="abrirMovProducto('${p.producto_id}','reventa')">Compra reventa</button>
+    const esReventa = p.tipo === 'reventa';
+    const acciones = p.controla_stock ? (esReventa
+      ? `<button type="button" class="boton boton--pequeno boton--primario" onclick="abrirMovProducto('${p.producto_id}','reventa')">Registrar compra</button>`
+      : `<button type="button" class="boton boton--pequeno boton--primario" onclick="abrirMovProducto('${p.producto_id}','ingreso')">Ingresar</button>
+        <button type="button" class="boton boton--pequeno" onclick="abrirMovProducto('${p.producto_id}','reventa')">Compra reventa</button>`) + `
         <button type="button" class="boton boton--pequeno" onclick="abrirMovProducto('${p.producto_id}','salida')">Salida</button>
         <button type="button" class="boton boton--pequeno" onclick="abrirMovProducto('${p.producto_id}','ajuste')">Ajustar</button>
         <button type="button" class="boton boton--pequeno" onclick="verHistorialProducto('${p.producto_id}')">Historial</button>
@@ -114,7 +116,8 @@ function abrirMovProducto(id, tipo) {
   document.getElementById('botonMovProducto').textContent = 'Guardar';
   document.getElementById('campoMovProductoId').value = id;
   document.getElementById('campoMovTipo').value = tipo;
-  document.getElementById('tituloMovProducto').textContent = `${TITULOS_MOV[tipo]} · ${p.nombre}`;
+  const titulo = tipo === 'reventa' && p.tipo === 'reventa' ? 'Registrar compra' : TITULOS_MOV[tipo];
+  document.getElementById('tituloMovProducto').textContent = `${titulo} · ${p.nombre}`;
   document.getElementById('textoMovStock').textContent = `Stock actual: ${p.stock_actual}`;
   document.getElementById('etiquetaMovCantidad').textContent = tipo === 'ajuste' ? 'Cantidad real contada *' : 'Cantidad *';
   document.getElementById('etiquetaMovMotivo').textContent = (tipo === 'salida' || tipo === 'ajuste') ? 'Motivo *' : 'Motivo';
@@ -178,7 +181,11 @@ async function confirmarMovProducto(forzar = false) {
   const boton = document.getElementById('botonMovProducto');
   boton.disabled = true;
   try {
-    const r = await API.enviar(`/api/inventario/productos/${id}/${ruta}`, cuerpo);
+    const url = `/api/inventario/productos/${id}/${ruta}`;
+    const r = tipo === 'reventa'
+      ? await conDecisionCosto(d => API.enviar(url, { ...cuerpo, decision_costo: d }))
+      : await API.enviar(url, cuerpo);
+    if (!r) return; // canceló la decisión de costo
     if (r.sin_cambios) mostrarAviso('El stock ya tenía ese valor');
     else mostrarAviso(r.forzada ? `Guardado. El stock quedó en ${r.stock_nuevo}` : `Listo. Stock: ${r.stock_nuevo}`, r.forzada ? 'error' : 'ok');
     cerrarMovProducto();
@@ -280,5 +287,7 @@ async function verHistorialProducto(id) {
 document.addEventListener('DOMContentLoaded', () => {
   let vista = 'materiales';
   try { vista = localStorage.getItem('inventario_vista') || 'materiales'; } catch {}
+  // Sin fabricación no hay materiales: se abre en productos
+  if (vista === 'materiales' && typeof Negocio !== 'undefined' && !Negocio.fabrica()) vista = 'productos';
   if (vista === 'productos' || vista === 'historial') cambiarVistaInventario(vista);
 });

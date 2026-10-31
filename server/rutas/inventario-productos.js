@@ -6,7 +6,7 @@
 //  PUT  /:id/config             controla_stock, stock_minimo, politica_descuento, recordar_decision
 //  POST /:id/vista-previa       { cantidad }  qué materiales o etapa final consumiría
 //  POST /:id/ingreso            { cantidad, descontar_materiales?, recordar?, forzar?, motivo?, clave? }
-//  POST /:id/compra-reventa     { cantidad, costo_unitario, proveedor, clave? }
+//  POST /:id/compra-reventa     { cantidad, costo_unitario, proveedor, decision_costo?, clave? }
 //  POST /:id/salida             { cantidad, motivo, forzar?, clave? }   (inventario.editar)
 //  POST /:id/ajuste             { cantidad_nueva, motivo, clave? }      (inventario.editar)
 //  GET  /:id/movimientos        últimos 100 movimientos del producto
@@ -21,6 +21,7 @@ const requierePermiso = require('../middleware/permissions');
 const libro = require('../servicios/inventario/libro');
 const { redondear } = require('../servicios/inventario/nucleo');
 const fabricacion = require('../servicios/inventario/fabricacion');
+const costoCompra = require('../servicios/costo-compra');
 const router = express.Router();
 
 const POLITICAS = ['preguntar', 'automatico', 'no_descontar'];
@@ -34,7 +35,7 @@ function estadoStock(stock, minimo, controla) {
 
 async function productoDeEmpresa(id, empresaId) {
   const { data } = await supabase.from('productos')
-    .select('id, nombre, costo_calculado, precio_venta, activo')
+    .select('id, nombre, tipo, costo_calculado, precio_venta, activo')
     .eq('id', id).eq('empresa_id', empresaId).maybeSingle();
   return data;
 }
@@ -67,7 +68,7 @@ async function costoPromedioDeIngresos(empresaId) {
 router.get('/', async (req, res, next) => {
   try {
     const [{ data: productos, error: eP }, { data: configs, error: eC }, promedios] = await Promise.all([
-      supabase.from('productos').select('id, nombre, costo_calculado, precio_venta, activo, categorias_productos(nombre)')
+      supabase.from('productos').select('id, nombre, tipo, costo_calculado, precio_venta, activo, categorias_productos(nombre)')
         .eq('empresa_id', req.empresa.id).order('nombre'),
       supabase.from('inventario_productos').select('*').eq('empresa_id', req.empresa.id),
       costoPromedioDeIngresos(req.empresa.id)
@@ -84,6 +85,7 @@ router.get('/', async (req, res, next) => {
       return {
         producto_id: p.id,
         nombre: p.nombre,
+        tipo: p.tipo || 'fabricado',
         categoria: p.categorias_productos ? p.categorias_productos.nombre : null,
         activo: p.activo,
         controla_stock: controla,
@@ -239,6 +241,19 @@ router.post('/:id/compra-reventa', async (req, res, next) => {
     if (!Number.isFinite(costo) || costo < 0) return res.status(400).json({ error: 'El costo unitario debe ser 0 o más' });
     const proveedor = (req.body.proveedor || '').trim();
     if (!proveedor) return res.status(400).json({ error: 'El proveedor es obligatorio' });
+
+    // Solo los de reventa tienen costo de compra; decide la persona si difiere
+    let decision = null;
+    if (producto.tipo === 'reventa') {
+      decision = costoCompra.resolverCosto({
+        costoActual: producto.costo_calculado, stockActual: await costoCompra.stockDeProducto(producto.id, req.empresa.id),
+        cantidad, precio: costo, decision: req.body.decision_costo
+      });
+      if (decision.requiereDecision) return costoCompra.respuestaDecision(res, decision.opciones, { articulo: producto.nombre });
+    }
+    if (decision && decision.cambia) {
+      await costoCompra.aplicarCostoProducto({ productoId: producto.id, costo: decision.costo, empresaId: req.empresa.id });
+    }
     await mover(req, res, {
       tipo: 'compra_reventa', prefijoClave: 'reventa',
       motivo: `Compra para reventa a ${proveedor.slice(0, 120)}`,
