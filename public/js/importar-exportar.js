@@ -465,8 +465,21 @@ function cerrarModalModoGuardado() {
 }
 
 async function ejecutarImportacion(reemplazar) {
-  if (reemplazar && BORRAN_HISTORIAL.includes(moduloActualExcel.clave)
-    && !confirm(`Se borrará la información actual de ${moduloActualExcel.nombre} y no se puede deshacer. ¿Continuar?`)) return;
+  if (reemplazar) {
+    if (BORRAN_HISTORIAL.includes(moduloActualExcel.clave)
+      && !confirm(`Se borrará la información actual de ${moduloActualExcel.nombre} y no se puede deshacer. ¿Continuar?`)) return;
+    try {
+      const { desactivaria } = await API.enviar(`/api/excel/${moduloActualExcel.clave}/importar`,
+        { filas: filasParaImportar(), solo_contar: true, reemplazar: true });
+      if (desactivaria > 0) {
+        const escrito = prompt(`Se desactivarán ${desactivaria} registros de ${moduloActualExcel.nombre} que no están en el Excel.\nEscribe ${desactivaria} para confirmar:`);
+        if (String(escrito || '').trim() !== String(desactivaria)) return;
+      }
+    } catch (err) {
+      mostrarAviso(err.message, 'error');
+      return;
+    }
+  }
   cerrarModalModoGuardado();
   const boton = document.getElementById('botonConfirmarImportacion');
   boton.disabled = true;

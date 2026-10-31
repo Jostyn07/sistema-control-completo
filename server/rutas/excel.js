@@ -304,6 +304,10 @@ router.post('/:modulo/importar', async (req, res, next) => {
 
     // "Reemplazar" (true) o "Sumar" (false, lo de siempre).
     const reemplazar = opciones.reemplazar === true;
+    // Solo cuenta lo que haría "Reemplazar", sin guardar nada.
+    if (opciones.solo_contar === true) {
+      return res.json(await reemplazo.contarAfectados(req.params.modulo, req.empresa.id, filas));
+    }
     const clave = req.params.modulo;
     const previo = reemplazar ? await reemplazo.antesDeImportar(clave, req.empresa.id, filas) : null;
     const resultado = await modulo.importar(req.empresa.id, filas, opciones);

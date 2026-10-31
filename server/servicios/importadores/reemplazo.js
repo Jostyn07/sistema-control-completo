@@ -94,4 +94,10 @@ async function despuesDeImportar(modulo, empresaId, previo) {
 // Módulos donde "Reemplazar" borra historial (el front pide confirmación extra).
 const BORRAN_HISTORIAL = ['compras', 'ventas', 'facturacion', 'finanzas', 'nominas'];
 
-module.exports = { antesDeImportar, despuesDeImportar, BORRAN_HISTORIAL };
+// Para preguntar antes: cuántos registros desactivaría "Reemplazar".
+async function contarAfectados(modulo, empresaId, filas) {
+  const pendientes = await registrosFaltantes(modulo, empresaId, filas);
+  return { desactivaria: pendientes.length };
+}
+
+module.exports = { antesDeImportar, despuesDeImportar, contarAfectados, BORRAN_HISTORIAL };
