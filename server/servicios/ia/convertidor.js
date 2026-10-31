@@ -198,6 +198,60 @@ function transformar(valorCrudo, valorVisto, regla) {
   }
 }
 
+// La IA a veces nombra bien la columna pero se equivoca de índice (o
+// no ve una columna que se llama igual que en la plantilla). Aquí se
+// corrige con los encabezados reales del archivo, sin IA.
+function normalizarEncabezado(v) {
+  return String(v == null ? '' : v).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function corregirMapeoPorEncabezados(hojasOrigen, mapeo) {
+  const esquema = esquemaDe(mapeo.modulo);
+  const porNombre = new Map(hojasOrigen.map(h => [h.nombre, h]));
+  for (const regla of mapeo.hojas || []) {
+    const destino = esquema.find(d => d.hoja === regla.hoja_destino);
+    const origen = porNombre.get(regla.hoja_origen);
+    if (!destino || !origen) continue;
+    const esperados = new Map(destino.columnas.map(c => [normalizarEncabezado(c.encabezado), c]));
+
+    // Fila de encabezado: la que más coincide con la plantilla (si coinciden 2 o más).
+    let mejorFila = 0, mejorCoincidencias = 1;
+    origen.vistas.slice(0, FILAS_CABECERA + 1).forEach((fila, i) => {
+      const n = fila.filter(v => esperados.has(normalizarEncabezado(v))).length;
+      if (n > mejorCoincidencias) { mejorCoincidencias = n; mejorFila = i + 1; }
+    });
+    if (mejorFila) {
+      regla.fila_encabezado = mejorFila;
+      if (!(Number(regla.fila_inicio_datos) > mejorFila)) regla.fila_inicio_datos = mejorFila + 1;
+    }
+    const filaEnc = origen.vistas[(Number(regla.fila_encabezado) || 0) - 1];
+    if (!filaEnc) continue;
+    const indicePorEncabezado = new Map();
+    filaEnc.forEach((v, i) => {
+      const k = normalizarEncabezado(v);
+      if (k && !indicePorEncabezado.has(k)) indicePorEncabezado.set(k, i);
+    });
+
+    regla.columnas = regla.columnas || [];
+    for (const r of regla.columnas) {
+      if (r.transformacion === 'valor_fijo') continue;
+      const idx = indicePorEncabezado.get(normalizarEncabezado(r.encabezado_origen));
+      if (idx != null) r.columna_indice = idx;
+    }
+    // Columnas que se llaman exactamente como en la plantilla mandan sobre la IA.
+    for (const col of destino.columnas) {
+      const idx = indicePorEncabezado.get(normalizarEncabezado(col.encabezado));
+      if (idx == null) continue;
+      const r = regla.columnas.find(c => c.clave === col.clave);
+      const transformacion = r && r.transformacion !== 'valor_fijo' ? r.transformacion : 'ninguna';
+      const corregida = { clave: col.clave, columna_indice: idx, encabezado_origen: String(filaEnc[idx]), transformacion, valor_fijo: '' };
+      if (r) Object.assign(r, corregida); else regla.columnas.push(corregida);
+    }
+  }
+  return mapeo;
+}
+
 // Devuelve [{ hoja, columnas, filas }] en el orden de la plantilla
 function aplicarMapeo(hojasOrigen, mapeo) {
   const esquema = esquemaDe(mapeo.modulo);
@@ -268,6 +322,7 @@ async function convertirConIA({ buffer, modulo }) {
   const ia = await pedirMapeo({ hojas, modulo });
   const mapeo = ia.json;
   if (modulo !== 'auto') mapeo.modulo = modulo; // el usuario manda
+  corregirMapeoPorEncabezados(hojas, mapeo);
   const hojasDestino = aplicarMapeo(hojas, mapeo);
   const filasConvertidas = hojasDestino.reduce((s, h) => s + h.filas.length, 0);
   if (filasConvertidas === 0) throw new ErrorConversion('No se encontraron filas con datos que correspondan a este módulo. Revisa que elegiste el módulo correcto.');
@@ -286,5 +341,5 @@ async function convertirConIA({ buffer, modulo }) {
 module.exports = {
   convertirConIA, ErrorConversion,
   // para pruebas
-  _interno: { leerLibroCrudo, muestraParaIA, aplicarMapeo, aNumeroTexto, aFechaTexto, aSiNo, construirLibro, esquemaRespuesta }
+  _interno: { corregirMapeoPorEncabezados, leerLibroCrudo, muestraParaIA, aplicarMapeo, aNumeroTexto, aFechaTexto, aSiNo, construirLibro, esquemaRespuesta }
 };

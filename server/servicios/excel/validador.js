@@ -19,10 +19,24 @@ function aTextoLimpio(valor) {
 }
 
 // undefined = no es un número válido
+// Acepta celdas con formato de moneda o miles: "$70", "$1,700",
+// "1.700", "$ 1.234,50", "3,5". El lector entrega el texto tal como se
+// ve en Excel, así que el formato de la celda no debe romper el número.
 function aNumero(valor) {
+  if (typeof valor === 'number') return valor;
   const texto = aTextoLimpio(valor);
   if (texto === '') return null;
-  const numero = Number(texto.replace(',', '.'));
+  let t = texto.replace(/\s/g, '').replace(/^\((.*)\)$/, '-$1').replace(/[$€£]|COP|USD/gi, '');
+  if (!/^-?[\d.,]+$/.test(t)) return undefined;
+  const ultimoPunto = t.lastIndexOf('.'), ultimaComa = t.lastIndexOf(',');
+  if (ultimoPunto > -1 && ultimaComa > -1) {
+    t = ultimaComa > ultimoPunto ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '');
+  } else if (ultimaComa > -1) {
+    t = /^-?[1-9]\d{0,2}(,\d{3})+$/.test(t) ? t.replace(/,/g, '') : t.replace(',', '.');
+  } else if (ultimoPunto > -1 && /^-?[1-9]\d{0,2}(\.\d{3})+$/.test(t)) {
+    t = t.replace(/\./g, '');
+  }
+  const numero = Number(t);
   return isNaN(numero) ? undefined : numero;
 }
 
