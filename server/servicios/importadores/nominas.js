@@ -7,6 +7,7 @@
 //   procesos pendientes — ver definiciones/nominas.js.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { mapaCodigoONombre } = require('./buscador');
 const { usuarioActual } = require('../../contexto');
 const { leerHoja } = require('../excel/lector');
 const {
@@ -26,9 +27,9 @@ function extraer(filaExcel, mapaClaves) {
 
 async function obtenerColaboradoresPorCodigo(empresaId) {
   const { data, error } = await supabase
-    .from('colaboradores').select('id, codigo, nombre').eq('empresa_id', empresaId).not('codigo', 'is', null);
+    .from('colaboradores').select('id, codigo, nombre').eq('empresa_id', empresaId);
   if (error) throw new Error(error.message);
-  return new Map((data || []).map((c) => [c.codigo.toLowerCase(), c]));
+  return mapaCodigoONombre(data);
 }
 
 async function obtenerProcesosPorCodigo(empresaId) {
@@ -74,7 +75,7 @@ async function analizarNominas(buffer, empresaId) {
       codigosVistos.add(clave);
     }
 
-    const existente = codigo ? colaboradoresPorCodigo.get(codigo.toLowerCase()) : null;
+    const existente = (codigo && colaboradoresPorCodigo.get(codigo)) || (datos.nombre ? colaboradoresPorCodigo.get(datos.nombre) : null) || null;
     const accion = existente ? 'actualizar' : 'crear';
 
     if (errores.length) resumenColaboradores.errores++;

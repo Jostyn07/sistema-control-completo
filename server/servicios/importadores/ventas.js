@@ -12,6 +12,7 @@
 //   - consumirWIPYGenerarNecesidad      → productos con Procesos activos
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { mapaCodigoONombre } = require('./buscador');
 const { aplicarOperacion } = require('../inventario/nucleo');
 const log = require('../../seguridad/log');
 const { usuarioActual } = require('../../contexto');
@@ -36,9 +37,9 @@ function extraer(filaExcel, mapaClaves) {
 async function obtenerProductosPorCodigo(empresaId) {
   const { data, error } = await supabase
     .from('productos').select('id, codigo, nombre, precio_venta, costo_calculado, activo, categoria_id')
-    .eq('empresa_id', empresaId).not('codigo', 'is', null);
+    .eq('empresa_id', empresaId);
   if (error) throw new Error(error.message);
-  return new Map((data || []).map((p) => [p.codigo.toLowerCase(), p]));
+  return mapaCodigoONombre(data);
 }
 
 async function siguienteCodigoDisponible(empresaId) {

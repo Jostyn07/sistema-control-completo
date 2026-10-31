@@ -16,20 +16,36 @@ const supabase = require('../../supabase/cliente');
 
 const texto = (v) => String(v ?? '').trim().toUpperCase();
 
-function codigosDe(filas, campo = 'codigo') {
-  return new Set((filas || []).map((f) => texto(f[campo])).filter(Boolean));
+// Cada catálogo: tabla, lista de filas dentro de lo que llega a /importar,
+// campo que identifica la fila existente y campo de texto para comparar.
+const CATALOGOS = {
+  materiales: { tabla: 'materiales', filas: (f) => f, id: 'material_id', campo: 'codigo' },
+  productos: { tabla: 'productos', filas: (f) => f, id: 'producto_id', campo: 'codigo' },
+  procesos: { tabla: 'procesos', filas: (f) => f, id: 'proceso_id', campo: 'codigo' },
+  nominas: { tabla: 'colaboradores', filas: (f) => f.filas_colaboradores, id: 'colaborador_id', campo: 'codigo' },
+  finanzas: { tabla: 'costos_fijos', filas: (f) => f.filas_costos_fijos, id: 'costo_fijo_id', campo: 'nombre' }
+};
+
+// ANTES de importar: qué registros activos actuales NO vienen en el Excel
+// (ni por id ni por código/nombre). Los creados por la importación no
+// existen todavía, así que nunca quedan en esta lista.
+async function registrosFaltantes(modulo, empresaId, filasImportar) {
+  const cat = CATALOGOS[modulo];
+  if (!cat) return [];
+  const filas = cat.filas(filasImportar) || [];
+  const ids = new Set(filas.map((f) => f[cat.id]).filter(Boolean));
+  const textos = new Set(filas.map((f) => texto(f[cat.campo])).filter(Boolean));
+  const { data, error } = await supabase
+    .from(cat.tabla).select(`id, ${cat.campo}`).eq('empresa_id', empresaId).eq('activo', true);
+  if (error) throw error;
+  return (data || []).filter((r) => !ids.has(r.id) && !textos.has(texto(r[cat.campo]))).map((r) => r.id);
 }
 
-// Desactiva los registros activos de `tabla` cuyo `campo` no esté en `conservar`.
-async function desactivarFaltantes(tabla, empresaId, conservar, campo = 'codigo') {
-  const { data, error } = await supabase
-    .from(tabla).select(`id, ${campo}`).eq('empresa_id', empresaId).eq('activo', true);
+async function desactivar(modulo, empresaId, ids) {
+  if (!ids || !ids.length) return 0;
+  const { error } = await supabase
+    .from(CATALOGOS[modulo].tabla).update({ activo: false }).eq('empresa_id', empresaId).in('id', ids);
   if (error) throw error;
-  const ids = (data || []).filter((r) => !conservar.has(texto(r[campo]))).map((r) => r.id);
-  if (!ids.length) return 0;
-  const { error: eUpd } = await supabase
-    .from(tabla).update({ activo: false }).eq('empresa_id', empresaId).in('id', ids);
-  if (eUpd) throw eUpd;
   return ids.length;
 }
 
@@ -56,28 +72,23 @@ async function borrarEncargos(empresaId) {
   return borrarTodo('colaboradores_encargos', empresaId);
 }
 
-// Se ejecuta ANTES de importar.
-async function antesDeImportar(modulo, empresaId) {
+// Se ejecuta ANTES de importar. Devuelve lo que necesita despuesDeImportar.
+async function antesDeImportar(modulo, empresaId, filas) {
+  const pendientes = await registrosFaltantes(modulo, empresaId, filas);
+  let borrados = 0;
   switch (modulo) {
-    case 'compras': return { borrados: await borrarTodo('compras', empresaId) };
-    case 'ventas': return { borrados: await borrarTodo('ventas', empresaId) };
-    case 'facturacion': return { borrados: await borrarTodo('facturas', empresaId) };
-    case 'finanzas': return { borrados: await borrarTodo('capital_invertido', empresaId) };
-    case 'nominas': return { borrados: await borrarEncargos(empresaId) };
-    default: return {};
+    case 'compras': borrados = await borrarTodo('compras', empresaId); break;
+    case 'ventas': borrados = await borrarTodo('ventas', empresaId); break;
+    case 'facturacion': borrados = await borrarTodo('facturas', empresaId); break;
+    case 'finanzas': borrados = await borrarTodo('capital_invertido', empresaId); break;
+    case 'nominas': borrados = await borrarEncargos(empresaId); break;
   }
+  return { pendientes, borrados };
 }
 
-// Se ejecuta DESPUÉS de importar. `filas` es lo mismo que llegó a /importar.
-async function despuesDeImportar(modulo, empresaId, filas) {
-  switch (modulo) {
-    case 'materiales': return { desactivados: await desactivarFaltantes('materiales', empresaId, codigosDe(filas)) };
-    case 'productos': return { desactivados: await desactivarFaltantes('productos', empresaId, codigosDe(filas)) };
-    case 'procesos': return { desactivados: await desactivarFaltantes('procesos', empresaId, codigosDe(filas)) };
-    case 'nominas': return { desactivados: await desactivarFaltantes('colaboradores', empresaId, codigosDe(filas.filas_colaboradores)) };
-    case 'finanzas': return { desactivados: await desactivarFaltantes('costos_fijos', empresaId, codigosDe(filas.filas_costos_fijos, 'nombre'), 'nombre') };
-    default: return {};
-  }
+// Se ejecuta DESPUÉS de importar (solo si la importación no falló).
+async function despuesDeImportar(modulo, empresaId, previo) {
+  return { desactivados: await desactivar(modulo, empresaId, previo.pendientes) };
 }
 
 // Módulos donde "Reemplazar" borra historial (el front pide confirmación extra).

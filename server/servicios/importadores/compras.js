@@ -20,6 +20,7 @@
 // la compra.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { mapaCodigoONombre } = require('./buscador');
 const { aplicarOperacion } = require('../inventario/nucleo');
 const log = require('../../seguridad/log');
 const { usuarioActual } = require('../../contexto');
@@ -38,18 +39,18 @@ function extraerDatos(filaExcel) {
 
 async function obtenerMaterialesPorCodigo(empresaId) {
   const { data, error } = await supabase
-    .from('materiales').select('id, codigo, costo_unitario, tiempo_entrega_dias, stock_actual')
-    .eq('empresa_id', empresaId).not('codigo', 'is', null);
+    .from('materiales').select('id, codigo, nombre, costo_unitario, tiempo_entrega_dias, stock_actual')
+    .eq('empresa_id', empresaId);
   if (error) throw new Error(error.message);
-  return new Map((data || []).map((m) => [m.codigo.toLowerCase(), m]));
+  return mapaCodigoONombre(data);
 }
 
 async function obtenerProductosPorCodigo(empresaId) {
   const { data, error } = await supabase
-    .from('productos').select('id, codigo, tipo, costo_calculado')
-    .eq('empresa_id', empresaId).not('codigo', 'is', null);
+    .from('productos').select('id, codigo, nombre, tipo, costo_calculado')
+    .eq('empresa_id', empresaId);
   if (error) throw new Error(error.message);
-  return new Map((data || []).map((p) => [p.codigo.toLowerCase(), p]));
+  return mapaCodigoONombre(data);
 }
 
 // -------------------- 1. ANALIZAR --------------------

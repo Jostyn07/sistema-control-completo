@@ -14,6 +14,7 @@
 // Cada fila es de un material o de un producto (stock de terminados).
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { mapaCodigoONombre } = require('./buscador');
 const { randomUUID } = require('crypto');
 const { aplicarOperacion } = require('../inventario/nucleo');
 const log = require('../../seguridad/log');
@@ -32,19 +33,19 @@ function extraerDatos(filaExcel) {
 
 async function obtenerMaterialesPorCodigo(empresaId) {
   const { data, error } = await supabase
-    .from('materiales').select('id, codigo, stock_actual').eq('empresa_id', empresaId).not('codigo', 'is', null);
+    .from('materiales').select('id, codigo, nombre, stock_actual').eq('empresa_id', empresaId);
   if (error) throw new Error(error.message);
-  return new Map((data || []).map((m) => [m.codigo.toLowerCase(), m]));
+  return mapaCodigoONombre(data);
 }
 
 async function obtenerProductosPorCodigo(empresaId) {
   const [{ data, error }, { data: stock, error: eS }] = await Promise.all([
-    supabase.from('productos').select('id, codigo').eq('empresa_id', empresaId).not('codigo', 'is', null),
+    supabase.from('productos').select('id, codigo, nombre').eq('empresa_id', empresaId),
     supabase.from('inventario_productos').select('producto_id, stock_actual').eq('empresa_id', empresaId)
   ]);
   if (error || eS) throw new Error((error || eS).message);
   const stockPorId = new Map((stock || []).map((s) => [s.producto_id, Number(s.stock_actual)]));
-  return new Map((data || []).map((p) => [p.codigo.toLowerCase(), { ...p, stock_actual: stockPorId.get(p.id) || 0 }]));
+  return mapaCodigoONombre(data, (p) => ({ ...p, stock_actual: stockPorId.get(p.id) || 0 }));
 }
 
 // Calcula en cuánto cambia el stock según el tipo. Devuelve `undefined`

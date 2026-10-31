@@ -17,6 +17,7 @@
 // MATERIALES_PROCESO — si no aparece, su ficha de materiales no se toca.
 // ============================================================
 const supabase = require('../../supabase/cliente');
+const { mapaCodigoONombre } = require('./buscador');
 const { usuarioActual } = require('../../contexto');
 const { leerHoja } = require('../excel/lector');
 const {
@@ -37,15 +38,15 @@ function extraer(filaExcel, mapaClaves) {
 }
 
 async function obtenerProductosPorCodigo(empresaId) {
-  const { data, error } = await supabase.from('productos').select('id, codigo').eq('empresa_id', empresaId).not('codigo', 'is', null);
+  const { data, error } = await supabase.from('productos').select('id, codigo, nombre').eq('empresa_id', empresaId);
   if (error) throw new Error(error.message);
-  return new Map((data || []).map((p) => [p.codigo.toLowerCase(), p]));
+  return mapaCodigoONombre(data);
 }
 
 async function obtenerMaterialesPorCodigo(empresaId) {
-  const { data, error } = await supabase.from('materiales').select('id, codigo').eq('empresa_id', empresaId).not('codigo', 'is', null);
+  const { data, error } = await supabase.from('materiales').select('id, codigo, nombre').eq('empresa_id', empresaId);
   if (error) throw new Error(error.message);
-  return new Map((data || []).map((m) => [m.codigo.toLowerCase(), m]));
+  return mapaCodigoONombre(data);
 }
 
 async function obtenerProcesosPorCodigo(empresaId) {
